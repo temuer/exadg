@@ -26,169 +26,178 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-// forward declarations
-template<int dim, typename Number>
-class OperatorDualSplitting;
-
-template<int dim, typename Number>
-class TimeIntBDFDualSplitting : public TimeIntBDF<dim, Number>
-{
-private:
-  using BoostInputArchiveType  = TimeIntBase::BoostInputArchiveType;
-  using BoostOutputArchiveType = TimeIntBase::BoostOutputArchiveType;
-
-  typedef TimeIntBDF<dim, Number> Base;
-
-  typedef typename Base::VectorType VectorType;
-
-  typedef OperatorDualSplitting<dim, Number> Operator;
-
-public:
-  TimeIntBDFDualSplitting(std::shared_ptr<Operator>                       operator_in,
-                          std::shared_ptr<HelpersALE<dim, Number> const>  helpers_ale_in,
-                          std::shared_ptr<PostProcessorInterface<Number>> postprocessor_in,
-                          Parameters const &                              param_in,
-                          MPI_Comm const &                                mpi_comm_in,
-                          bool const                                      is_test_in);
-
-  virtual ~TimeIntBDFDualSplitting()
+  namespace IncNS
   {
-  }
+    // forward declarations
+    template <int dim, typename Number>
+    class OperatorDualSplitting;
 
-  void
-  postprocessing_stability_analysis();
+    template <int dim, typename Number>
+    class TimeIntBDFDualSplitting : public TimeIntBDF<dim, Number>
+    {
+    private:
+      using BoostInputArchiveType  = TimeIntBase::BoostInputArchiveType;
+      using BoostOutputArchiveType = TimeIntBase::BoostOutputArchiveType;
 
-  void
-  print_iterations() const final;
+      typedef TimeIntBDF<dim, Number> Base;
 
-  VectorType const &
-  get_velocity() const final;
+      typedef typename Base::VectorType VectorType;
 
-  VectorType const &
-  get_velocity_np() const final;
+      typedef OperatorDualSplitting<dim, Number> Operator;
 
-  VectorType const &
-  get_pressure() const final;
+    public:
+      TimeIntBDFDualSplitting(
+        std::shared_ptr<Operator>                       operator_in,
+        std::shared_ptr<HelpersALE<dim, Number> const>  helpers_ale_in,
+        std::shared_ptr<PostProcessorInterface<Number>> postprocessor_in,
+        Parameters const                               &param_in,
+        MPI_Comm const                                 &mpi_comm_in,
+        bool const                                      is_test_in);
 
-  VectorType const &
-  get_pressure_np() const final;
+      virtual ~TimeIntBDFDualSplitting()
+      {}
 
-private:
-  void
-  allocate_vectors() final;
+      void
+      postprocessing_stability_analysis();
 
-  void
-  setup_derived() final;
+      void
+      print_iterations() const final;
 
-  void
-  read_restart_vectors(BoostInputArchiveType & ia) final;
+      VectorType const &
+      get_velocity() const final;
 
-  void
-  write_restart_vectors(BoostOutputArchiveType & oa) const final;
+      VectorType const &
+      get_velocity_np() const final;
 
-  void
-  do_timestep_solve() final;
+      VectorType const &
+      get_pressure() const final;
 
-  void
-  prepare_vectors_for_next_timestep() final;
+      VectorType const &
+      get_pressure_np() const final;
 
-  void
-  convective_step();
+    private:
+      void
+      allocate_vectors() final;
 
-  void
-  evaluate_convective_term();
+      void
+      setup_derived() final;
 
-  void
-  update_time_integrator_constants() final;
+      void
+      read_restart_vectors(BoostInputArchiveType &ia) final;
 
-  void
-  initialize_current_solution() final;
+      void
+      write_restart_vectors(BoostOutputArchiveType &oa) const final;
 
-  void
-  initialize_former_multistep_dof_vectors() final;
+      void
+      do_timestep_solve() final;
 
-  void
-  initialize_velocity_dbc();
+      void
+      prepare_vectors_for_next_timestep() final;
 
-  void
-  pressure_step();
+      void
+      convective_step();
 
-  void
-  rhs_pressure(VectorType & rhs) const;
+      void
+      evaluate_convective_term();
 
-  void
-  projection_step();
+      void
+      update_time_integrator_constants() final;
 
-  void
-  rhs_projection(VectorType & rhs) const;
+      void
+      initialize_current_solution() final;
 
-  void
-  penalty_step();
+      void
+      initialize_former_multistep_dof_vectors() final;
 
-  void
-  viscous_step();
+      void
+      initialize_velocity_dbc();
 
-  void
-  rhs_viscous(VectorType &       rhs,
-              VectorType const & velocity_mass_operator,
-              VectorType const & transport_velocity) const;
+      void
+      pressure_step();
 
-  void
-  solve_steady_problem() final;
+      void
+      rhs_pressure(VectorType &rhs) const;
 
-  double
-  evaluate_residual();
+      void
+      projection_step();
 
-  VectorType const &
-  get_velocity(unsigned int i /* t_{n-i} */) const final;
+      void
+      rhs_projection(VectorType &rhs) const;
 
-  VectorType const &
-  get_pressure(unsigned int i /* t_{n-i} */) const final;
+      void
+      penalty_step();
 
-  void
-  set_velocity(VectorType const & velocity, unsigned int const i /* t_{n-i} */) final;
+      void
+      viscous_step();
 
-  void
-  set_pressure(VectorType const & pressure, unsigned int const i /* t_{n-i} */) final;
+      void
+      rhs_viscous(VectorType       &rhs,
+                  VectorType const &velocity_mass_operator,
+                  VectorType const &transport_velocity) const;
 
-  std::shared_ptr<Operator> pde_operator;
+      void
+      solve_steady_problem() final;
 
-  std::vector<VectorType> velocity;
+      double
+      evaluate_residual();
 
-  VectorType velocity_np;
+      VectorType const &
+      get_velocity(unsigned int i /* t_{n-i} */) const final;
 
-  std::vector<VectorType> pressure;
+      VectorType const &
+      get_pressure(unsigned int i /* t_{n-i} */) const final;
 
-  VectorType pressure_np;
+      void
+      set_velocity(VectorType const  &velocity,
+                   unsigned int const i /* t_{n-i} */) final;
 
-  std::vector<VectorType> velocity_dbc;
-  VectorType              velocity_dbc_np;
+      void
+      set_pressure(VectorType const  &pressure,
+                   unsigned int const i /* t_{n-i} */) final;
 
-  // required for strongly-coupled partitioned FSI
-  VectorType pressure_last_iter;
-  VectorType velocity_projection_last_iter;
-  VectorType velocity_viscous_last_iter;
+      std::shared_ptr<Operator> pde_operator;
 
-  // iteration counts
-  std::pair<unsigned int /* calls */, unsigned long long /* iteration counts */>
-    iterations_pressure;
-  std::pair<unsigned int /* calls */, unsigned long long /* iteration counts */>
-    iterations_projection;
-  std::pair<
-    unsigned int /* calls */,
-    std::tuple<unsigned long long, unsigned long long> /* iteration counts {Newton, linear} */>
-    iterations_viscous;
+      std::vector<VectorType> velocity;
 
-  std::pair<unsigned int /* calls */, unsigned long long /* iteration counts */> iterations_penalty;
-  std::pair<unsigned int /* calls */, unsigned long long /* iteration counts */> iterations_mass;
+      VectorType velocity_np;
 
-  // time integrator constants: extrapolation scheme
-  ExtrapolationConstants extra_pressure_nbc;
-};
+      std::vector<VectorType> pressure;
 
-} // namespace IncNS
+      VectorType pressure_np;
+
+      std::vector<VectorType> velocity_dbc;
+      VectorType              velocity_dbc_np;
+
+      // required for strongly-coupled partitioned FSI
+      VectorType pressure_last_iter;
+      VectorType velocity_projection_last_iter;
+      VectorType velocity_viscous_last_iter;
+
+      // iteration counts
+      std::pair<unsigned int /* calls */,
+                unsigned long long /* iteration counts */>
+        iterations_pressure;
+      std::pair<unsigned int /* calls */,
+                unsigned long long /* iteration counts */>
+        iterations_projection;
+      std::pair<
+        unsigned int /* calls */,
+        std::tuple<unsigned long long,
+                   unsigned long long> /* iteration counts {Newton, linear} */>
+        iterations_viscous;
+
+      std::pair<unsigned int /* calls */,
+                unsigned long long /* iteration counts */>
+        iterations_penalty;
+      std::pair<unsigned int /* calls */,
+                unsigned long long /* iteration counts */>
+        iterations_mass;
+
+      // time integrator constants: extrapolation scheme
+      ExtrapolationConstants extra_pressure_nbc;
+    };
+
+  } // namespace IncNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_TIME_INTEGRATION_TIME_INT_BDF_DUAL_SPLITTING_H_ \

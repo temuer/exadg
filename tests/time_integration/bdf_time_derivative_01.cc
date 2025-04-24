@@ -19,12 +19,12 @@
  *  ______________________________________________________________________
  */
 
-#include <iostream>
-#include <numeric>
-
 #include <deal.II/lac/vector.h>
 
 #include <exadg/time_integration/bdf_constants.h>
+
+#include <iostream>
+#include <numeric>
 
 // Check compute_bdf_time_derivative() from quantities and times
 
@@ -55,20 +55,20 @@ test(unsigned int const order, double const target_slope)
   quantities_np_values[0] = get_vector_with_value(100.0);
 
   double const dt = 1.0;
-  for(unsigned int i = 1; i < order + 1; ++i)
-  {
-    times_np[i] = times_np[i - 1] - dt;
+  for (unsigned int i = 1; i < order + 1; ++i)
+    {
+      times_np[i] = times_np[i - 1] - dt;
 
-    quantities_np_values[i] =
-      get_vector_with_value(-target_slope * dt + quantities_np_values[i - 1][0]);
-  }
+      quantities_np_values[i] = get_vector_with_value(
+        -target_slope * dt + quantities_np_values[i - 1][0]);
+    }
 
   // transfrom to vector of pointers
   std::vector<VectorType const *> quantities_np(quantities_np_values.size());
   std::transform(quantities_np_values.begin(),
                  quantities_np_values.end(),
                  quantities_np.begin(),
-                 [](VectorType const & t) { return &t; });
+                 [](VectorType const &t) { return &t; });
 
   // compute temporal derivative
   VectorType derivative(1);
@@ -83,11 +83,11 @@ test(unsigned int const order, double const target_slope)
 int
 main()
 {
-  for(unsigned int order = 1; order <= 4; ++order)
-  {
-    std::cout << "Order " << order << std::endl;
-    test(order, 0.0);
-    test(order, -1.0);
-  }
+  for (unsigned int order = 1; order <= 4; ++order)
+    {
+      std::cout << "Order " << order << std::endl;
+      test(order, 0.0);
+      test(order, -1.0);
+    }
   return 0;
 }

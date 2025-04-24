@@ -26,67 +26,73 @@
 
 namespace ExaDG
 {
-namespace Elementwise
-{
-template<int dim, typename Number, typename Operator>
-class OperatorBase
-{
-public:
-  OperatorBase(Operator const & operator_in) : op(operator_in), current_cell(1), problem_size(1)
+  namespace Elementwise
   {
-  }
+    template <int dim, typename Number, typename Operator>
+    class OperatorBase
+    {
+    public:
+      OperatorBase(Operator const &operator_in)
+        : op(operator_in)
+        , current_cell(1)
+        , problem_size(1)
+      {}
 
-  dealii::MatrixFree<dim, Number> const &
-  get_matrix_free() const
-  {
-    return op.get_matrix_free();
-  }
+      dealii::MatrixFree<dim, Number> const &
+      get_matrix_free() const
+      {
+        return op.get_matrix_free();
+      }
 
-  unsigned int
-  get_dof_index() const
-  {
-    return op.get_dof_index();
-  }
+      unsigned int
+      get_dof_index() const
+      {
+        return op.get_dof_index();
+      }
 
-  unsigned int
-  get_quad_index() const
-  {
-    return op.get_quad_index();
-  }
+      unsigned int
+      get_quad_index() const
+      {
+        return op.get_quad_index();
+      }
 
-  void
-  setup(unsigned int const cell, unsigned int const size)
-  {
-    current_cell = cell;
+      void
+      setup(unsigned int const cell, unsigned int const size)
+      {
+        current_cell = cell;
 
-    problem_size = size;
-  }
+        problem_size = size;
+      }
 
-  unsigned int
-  get_problem_size() const
-  {
-    return problem_size;
-  }
+      unsigned int
+      get_problem_size() const
+      {
+        return problem_size;
+      }
 
-  void
-  vmult(dealii::VectorizedArray<Number> * dst, dealii::VectorizedArray<Number> * src) const
-  {
-    // set dst vector to zero
-    Elementwise::vector_init(dst, problem_size);
+      void
+      vmult(dealii::VectorizedArray<Number> *dst,
+            dealii::VectorizedArray<Number> *src) const
+      {
+        // set dst vector to zero
+        Elementwise::vector_init(dst, problem_size);
 
-    // evaluate block diagonal
-    op.apply_add_block_diagonal_elementwise(current_cell, dst, src, problem_size);
-  }
+        // evaluate block diagonal
+        op.apply_add_block_diagonal_elementwise(current_cell,
+                                                dst,
+                                                src,
+                                                problem_size);
+      }
 
-private:
-  Operator const & op;
+    private:
+      Operator const &op;
 
-  unsigned int current_cell;
+      unsigned int current_cell;
 
-  unsigned int problem_size;
-};
+      unsigned int problem_size;
+    };
 
-} // namespace Elementwise
+  } // namespace Elementwise
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_OPERATORS_ELEMENTWISE_OPERATOR_H_ */

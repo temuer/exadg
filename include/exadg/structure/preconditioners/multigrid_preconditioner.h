@@ -30,94 +30,101 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim, typename Number>
-class MultigridPreconditioner : public MultigridPreconditionerBase<dim, Number>
-{
-private:
-  typedef MultigridPreconditionerBase<dim, Number> Base;
+  namespace Structure
+  {
+    template <int dim, typename Number>
+    class MultigridPreconditioner
+      : public MultigridPreconditionerBase<dim, Number>
+    {
+    private:
+      typedef MultigridPreconditionerBase<dim, Number> Base;
 
-public:
-  typedef typename Base::MultigridNumber MultigridNumber;
+    public:
+      typedef typename Base::MultigridNumber MultigridNumber;
 
-public:
-  typedef LinearOperator<dim, Number>          PDEOperatorLinear;
-  typedef LinearOperator<dim, MultigridNumber> PDEOperatorLinearMG;
+    public:
+      typedef LinearOperator<dim, Number>          PDEOperatorLinear;
+      typedef LinearOperator<dim, MultigridNumber> PDEOperatorLinearMG;
 
-  typedef NonLinearOperator<dim, Number>          PDEOperatorNonlinear;
-  typedef NonLinearOperator<dim, MultigridNumber> PDEOperatorNonlinearMG;
+      typedef NonLinearOperator<dim, Number>          PDEOperatorNonlinear;
+      typedef NonLinearOperator<dim, MultigridNumber> PDEOperatorNonlinearMG;
 
-  typedef MultigridOperatorBase<dim, MultigridNumber>                     MGOperatorBase;
-  typedef MultigridOperator<dim, MultigridNumber, PDEOperatorLinearMG>    MGOperatorLinear;
-  typedef MultigridOperator<dim, MultigridNumber, PDEOperatorNonlinearMG> MGOperatorNonlinear;
+      typedef MultigridOperatorBase<dim, MultigridNumber> MGOperatorBase;
+      typedef MultigridOperator<dim, MultigridNumber, PDEOperatorLinearMG>
+        MGOperatorLinear;
+      typedef MultigridOperator<dim, MultigridNumber, PDEOperatorNonlinearMG>
+        MGOperatorNonlinear;
 
-  typedef typename Base::Map_DBC               Map_DBC;
-  typedef typename Base::Map_DBC_ComponentMask Map_DBC_ComponentMask;
-  typedef typename Base::PeriodicFacePairs     PeriodicFacePairs;
-  typedef typename Base::VectorType            VectorType;
-  typedef typename Base::VectorTypeMG          VectorTypeMG;
+      typedef typename Base::Map_DBC               Map_DBC;
+      typedef typename Base::Map_DBC_ComponentMask Map_DBC_ComponentMask;
+      typedef typename Base::PeriodicFacePairs     PeriodicFacePairs;
+      typedef typename Base::VectorType            VectorType;
+      typedef typename Base::VectorTypeMG          VectorTypeMG;
 
-  MultigridPreconditioner(MPI_Comm const & mpi_comm);
+      MultigridPreconditioner(MPI_Comm const &mpi_comm);
 
-  void
-  initialize(MultigridData const &                                 mg_data,
-             std::shared_ptr<Grid<dim> const>                      grid,
-             std::shared_ptr<MultigridMappings<dim, Number>> const multigrid_mappings,
-             dealii::FiniteElement<dim> const &                    fe,
-             ElasticityOperatorBase<dim, Number> const &           pde_operator,
-             bool const                                            nonlinear_operator,
-             Map_DBC const &                                       dirichlet_bc,
-             Map_DBC_ComponentMask const &                         dirichlet_bc_component_mask);
+      void
+      initialize(MultigridData const             &mg_data,
+                 std::shared_ptr<Grid<dim> const> grid,
+                 std::shared_ptr<MultigridMappings<dim, Number>> const
+                                                            multigrid_mappings,
+                 dealii::FiniteElement<dim> const          &fe,
+                 ElasticityOperatorBase<dim, Number> const &pde_operator,
+                 bool const                                 nonlinear_operator,
+                 Map_DBC const                             &dirichlet_bc,
+                 Map_DBC_ComponentMask const &dirichlet_bc_component_mask);
 
-  /*
-   * This function updates the multigrid preconditioner.
-   */
-  void
-  update() final;
+      /*
+       * This function updates the multigrid preconditioner.
+       */
+      void
+      update() final;
 
-private:
-  void
-  initialize_dof_handler_and_constraints(
-    bool const                    operator_is_singular,
-    unsigned int const            n_components,
-    Map_DBC const &               dirichlet_bc,
-    Map_DBC_ComponentMask const & dirichlet_bc_component_mask) final;
+    private:
+      void
+      initialize_dof_handler_and_constraints(
+        bool const                   operator_is_singular,
+        unsigned int const           n_components,
+        Map_DBC const               &dirichlet_bc,
+        Map_DBC_ComponentMask const &dirichlet_bc_component_mask) final;
 
-  void
-  fill_matrix_free_data(MatrixFreeData<dim, MultigridNumber> & matrix_free_data,
-                        unsigned int const                     level,
-                        unsigned int const                     dealii_tria_level) final;
+      void
+      fill_matrix_free_data(
+        MatrixFreeData<dim, MultigridNumber> &matrix_free_data,
+        unsigned int const                    level,
+        unsigned int const                    dealii_tria_level) final;
 
-  std::shared_ptr<MGOperatorBase>
-  initialize_operator(unsigned int const level) final;
+      std::shared_ptr<MGOperatorBase>
+      initialize_operator(unsigned int const level) final;
 
-  /*
-   * This function updates the multigrid operators for all levels
-   */
-  void
-  update_operators();
+      /*
+       * This function updates the multigrid operators for all levels
+       */
+      void
+      update_operators();
 
-  std::shared_ptr<PDEOperatorNonlinearMG>
-  get_operator_nonlinear(unsigned int level);
+      std::shared_ptr<PDEOperatorNonlinearMG>
+      get_operator_nonlinear(unsigned int level);
 
-  std::shared_ptr<PDEOperatorLinearMG>
-  get_operator_linear(unsigned int level);
+      std::shared_ptr<PDEOperatorLinearMG>
+      get_operator_linear(unsigned int level);
 
-private:
-  OperatorData<dim> data;
+    private:
+      OperatorData<dim> data;
 
-  ElasticityOperatorBase<dim, Number> const * pde_operator;
+      ElasticityOperatorBase<dim, Number> const *pde_operator;
 
-  // additional constraints without Dirichlet degrees of freedom
-  dealii::MGLevelObject<std::shared_ptr<dealii::DoFHandler<dim> const>> dof_handlers_inhomogeneous;
-  dealii::MGLevelObject<std::shared_ptr<dealii::AffineConstraints<MultigridNumber>>>
-    constraints_inhomogeneous;
+      // additional constraints without Dirichlet degrees of freedom
+      dealii::MGLevelObject<std::shared_ptr<dealii::DoFHandler<dim> const>>
+        dof_handlers_inhomogeneous;
+      dealii::MGLevelObject<
+        std::shared_ptr<dealii::AffineConstraints<MultigridNumber>>>
+        constraints_inhomogeneous;
 
-  bool nonlinear;
-};
+      bool nonlinear;
+    };
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

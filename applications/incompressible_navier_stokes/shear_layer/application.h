@@ -30,250 +30,285 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim>
-class InitialSolutionVelocity : public dealii::Function<dim>
-{
-public:
-  InitialSolutionVelocity(double const rho, double const delta)
-    : dealii::Function<dim>(dim, 0.0), rho(rho), delta(delta)
+  namespace IncNS
   {
-  }
+    template <int dim>
+    class InitialSolutionVelocity : public dealii::Function<dim>
+    {
+    public:
+      InitialSolutionVelocity(double const rho, double const delta)
+        : dealii::Function<dim>(dim, 0.0)
+        , rho(rho)
+        , delta(delta)
+      {}
 
-  double
-  value(dealii::Point<dim> const & p, unsigned int const component = 0) const final
-  {
-    double result = 0.0;
-    if(component == 0)
-      result = std::tanh(rho * (0.25 - std::abs(0.5 - p[1])));
-    else if(component == 1)
-      result = delta * std::sin(2.0 * dealii::numbers::PI * p[0]);
+      double
+      value(dealii::Point<dim> const &p,
+            unsigned int const        component = 0) const final
+      {
+        double result = 0.0;
+        if (component == 0)
+          result = std::tanh(rho * (0.25 - std::abs(0.5 - p[1])));
+        else if (component == 1)
+          result = delta * std::sin(2.0 * dealii::numbers::PI * p[0]);
 
-    return result;
-  }
+        return result;
+      }
 
-private:
-  double const rho, delta;
-};
-
-template<int dim, typename Number>
-class Application : public ApplicationBase<dim, Number>
-{
-public:
-  Application(std::string input_file, MPI_Comm const & comm)
-    : ApplicationBase<dim, Number>(input_file, comm)
-  {
-  }
-
-private:
-  void
-  set_parameters() final
-  {
-    // MATHEMATICAL MODEL
-    this->param.problem_type = ProblemType::Unsteady;
-    if(inviscid)
-      this->param.equation_type = EquationType::Euler;
-    else
-      this->param.equation_type = EquationType::NavierStokes;
-    this->param.formulation_viscous_term    = FormulationViscousTerm::LaplaceFormulation;
-    this->param.formulation_convective_term = FormulationConvectiveTerm::DivergenceFormulation;
-    this->param.right_hand_side             = false;
-
-    // PHYSICAL QUANTITIES
-    this->param.start_time = start_time;
-    this->param.end_time   = end_time;
-    this->param.viscosity  = viscosity;
-
-
-    // TEMPORAL DISCRETIZATION
-    this->param.solver_type                   = SolverType::Unsteady;
-    this->param.temporal_discretization       = TemporalDiscretization::BDFDualSplittingScheme;
-    this->param.treatment_of_convective_term  = TreatmentOfConvectiveTerm::Explicit;
-    this->param.calculation_of_time_step_size = TimeStepCalculation::CFL;
-    this->param.adaptive_time_stepping        = true;
-    this->param.adaptive_time_stepping_limiting_factor = 3.0;
-    this->param.max_velocity                           = 1.5;
-    this->param.cfl                                    = 0.25;
-    this->param.cfl_exponent_fe_degree_velocity        = 1.5;
-    this->param.time_step_size                         = 1.0e-4;
-    this->param.order_time_integrator                  = 2;
-    this->param.start_with_low_order                   = true;
-
-    // output of solver information
-    this->param.solver_info_data.interval_time =
-      (this->param.end_time - this->param.start_time) / 40;
-
-
-    // SPATIAL DISCRETIZATION
-    this->param.grid.triangulation_type     = TriangulationType::Distributed;
-    this->param.mapping_degree              = this->param.degree_u;
-    this->param.mapping_degree_coarse_grids = this->param.mapping_degree;
-    this->param.degree_p                    = DegreePressure::MixedOrder;
-
-    // convective term
-    if(this->param.formulation_convective_term == FormulationConvectiveTerm::DivergenceFormulation)
-      this->param.upwind_factor = 0.5;
-
-    // viscous term
-    this->param.IP_formulation_viscous = InteriorPenaltyFormulation::SIPG;
-
-    // velocity-pressure coupling terms
-    this->param.gradp_formulation = FormulationPressureGradientTerm::Weak;
-    this->param.divu_formulation  = FormulationVelocityDivergenceTerm::Weak;
-
-    // penalty terms
-    this->param.use_divergence_penalty                     = true;
-    this->param.divergence_penalty_factor                  = 1.0e0;
-    this->param.use_continuity_penalty                     = true;
-    this->param.continuity_penalty_factor                  = this->param.divergence_penalty_factor;
-    this->param.continuity_penalty_components              = ContinuityPenaltyComponents::Normal;
-    this->param.continuity_penalty_use_boundary_data       = true;
-    this->param.apply_penalty_terms_in_postprocessing_step = true;
-
-    // PROJECTION METHODS
-
-    // pressure Poisson equation
-    this->param.solver_pressure_poisson              = SolverPressurePoisson::CG;
-    this->param.solver_data_pressure_poisson         = SolverData(1000, 1.e-12, 1.e-6, 100);
-    this->param.preconditioner_pressure_poisson      = PreconditionerPressurePoisson::Multigrid;
-    this->param.multigrid_data_pressure_poisson.type = MultigridType::cphMG;
-    this->param.multigrid_data_pressure_poisson.coarse_problem.solver =
-      MultigridCoarseGridSolver::Chebyshev;
-    this->param.multigrid_data_pressure_poisson.coarse_problem.preconditioner =
-      MultigridCoarseGridPreconditioner::PointJacobi;
-
-    // projection step
-    this->param.solver_projection         = SolverProjection::CG;
-    this->param.solver_data_projection    = SolverData(1000, 1.e-12, 1.e-6);
-    this->param.preconditioner_projection = PreconditionerProjection::InverseMassMatrix;
-
-    // HIGH-ORDER DUAL SPLITTING SCHEME
-
-    // formulations
-    this->param.order_extrapolation_pressure_nbc =
-      this->param.order_time_integrator <= 2 ? this->param.order_time_integrator : 2;
-
-    this->param.solver_momentum         = SolverMomentum::CG;
-    this->param.solver_data_momentum    = SolverData(1000, 1.e-12, 1.e-6);
-    this->param.preconditioner_momentum = MomentumPreconditioner::InverseMassMatrix;
-  }
-
-  void
-  create_grid(Grid<dim> &                                       grid,
-              std::shared_ptr<dealii::Mapping<dim>> &           mapping,
-              std::shared_ptr<MultigridMappings<dim, Number>> & multigrid_mappings) final
-  {
-    auto const lambda_create_triangulation = [&](dealii::Triangulation<dim, dim> & tria,
-                                                 std::vector<dealii::GridTools::PeriodicFacePair<
-                                                   typename dealii::Triangulation<
-                                                     dim>::cell_iterator>> & periodic_face_pairs,
-                                                 unsigned int const          global_refinements,
-                                                 std::vector<unsigned int> const &
-                                                   vector_local_refinements) {
-      (void)vector_local_refinements;
-
-      double const left = 0.0, right = 1.0;
-      dealii::GridGenerator::hyper_cube(tria, left, right);
-
-      AssertThrow(
-        this->param.grid.triangulation_type != TriangulationType::FullyDistributed,
-        dealii::ExcMessage(
-          "Periodic faces might not be applied correctly for TriangulationType::FullyDistributed. "
-          "Try to use another triangulation type, or try to fix these limitations in ExaDG or deal.II."));
-
-      // use periodic boundary conditions
-      // x-direction
-      tria.begin()->face(0)->set_all_boundary_ids(0);
-      tria.begin()->face(1)->set_all_boundary_ids(1);
-      // y-direction
-      tria.begin()->face(2)->set_all_boundary_ids(2);
-      tria.begin()->face(3)->set_all_boundary_ids(3);
-
-      dealii::GridTools::collect_periodic_faces(tria, 0, 1, 0, periodic_face_pairs);
-      dealii::GridTools::collect_periodic_faces(tria, 2, 3, 1, periodic_face_pairs);
-      tria.add_periodicity(periodic_face_pairs);
-
-      tria.refine_global(global_refinements);
+    private:
+      double const rho, delta;
     };
 
-    GridUtilities::create_triangulation_with_multigrid<dim>(grid,
-                                                            this->mpi_comm,
-                                                            this->param.grid,
-                                                            this->param.involves_h_multigrid(),
-                                                            lambda_create_triangulation,
-                                                            {} /* no local refinements */);
+    template <int dim, typename Number>
+    class Application : public ApplicationBase<dim, Number>
+    {
+    public:
+      Application(std::string input_file, MPI_Comm const &comm)
+        : ApplicationBase<dim, Number>(input_file, comm)
+      {}
 
-    // mappings
-    GridUtilities::create_mapping_with_multigrid(mapping,
-                                                 multigrid_mappings,
-                                                 this->param.grid.element_type,
-                                                 this->param.mapping_degree,
-                                                 this->param.mapping_degree_coarse_grids,
-                                                 this->param.involves_h_multigrid());
-  }
+    private:
+      void
+      set_parameters() final
+      {
+        // MATHEMATICAL MODEL
+        this->param.problem_type = ProblemType::Unsteady;
+        if (inviscid)
+          this->param.equation_type = EquationType::Euler;
+        else
+          this->param.equation_type = EquationType::NavierStokes;
+        this->param.formulation_viscous_term =
+          FormulationViscousTerm::LaplaceFormulation;
+        this->param.formulation_convective_term =
+          FormulationConvectiveTerm::DivergenceFormulation;
+        this->param.right_hand_side = false;
 
-  void
-  set_boundary_descriptor() final
-  {
-  }
+        // PHYSICAL QUANTITIES
+        this->param.start_time = start_time;
+        this->param.end_time   = end_time;
+        this->param.viscosity  = viscosity;
 
 
-  void
-  set_field_functions() final
-  {
-    this->field_functions->initial_solution_velocity.reset(
-      new InitialSolutionVelocity<dim>(rho, delta));
-    this->field_functions->initial_solution_pressure.reset(
-      new dealii::Functions::ZeroFunction<dim>(1));
-    this->field_functions->analytical_solution_pressure.reset(
-      new dealii::Functions::ZeroFunction<dim>(1));
-    this->field_functions->right_hand_side.reset(new dealii::Functions::ZeroFunction<dim>(dim));
-  }
+        // TEMPORAL DISCRETIZATION
+        this->param.solver_type = SolverType::Unsteady;
+        this->param.temporal_discretization =
+          TemporalDiscretization::BDFDualSplittingScheme;
+        this->param.treatment_of_convective_term =
+          TreatmentOfConvectiveTerm::Explicit;
+        this->param.calculation_of_time_step_size = TimeStepCalculation::CFL;
+        this->param.adaptive_time_stepping        = true;
+        this->param.adaptive_time_stepping_limiting_factor = 3.0;
+        this->param.max_velocity                           = 1.5;
+        this->param.cfl                                    = 0.25;
+        this->param.cfl_exponent_fe_degree_velocity        = 1.5;
+        this->param.time_step_size                         = 1.0e-4;
+        this->param.order_time_integrator                  = 2;
+        this->param.start_with_low_order                   = true;
 
-  std::shared_ptr<PostProcessorBase<dim, Number>>
-  create_postprocessor() final
-  {
-    PostProcessorData<dim> pp_data;
+        // output of solver information
+        this->param.solver_info_data.interval_time =
+          (this->param.end_time - this->param.start_time) / 40;
 
-    // write output for visualization of results
-    pp_data.output_data.time_control_data.is_active        = this->output_parameters.write;
-    pp_data.output_data.time_control_data.start_time       = start_time;
-    pp_data.output_data.time_control_data.trigger_interval = (end_time - start_time) / 40.0;
-    pp_data.output_data.directory        = this->output_parameters.directory + "vtu/";
-    pp_data.output_data.filename         = this->output_parameters.filename;
-    pp_data.output_data.write_divergence = true;
-    pp_data.output_data.write_vorticity  = true;
-    pp_data.output_data.degree           = this->param.degree_u;
 
-    // kinetic energy
-    pp_data.kinetic_energy_data.time_control_data.is_active                = true;
-    pp_data.kinetic_energy_data.time_control_data.trigger_every_time_steps = 1;
-    pp_data.kinetic_energy_data.time_control_data.start_time               = start_time;
-    pp_data.kinetic_energy_data.evaluate_individual_terms                  = false;
-    pp_data.kinetic_energy_data.viscosity                                  = viscosity;
-    pp_data.kinetic_energy_data.directory = this->output_parameters.directory;
-    pp_data.kinetic_energy_data.filename  = this->output_parameters.filename;
+        // SPATIAL DISCRETIZATION
+        this->param.grid.triangulation_type = TriangulationType::Distributed;
+        this->param.mapping_degree          = this->param.degree_u;
+        this->param.mapping_degree_coarse_grids = this->param.mapping_degree;
+        this->param.degree_p                    = DegreePressure::MixedOrder;
 
-    std::shared_ptr<PostProcessorBase<dim, Number>> pp;
-    pp.reset(new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
+        // convective term
+        if (this->param.formulation_convective_term ==
+            FormulationConvectiveTerm::DivergenceFormulation)
+          this->param.upwind_factor = 0.5;
 
-    return pp;
-  }
+        // viscous term
+        this->param.IP_formulation_viscous = InteriorPenaltyFormulation::SIPG;
 
-  bool const   inviscid  = true;
-  double const viscosity = inviscid ? 0.0 : 1.0e-4; // Re = 10^4
-  double const rho       = 30.0;
-  double const delta     = 0.05;
+        // velocity-pressure coupling terms
+        this->param.gradp_formulation = FormulationPressureGradientTerm::Weak;
+        this->param.divu_formulation  = FormulationVelocityDivergenceTerm::Weak;
 
-  double const start_time = 0.0;
-  double const end_time   = 4.0;
-};
+        // penalty terms
+        this->param.use_divergence_penalty    = true;
+        this->param.divergence_penalty_factor = 1.0e0;
+        this->param.use_continuity_penalty    = true;
+        this->param.continuity_penalty_factor =
+          this->param.divergence_penalty_factor;
+        this->param.continuity_penalty_components =
+          ContinuityPenaltyComponents::Normal;
+        this->param.continuity_penalty_use_boundary_data       = true;
+        this->param.apply_penalty_terms_in_postprocessing_step = true;
 
-} // namespace IncNS
+        // PROJECTION METHODS
+
+        // pressure Poisson equation
+        this->param.solver_pressure_poisson = SolverPressurePoisson::CG;
+        this->param.solver_data_pressure_poisson =
+          SolverData(1000, 1.e-12, 1.e-6, 100);
+        this->param.preconditioner_pressure_poisson =
+          PreconditionerPressurePoisson::Multigrid;
+        this->param.multigrid_data_pressure_poisson.type = MultigridType::cphMG;
+        this->param.multigrid_data_pressure_poisson.coarse_problem.solver =
+          MultigridCoarseGridSolver::Chebyshev;
+        this->param.multigrid_data_pressure_poisson.coarse_problem
+          .preconditioner = MultigridCoarseGridPreconditioner::PointJacobi;
+
+        // projection step
+        this->param.solver_projection      = SolverProjection::CG;
+        this->param.solver_data_projection = SolverData(1000, 1.e-12, 1.e-6);
+        this->param.preconditioner_projection =
+          PreconditionerProjection::InverseMassMatrix;
+
+        // HIGH-ORDER DUAL SPLITTING SCHEME
+
+        // formulations
+        this->param.order_extrapolation_pressure_nbc =
+          this->param.order_time_integrator <= 2 ?
+            this->param.order_time_integrator :
+            2;
+
+        this->param.solver_momentum      = SolverMomentum::CG;
+        this->param.solver_data_momentum = SolverData(1000, 1.e-12, 1.e-6);
+        this->param.preconditioner_momentum =
+          MomentumPreconditioner::InverseMassMatrix;
+      }
+
+      void
+      create_grid(Grid<dim>                             &grid,
+                  std::shared_ptr<dealii::Mapping<dim>> &mapping,
+                  std::shared_ptr<MultigridMappings<dim, Number>>
+                    &multigrid_mappings) final
+      {
+        auto const lambda_create_triangulation = [&](
+                                                   dealii::Triangulation<dim,
+                                                                         dim>
+                                                     &tria,
+                                                   std::vector<
+                                                     dealii::GridTools::
+                                                       PeriodicFacePair<
+                                                         typename dealii::
+                                                           Triangulation<dim>::
+                                                             cell_iterator>>
+                                                     &periodic_face_pairs,
+                                                   unsigned int const
+                                                     global_refinements,
+                                                   std::vector<
+                                                     unsigned int> const &
+                                                     vector_local_refinements) {
+          (void)vector_local_refinements;
+
+          double const left = 0.0, right = 1.0;
+          dealii::GridGenerator::hyper_cube(tria, left, right);
+
+          AssertThrow(
+            this->param.grid.triangulation_type !=
+              TriangulationType::FullyDistributed,
+            dealii::ExcMessage(
+              "Periodic faces might not be applied correctly for TriangulationType::FullyDistributed. "
+              "Try to use another triangulation type, or try to fix these limitations in ExaDG or deal.II."));
+
+          // use periodic boundary conditions
+          // x-direction
+          tria.begin()->face(0)->set_all_boundary_ids(0);
+          tria.begin()->face(1)->set_all_boundary_ids(1);
+          // y-direction
+          tria.begin()->face(2)->set_all_boundary_ids(2);
+          tria.begin()->face(3)->set_all_boundary_ids(3);
+
+          dealii::GridTools::collect_periodic_faces(
+            tria, 0, 1, 0, periodic_face_pairs);
+          dealii::GridTools::collect_periodic_faces(
+            tria, 2, 3, 1, periodic_face_pairs);
+          tria.add_periodicity(periodic_face_pairs);
+
+          tria.refine_global(global_refinements);
+        };
+
+        GridUtilities::create_triangulation_with_multigrid<dim>(
+          grid,
+          this->mpi_comm,
+          this->param.grid,
+          this->param.involves_h_multigrid(),
+          lambda_create_triangulation,
+          {} /* no local refinements */);
+
+        // mappings
+        GridUtilities::create_mapping_with_multigrid(
+          mapping,
+          multigrid_mappings,
+          this->param.grid.element_type,
+          this->param.mapping_degree,
+          this->param.mapping_degree_coarse_grids,
+          this->param.involves_h_multigrid());
+      }
+
+      void
+      set_boundary_descriptor() final
+      {}
+
+
+      void
+      set_field_functions() final
+      {
+        this->field_functions->initial_solution_velocity.reset(
+          new InitialSolutionVelocity<dim>(rho, delta));
+        this->field_functions->initial_solution_pressure.reset(
+          new dealii::Functions::ZeroFunction<dim>(1));
+        this->field_functions->analytical_solution_pressure.reset(
+          new dealii::Functions::ZeroFunction<dim>(1));
+        this->field_functions->right_hand_side.reset(
+          new dealii::Functions::ZeroFunction<dim>(dim));
+      }
+
+      std::shared_ptr<PostProcessorBase<dim, Number>>
+      create_postprocessor() final
+      {
+        PostProcessorData<dim> pp_data;
+
+        // write output for visualization of results
+        pp_data.output_data.time_control_data.is_active =
+          this->output_parameters.write;
+        pp_data.output_data.time_control_data.start_time = start_time;
+        pp_data.output_data.time_control_data.trigger_interval =
+          (end_time - start_time) / 40.0;
+        pp_data.output_data.directory =
+          this->output_parameters.directory + "vtu/";
+        pp_data.output_data.filename         = this->output_parameters.filename;
+        pp_data.output_data.write_divergence = true;
+        pp_data.output_data.write_vorticity  = true;
+        pp_data.output_data.degree           = this->param.degree_u;
+
+        // kinetic energy
+        pp_data.kinetic_energy_data.time_control_data.is_active = true;
+        pp_data.kinetic_energy_data.time_control_data.trigger_every_time_steps =
+          1;
+        pp_data.kinetic_energy_data.time_control_data.start_time = start_time;
+        pp_data.kinetic_energy_data.evaluate_individual_terms    = false;
+        pp_data.kinetic_energy_data.viscosity                    = viscosity;
+        pp_data.kinetic_energy_data.directory =
+          this->output_parameters.directory;
+        pp_data.kinetic_energy_data.filename = this->output_parameters.filename;
+
+        std::shared_ptr<PostProcessorBase<dim, Number>> pp;
+        pp.reset(new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
+
+        return pp;
+      }
+
+      bool const   inviscid  = true;
+      double const viscosity = inviscid ? 0.0 : 1.0e-4; // Re = 10^4
+      double const rho       = 30.0;
+      double const delta     = 0.05;
+
+      double const start_time = 0.0;
+      double const end_time   = 4.0;
+    };
+
+  } // namespace IncNS
 
 } // namespace ExaDG
 
 #include <exadg/incompressible_navier_stokes/user_interface/implement_get_application.h>
 
-#endif /* APPLICATIONS_INCOMPRESSIBLE_NAVIER_STOKES_TEST_CASES_SHEAR_LAYER_H_ */
+#endif /* APPLICATIONS_INCOMPRESSIBLE_NAVIER_STOKES_TEST_CASES_SHEAR_LAYER_H_ \
+        */

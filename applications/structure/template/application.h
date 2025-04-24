@@ -24,97 +24,96 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim, typename Number>
-class Application : public ApplicationBase<dim, Number>
-{
-public:
-  Application(std::string input_file, MPI_Comm const & comm)
-    : ApplicationBase<dim, Number>(input_file, comm)
+  namespace Structure
   {
-  }
-
-  void
-  add_parameters(dealii::ParameterHandler & prm) final
-  {
-    ApplicationBase<dim, Number>::add_parameters(prm);
-
-    prm.enter_subsection("Application");
+    template <int dim, typename Number>
+    class Application : public ApplicationBase<dim, Number>
     {
-    }
-    prm.leave_subsection();
-  }
+    public:
+      Application(std::string input_file, MPI_Comm const &comm)
+        : ApplicationBase<dim, Number>(input_file, comm)
+      {}
 
-private:
-  void
-  set_parameters() final
-  {
-    // Set parameters here
-  }
+      void
+      add_parameters(dealii::ParameterHandler &prm) final
+      {
+        ApplicationBase<dim, Number>::add_parameters(prm);
 
-  void
-  create_grid(Grid<dim> &                                       grid,
-              std::shared_ptr<dealii::Mapping<dim>> &           mapping,
-              std::shared_ptr<MultigridMappings<dim, Number>> & multigrid_mappings) final
-  {
-    auto const lambda_create_triangulation =
-      [&](dealii::Triangulation<dim, dim> &                        tria,
-          std::vector<dealii::GridTools::PeriodicFacePair<
-            typename dealii::Triangulation<dim>::cell_iterator>> & periodic_face_pairs,
-          unsigned int const                                       global_refinements,
-          std::vector<unsigned int> const &                        vector_local_refinements) {
-        // create triangulation and perform local/global refinements
-        (void)tria;
-        (void)periodic_face_pairs;
-        (void)global_refinements;
-        (void)vector_local_refinements;
-      };
+        prm.enter_subsection("Application");
+        {}
+        prm.leave_subsection();
+      }
 
-    GridUtilities::create_triangulation_with_multigrid<dim>(grid,
-                                                            this->mpi_comm,
-                                                            this->param.grid,
-                                                            this->param.involves_h_multigrid(),
-                                                            lambda_create_triangulation,
-                                                            {} /* no local refinements */);
+    private:
+      void
+      set_parameters() final
+      {
+        // Set parameters here
+      }
 
-    // mappings
-    GridUtilities::create_mapping_with_multigrid(mapping,
-                                                 multigrid_mappings,
-                                                 this->param.grid.element_type,
-                                                 this->param.mapping_degree,
-                                                 this->param.mapping_degree_coarse_grids,
-                                                 this->param.involves_h_multigrid());
-  }
+      void
+      create_grid(Grid<dim>                             &grid,
+                  std::shared_ptr<dealii::Mapping<dim>> &mapping,
+                  std::shared_ptr<MultigridMappings<dim, Number>>
+                    &multigrid_mappings) final
+      {
+        auto const lambda_create_triangulation =
+          [&](dealii::Triangulation<dim, dim> &tria,
+              std::vector<dealii::GridTools::PeriodicFacePair<
+                typename dealii::Triangulation<dim>::cell_iterator>>
+                                              &periodic_face_pairs,
+              unsigned int const               global_refinements,
+              std::vector<unsigned int> const &vector_local_refinements) {
+            // create triangulation and perform local/global refinements
+            (void)tria;
+            (void)periodic_face_pairs;
+            (void)global_refinements;
+            (void)vector_local_refinements;
+          };
 
-  void
-  set_boundary_descriptor() final
-  {
-  }
+        GridUtilities::create_triangulation_with_multigrid<dim>(
+          grid,
+          this->mpi_comm,
+          this->param.grid,
+          this->param.involves_h_multigrid(),
+          lambda_create_triangulation,
+          {} /* no local refinements */);
 
-  void
-  set_material_descriptor() final
-  {
-  }
+        // mappings
+        GridUtilities::create_mapping_with_multigrid(
+          mapping,
+          multigrid_mappings,
+          this->param.grid.element_type,
+          this->param.mapping_degree,
+          this->param.mapping_degree_coarse_grids,
+          this->param.involves_h_multigrid());
+      }
 
-  void
-  set_field_functions() final
-  {
-  }
+      void
+      set_boundary_descriptor() final
+      {}
 
-  std::shared_ptr<PostProcessor<dim, Number>>
-  create_postprocessor() final
-  {
-    PostProcessorData<dim> pp_data;
+      void
+      set_material_descriptor() final
+      {}
 
-    std::shared_ptr<PostProcessor<dim, Number>> post(
-      new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
+      void
+      set_field_functions() final
+      {}
 
-    return post;
-  }
-};
+      std::shared_ptr<PostProcessor<dim, Number>>
+      create_postprocessor() final
+      {
+        PostProcessorData<dim> pp_data;
 
-} // namespace Structure
+        std::shared_ptr<PostProcessor<dim, Number>> post(
+          new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
+
+        return post;
+      }
+    };
+
+  } // namespace Structure
 
 } // namespace ExaDG
 

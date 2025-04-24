@@ -22,26 +22,27 @@
 #ifndef EXADG_GRID_GRID_PARAMETERS_H
 #define EXADG_GRID_GRID_PARAMETERS_H
 
-#include <string>
-
 #include <deal.II/base/parameter_handler.h>
+
+#include <string>
 
 namespace ExaDG
 {
-struct GridParameters
-{
-  void
-  add_parameters(dealii::ParameterHandler & prm, std::string const & subsection_name = "Grid")
+  struct GridParameters
   {
-    prm.enter_subsection(subsection_name);
+    void
+    add_parameters(dealii::ParameterHandler &prm,
+                   std::string const        &subsection_name = "Grid")
     {
-      prm.add_parameter("FileName", file_name, "External input grid file.");
+      prm.enter_subsection(subsection_name);
+      {
+        prm.add_parameter("FileName", file_name, "External input grid file.");
+      }
+      prm.leave_subsection();
     }
-    prm.leave_subsection();
-  }
 
-  std::string file_name;
-};
+    std::string file_name;
+  };
 
 } // namespace ExaDG
 

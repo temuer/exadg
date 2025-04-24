@@ -31,98 +31,114 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-enum class BoundaryType
-{
-  Undefined,
-  Dirichlet,
-  DirichletCached,
-  Neumann
-};
-
-template<int rank, int dim>
-struct BoundaryDescriptor
-{
-  // Dirichlet
-  std::map<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>> dirichlet_bc;
-
-  // ComponentMask (only used/relevant for continuous Galerkin, ignored for DG)
-  // If a certain boundary ID is not inserted into this map, it is assumed that all components are
-  // active, in analogy to the default constructor of dealii::ComponentMask.
-  std::map<dealii::types::boundary_id, dealii::ComponentMask> dirichlet_bc_component_mask;
-
-  // Another type of Dirichlet boundary condition where the Dirichlet values come
-  // from the solution on another domain that is in contact with the actual domain
-  // of interest at the given boundary (this type of Dirichlet boundary condition
-  // is required for the ALE mesh deformation problem in fluid-structure interaction).
-  // ComponentMask is not implemented/available for this type of boundary condition.
-  std::set<dealii::types::boundary_id> dirichlet_cached_bc;
-
-  // Neumann
-  std::map<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>> neumann_bc;
-
-  // returns the boundary type
-  inline DEAL_II_ALWAYS_INLINE //
-    BoundaryType
-    get_boundary_type(dealii::types::boundary_id const & boundary_id) const
+  namespace Poisson
   {
-    if(this->dirichlet_bc.find(boundary_id) != this->dirichlet_bc.end())
-      return BoundaryType::Dirichlet;
-    else if(this->dirichlet_cached_bc.find(boundary_id) != this->dirichlet_cached_bc.end())
-      return BoundaryType::DirichletCached;
-    else if(this->neumann_bc.find(boundary_id) != this->neumann_bc.end())
-      return BoundaryType::Neumann;
+    enum class BoundaryType
+    {
+      Undefined,
+      Dirichlet,
+      DirichletCached,
+      Neumann
+    };
 
-    AssertThrow(false, dealii::ExcMessage("Boundary type of face is invalid or not implemented."));
+    template <int rank, int dim>
+    struct BoundaryDescriptor
+    {
+      // Dirichlet
+      std::map<dealii::types::boundary_id,
+               std::shared_ptr<dealii::Function<dim>>>
+        dirichlet_bc;
 
-    return BoundaryType::Undefined;
-  }
+      // ComponentMask (only used/relevant for continuous Galerkin, ignored for
+      // DG) If a certain boundary ID is not inserted into this map, it is
+      // assumed that all components are active, in analogy to the default
+      // constructor of dealii::ComponentMask.
+      std::map<dealii::types::boundary_id, dealii::ComponentMask>
+        dirichlet_bc_component_mask;
 
-  inline DEAL_II_ALWAYS_INLINE //
-    void
-    verify_boundary_conditions(
-      dealii::types::boundary_id const             boundary_id,
-      std::set<dealii::types::boundary_id> const & periodic_boundary_ids) const
-  {
-    unsigned int counter = 0;
-    if(dirichlet_bc.find(boundary_id) != dirichlet_bc.end())
-      counter++;
+      // Another type of Dirichlet boundary condition where the Dirichlet values
+      // come from the solution on another domain that is in contact with the
+      // actual domain of interest at the given boundary (this type of Dirichlet
+      // boundary condition is required for the ALE mesh deformation problem in
+      // fluid-structure interaction). ComponentMask is not
+      // implemented/available for this type of boundary condition.
+      std::set<dealii::types::boundary_id> dirichlet_cached_bc;
 
-    if(dirichlet_cached_bc.find(boundary_id) != dirichlet_cached_bc.end())
-      counter++;
+      // Neumann
+      std::map<dealii::types::boundary_id,
+               std::shared_ptr<dealii::Function<dim>>>
+        neumann_bc;
 
-    if(neumann_bc.find(boundary_id) != neumann_bc.end())
-      counter++;
+      // returns the boundary type
+      inline DEAL_II_ALWAYS_INLINE //
+        BoundaryType
+        get_boundary_type(dealii::types::boundary_id const &boundary_id) const
+      {
+        if (this->dirichlet_bc.find(boundary_id) != this->dirichlet_bc.end())
+          return BoundaryType::Dirichlet;
+        else if (this->dirichlet_cached_bc.find(boundary_id) !=
+                 this->dirichlet_cached_bc.end())
+          return BoundaryType::DirichletCached;
+        else if (this->neumann_bc.find(boundary_id) != this->neumann_bc.end())
+          return BoundaryType::Neumann;
 
-    if(periodic_boundary_ids.find(boundary_id) != periodic_boundary_ids.end())
-      counter++;
+        AssertThrow(false,
+                    dealii::ExcMessage(
+                      "Boundary type of face is invalid or not implemented."));
 
-    AssertThrow(counter == 1,
-                dealii::ExcMessage("Boundary face with non-unique boundary type found."));
-  }
+        return BoundaryType::Undefined;
+      }
 
-  void
-  set_dirichlet_cached_data(
-    std::shared_ptr<ContainerInterfaceData<rank, dim, double> const> interface_data) const
-  {
-    dirichlet_cached_data = interface_data;
-  }
+      inline DEAL_II_ALWAYS_INLINE //
+        void
+        verify_boundary_conditions(dealii::types::boundary_id const boundary_id,
+                                   std::set<dealii::types::boundary_id> const
+                                     &periodic_boundary_ids) const
+      {
+        unsigned int counter = 0;
+        if (dirichlet_bc.find(boundary_id) != dirichlet_bc.end())
+          counter++;
 
-  std::shared_ptr<ContainerInterfaceData<rank, dim, double> const>
-  get_dirichlet_cached_data() const
-  {
-    AssertThrow(dirichlet_cached_data.get(),
-                dealii::ExcMessage("Pointer to ContainerInterfaceData has not been initialized."));
+        if (dirichlet_cached_bc.find(boundary_id) != dirichlet_cached_bc.end())
+          counter++;
 
-    return dirichlet_cached_data;
-  }
+        if (neumann_bc.find(boundary_id) != neumann_bc.end())
+          counter++;
 
-private:
-  mutable std::shared_ptr<ContainerInterfaceData<rank, dim, double> const> dirichlet_cached_data;
-};
+        if (periodic_boundary_ids.find(boundary_id) !=
+            periodic_boundary_ids.end())
+          counter++;
 
-} // namespace Poisson
+        AssertThrow(counter == 1,
+                    dealii::ExcMessage(
+                      "Boundary face with non-unique boundary type found."));
+      }
+
+      void
+      set_dirichlet_cached_data(
+        std::shared_ptr<ContainerInterfaceData<rank, dim, double> const>
+          interface_data) const
+      {
+        dirichlet_cached_data = interface_data;
+      }
+
+      std::shared_ptr<ContainerInterfaceData<rank, dim, double> const>
+      get_dirichlet_cached_data() const
+      {
+        AssertThrow(
+          dirichlet_cached_data.get(),
+          dealii::ExcMessage(
+            "Pointer to ContainerInterfaceData has not been initialized."));
+
+        return dirichlet_cached_data;
+      }
+
+    private:
+      mutable std::shared_ptr<ContainerInterfaceData<rank, dim, double> const>
+        dirichlet_cached_data;
+    };
+
+  } // namespace Poisson
 } // namespace ExaDG
 
 

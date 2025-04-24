@@ -30,35 +30,36 @@
 
 namespace ExaDG
 {
-class TimeIntBDFBase : public TimeIntMultistepBase
-{
-public:
-  TimeIntBDFBase(double const        start_time_,
-                 double const        end_time_,
-                 unsigned int const  max_number_of_time_steps_,
-                 unsigned const      order_,
-                 bool const          start_with_low_order_,
-                 bool const          adaptive_time_stepping_,
-                 RestartData const & restart_data_,
-                 MPI_Comm const &    mpi_comm_,
-                 bool const          is_test_);
+  class TimeIntBDFBase : public TimeIntMultistepBase
+  {
+  public:
+    TimeIntBDFBase(double const       start_time_,
+                   double const       end_time_,
+                   unsigned int const max_number_of_time_steps_,
+                   unsigned const     order_,
+                   bool const         start_with_low_order_,
+                   bool const         adaptive_time_stepping_,
+                   RestartData const &restart_data_,
+                   MPI_Comm const    &mpi_comm_,
+                   bool const         is_test_);
 
-protected:
-  double
-  get_scaling_factor_time_derivative_term() const;
+  protected:
+    double
+    get_scaling_factor_time_derivative_term() const;
 
-  void
-  update_time_integrator_constants() override;
+    void
+    update_time_integrator_constants() override;
 
-  /*
-   * Time integration constants. The extrapolation scheme is not necessarily used for a BDF time
-   * integration scheme with fully implicit time stepping, implying a violation of the Liskov
-   * substitution principle (OO software design principle). However, it does not appear to be
-   * reasonable to complicate the inheritance due to this fact.
-   */
-  BDFTimeIntegratorConstants bdf;
-  ExtrapolationConstants     extra;
-};
+    /*
+     * Time integration constants. The extrapolation scheme is not necessarily
+     * used for a BDF time integration scheme with fully implicit time stepping,
+     * implying a violation of the Liskov substitution principle (OO software
+     * design principle). However, it does not appear to be reasonable to
+     * complicate the inheritance due to this fact.
+     */
+    BDFTimeIntegratorConstants bdf;
+    ExtrapolationConstants     extra;
+  };
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_TIME_INTEGRATION_TIME_INT_BDF_BASE_H_ */

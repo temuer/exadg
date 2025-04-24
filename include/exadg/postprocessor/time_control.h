@@ -23,9 +23,10 @@
 #define INCLUDE_COMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_TIME_CONTROL_H_
 
 /**
- *This class provides information at which time steps a certain action should be triggered. It is
- *typically used in postprocessing routines that shall not be invoked after every time step. The
- *user can specify an evaluation interval in terms of number of time steps or an amount of time.
+ *This class provides information at which time steps a certain action should be
+ *triggered. It is typically used in postprocessing routines that shall not be
+ *invoked after every time step. The user can specify an evaluation interval in
+ *terms of number of time steps or an amount of time.
  */
 
 // deal.ii
@@ -36,59 +37,60 @@
 
 namespace ExaDG
 {
-struct TimeControlData
-{
-  TimeControlData();
-
-  bool             is_active;
-  double           start_time;
-  double           end_time;
-  double           trigger_interval;
-  types::time_step trigger_every_time_steps;
-
-  enum UnsteadyEvalType
+  struct TimeControlData
   {
-    None,
-    Interval,
-    Timestep
+    TimeControlData();
+
+    bool             is_active;
+    double           start_time;
+    double           end_time;
+    double           trigger_interval;
+    types::time_step trigger_every_time_steps;
+
+    enum UnsteadyEvalType
+    {
+      None,
+      Interval,
+      Timestep
+    };
+
+    void
+    print(dealii::ConditionalOStream &pcout, bool const unsteady) const;
   };
 
-  void
-  print(dealii::ConditionalOStream & pcout, bool const unsteady) const;
-};
+  TimeControlData::UnsteadyEvalType
+  get_unsteady_evaluation_type(TimeControlData const &data);
 
-TimeControlData::UnsteadyEvalType
-get_unsteady_evaluation_type(TimeControlData const & data);
+  class TimeControl
+  {
+  public:
+    TimeControl();
 
-class TimeControl
-{
-public:
-  TimeControl();
+    void
+    setup(TimeControlData const &time_control_data);
 
-  void
-  setup(TimeControlData const & time_control_data);
+    bool
+    needs_evaluation(double const           time,
+                     types::time_step const time_step_number) const;
 
-  bool
-  needs_evaluation(double const time, types::time_step const time_step_number) const;
+    unsigned int
+    get_counter() const;
 
-  unsigned int
-  get_counter() const;
+    bool
+    reached_end_time() const;
 
-  bool
-  reached_end_time() const;
+    bool
+    get_epsilon() const;
 
-  bool
-  get_epsilon() const;
+  private:
+    // small number which is much smaller than the time step size
+    double const         EPSILON;
+    mutable bool         reset_counter;
+    mutable unsigned int counter;
+    mutable bool         end_time_reached;
 
-private:
-  // small number which is much smaller than the time step size
-  double const         EPSILON;
-  mutable bool         reset_counter;
-  mutable unsigned int counter;
-  mutable bool         end_time_reached;
-
-  TimeControlData time_control_data;
-};
+    TimeControlData time_control_data;
+  };
 
 
 } // namespace ExaDG

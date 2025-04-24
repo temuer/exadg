@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/distributed/tria.h>
+
 #include <deal.II/grid/grid_generator.h>
 
 // ExaDG
@@ -31,35 +32,40 @@
 
 namespace ExaDG
 {
-/**
- * This function wraps around dealii::GridGenerator::subdivided_hyper_rectangle() taking an
- * additional argument ElementType.
- */
-template<int dim>
-void
-create_subdivided_hyper_rectangle(dealii::Triangulation<dim> &      tria,
-                                  std::vector<unsigned int> const & repetitions,
-                                  dealii::Point<dim> const &        p1,
-                                  dealii::Point<dim> const &        p2,
-                                  ElementType const &               element_type,
-                                  bool const                        colorize = false)
-{
-  if(element_type == ElementType::Hypercube)
+  /**
+   * This function wraps around
+   * dealii::GridGenerator::subdivided_hyper_rectangle() taking an additional
+   * argument ElementType.
+   */
+  template <int dim>
+  void
+  create_subdivided_hyper_rectangle(
+    dealii::Triangulation<dim>      &tria,
+    std::vector<unsigned int> const &repetitions,
+    dealii::Point<dim> const        &p1,
+    dealii::Point<dim> const        &p2,
+    ElementType const               &element_type,
+    bool const                       colorize = false)
   {
-    dealii::GridGenerator::subdivided_hyper_rectangle(tria, repetitions, p1, p2, colorize);
+    if (element_type == ElementType::Hypercube)
+      {
+        dealii::GridGenerator::subdivided_hyper_rectangle(
+          tria, repetitions, p1, p2, colorize);
+      }
+    else if (element_type == ElementType::Simplex)
+      {
+        dealii::GridGenerator::subdivided_hyper_rectangle_with_simplices(
+          tria, repetitions, p1, p2, colorize);
+      }
+    else
+      {
+        AssertThrow(
+          false,
+          dealii::ExcMessage(
+            "The function create_subdivided_hyper_rectangle() currently "
+            "supports ElementType::Hypercube and ElementType::Simplex."));
+      }
   }
-  else if(element_type == ElementType::Simplex)
-  {
-    dealii::GridGenerator::subdivided_hyper_rectangle_with_simplices(
-      tria, repetitions, p1, p2, colorize);
-  }
-  else
-  {
-    AssertThrow(false,
-                dealii::ExcMessage("The function create_subdivided_hyper_rectangle() currently "
-                                   "supports ElementType::Hypercube and ElementType::Simplex."));
-  }
-}
 } // namespace ExaDG
 
 

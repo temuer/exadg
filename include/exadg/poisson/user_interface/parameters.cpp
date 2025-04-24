@@ -27,143 +27,159 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-Parameters::Parameters()
-  : // MATHEMATICAL MODEL
-    right_hand_side(false),
-
-    // SPATIAL DISCRETIZATION
-    grid(GridData()),
-    mapping_degree(1),
-    mapping_degree_coarse_grids(1),
-    spatial_discretization(SpatialDiscretization::Undefined),
-    degree(1),
-    IP_factor(1.0),
-    use_matrix_based_implementation(false),
-    sparse_matrix_type(SparseMatrixType::Undefined),
-
-    // SOLVER
-    solver(LinearSolver::Undefined),
-    solver_data(SolverData(1e4, 1.e-20, 1.e-12)),
-    compute_performance_metrics(false),
-    preconditioner(Preconditioner::Undefined),
-    multigrid_data(MultigridData()),
-    enable_cell_based_face_loops(false)
-{
-}
-
-void
-Parameters::check() const
-{
-  // MATHEMATICAL MODEL
-
-  // SPATIAL DISCRETIZATION
-  grid.check();
-
-  AssertThrow(spatial_discretization != SpatialDiscretization::Undefined,
-              dealii::ExcMessage("parameter must be defined."));
-
-  AssertThrow(degree > 0, dealii::ExcMessage("Polynomial degree must be larger than zero."));
-
-  if(use_matrix_based_implementation)
+  namespace Poisson
   {
-    AssertThrow(sparse_matrix_type != SparseMatrixType::Undefined,
-                dealii::ExcMessage("Parameter must be defined."));
-  }
+    Parameters::Parameters()
+      : // MATHEMATICAL MODEL
+      right_hand_side(false)
+      ,
 
-  // SOLVER
-  AssertThrow(solver != LinearSolver::Undefined, dealii::ExcMessage("parameter must be defined."));
-  AssertThrow(preconditioner != Preconditioner::Undefined,
-              dealii::ExcMessage("parameter must be defined."));
-}
+      // SPATIAL DISCRETIZATION
+      grid(GridData())
+      , mapping_degree(1)
+      , mapping_degree_coarse_grids(1)
+      , spatial_discretization(SpatialDiscretization::Undefined)
+      , degree(1)
+      , IP_factor(1.0)
+      , use_matrix_based_implementation(false)
+      , sparse_matrix_type(SparseMatrixType::Undefined)
+      ,
 
-bool
-Parameters::involves_h_multigrid() const
-{
-  if(preconditioner == Preconditioner::Multigrid and multigrid_data.involves_h_transfer())
-    return true;
-  else
-    return false;
-}
+      // SOLVER
+      solver(LinearSolver::Undefined)
+      , solver_data(SolverData(1e4, 1.e-20, 1.e-12))
+      , compute_performance_metrics(false)
+      , preconditioner(Preconditioner::Undefined)
+      , multigrid_data(MultigridData())
+      , enable_cell_based_face_loops(false)
+    {}
 
-void
-Parameters::print(dealii::ConditionalOStream const & pcout, std::string const & name) const
-{
-  pcout << std::endl << name << std::endl;
+    void
+    Parameters::check() const
+    {
+      // MATHEMATICAL MODEL
 
-  // MATHEMATICAL MODEL
-  print_parameters_mathematical_model(pcout);
+      // SPATIAL DISCRETIZATION
+      grid.check();
 
-  // SPATIAL DISCRETIZATION
-  print_parameters_spatial_discretization(pcout);
+      AssertThrow(spatial_discretization != SpatialDiscretization::Undefined,
+                  dealii::ExcMessage("parameter must be defined."));
 
-  // SOLVER
-  print_parameters_solver(pcout);
+      AssertThrow(degree > 0,
+                  dealii::ExcMessage(
+                    "Polynomial degree must be larger than zero."));
 
-  // NUMERICAL PARAMETERS
-  print_parameters_numerical_parameters(pcout);
-}
+      if (use_matrix_based_implementation)
+        {
+          AssertThrow(sparse_matrix_type != SparseMatrixType::Undefined,
+                      dealii::ExcMessage("Parameter must be defined."));
+        }
 
-void
-Parameters::print_parameters_mathematical_model(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Mathematical model:" << std::endl;
+      // SOLVER
+      AssertThrow(solver != LinearSolver::Undefined,
+                  dealii::ExcMessage("parameter must be defined."));
+      AssertThrow(preconditioner != Preconditioner::Undefined,
+                  dealii::ExcMessage("parameter must be defined."));
+    }
 
-  print_parameter(pcout, "Right-hand side", right_hand_side);
-}
+    bool
+    Parameters::involves_h_multigrid() const
+    {
+      if (preconditioner == Preconditioner::Multigrid and
+          multigrid_data.involves_h_transfer())
+        return true;
+      else
+        return false;
+    }
 
-void
-Parameters::print_parameters_spatial_discretization(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Spatial Discretization:" << std::endl;
+    void
+    Parameters::print(dealii::ConditionalOStream const &pcout,
+                      std::string const                &name) const
+    {
+      pcout << std::endl << name << std::endl;
 
-  grid.print(pcout);
+      // MATHEMATICAL MODEL
+      print_parameters_mathematical_model(pcout);
 
-  print_parameter(pcout, "Mapping degree", mapping_degree);
+      // SPATIAL DISCRETIZATION
+      print_parameters_spatial_discretization(pcout);
 
-  if(involves_h_multigrid())
-    print_parameter(pcout, "Mapping degree coarse grids", mapping_degree_coarse_grids);
+      // SOLVER
+      print_parameters_solver(pcout);
 
-  print_parameter(pcout, "FE space", spatial_discretization);
+      // NUMERICAL PARAMETERS
+      print_parameters_numerical_parameters(pcout);
+    }
 
-  print_parameter(pcout, "Polynomial degree", degree);
+    void
+    Parameters::print_parameters_mathematical_model(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Mathematical model:" << std::endl;
 
-  if(spatial_discretization == SpatialDiscretization::DG)
-    print_parameter(pcout, "IP factor", IP_factor);
+      print_parameter(pcout, "Right-hand side", right_hand_side);
+    }
 
-  print_parameter(pcout, "Use matrix-based implementation", use_matrix_based_implementation);
+    void
+    Parameters::print_parameters_spatial_discretization(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Spatial Discretization:" << std::endl;
 
-  if(use_matrix_based_implementation)
-  {
-    print_parameter(pcout, "Sparse matrix type", sparse_matrix_type);
-  }
-}
+      grid.print(pcout);
 
-void
-Parameters::print_parameters_solver(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Solver:" << std::endl;
+      print_parameter(pcout, "Mapping degree", mapping_degree);
 
-  print_parameter(pcout, "Solver", solver);
+      if (involves_h_multigrid())
+        print_parameter(pcout,
+                        "Mapping degree coarse grids",
+                        mapping_degree_coarse_grids);
 
-  solver_data.print(pcout);
+      print_parameter(pcout, "FE space", spatial_discretization);
 
-  print_parameter(pcout, "Preconditioner", preconditioner);
+      print_parameter(pcout, "Polynomial degree", degree);
 
-  if(preconditioner == Preconditioner::Multigrid)
-    multigrid_data.print(pcout);
-}
+      if (spatial_discretization == SpatialDiscretization::DG)
+        print_parameter(pcout, "IP factor", IP_factor);
+
+      print_parameter(pcout,
+                      "Use matrix-based implementation",
+                      use_matrix_based_implementation);
+
+      if (use_matrix_based_implementation)
+        {
+          print_parameter(pcout, "Sparse matrix type", sparse_matrix_type);
+        }
+    }
+
+    void
+    Parameters::print_parameters_solver(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Solver:" << std::endl;
+
+      print_parameter(pcout, "Solver", solver);
+
+      solver_data.print(pcout);
+
+      print_parameter(pcout, "Preconditioner", preconditioner);
+
+      if (preconditioner == Preconditioner::Multigrid)
+        multigrid_data.print(pcout);
+    }
 
 
-void
-Parameters::print_parameters_numerical_parameters(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Numerical parameters:" << std::endl;
+    void
+    Parameters::print_parameters_numerical_parameters(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Numerical parameters:" << std::endl;
 
-  print_parameter(pcout, "Enable cell-based face loops", enable_cell_based_face_loops);
-}
+      print_parameter(pcout,
+                      "Enable cell-based face loops",
+                      enable_cell_based_face_loops);
+    }
 
 
-} // namespace Poisson
+  } // namespace Poisson
 } // namespace ExaDG

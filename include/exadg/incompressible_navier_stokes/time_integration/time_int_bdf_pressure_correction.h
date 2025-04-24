@@ -26,165 +26,171 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-// forward declarations
-template<int dim, typename Number>
-class OperatorPressureCorrection;
-
-template<int dim, typename Number>
-class TimeIntBDFPressureCorrection : public TimeIntBDF<dim, Number>
-{
-private:
-  using BoostInputArchiveType  = TimeIntBase::BoostInputArchiveType;
-  using BoostOutputArchiveType = TimeIntBase::BoostOutputArchiveType;
-
-  typedef TimeIntBDF<dim, Number> Base;
-
-  typedef typename Base::VectorType VectorType;
-
-  typedef OperatorPressureCorrection<dim, Number> Operator;
-
-public:
-  TimeIntBDFPressureCorrection(std::shared_ptr<Operator>                       operator_in,
-                               std::shared_ptr<HelpersALE<dim, Number> const>  helpers_ale_in,
-                               std::shared_ptr<PostProcessorInterface<Number>> postprocessor_in,
-                               Parameters const &                              param_in,
-                               MPI_Comm const &                                mpi_comm_in,
-                               bool const                                      is_test_in);
-
-  virtual ~TimeIntBDFPressureCorrection()
+  namespace IncNS
   {
-  }
+    // forward declarations
+    template <int dim, typename Number>
+    class OperatorPressureCorrection;
 
-  void
-  postprocessing_stability_analysis();
+    template <int dim, typename Number>
+    class TimeIntBDFPressureCorrection : public TimeIntBDF<dim, Number>
+    {
+    private:
+      using BoostInputArchiveType  = TimeIntBase::BoostInputArchiveType;
+      using BoostOutputArchiveType = TimeIntBase::BoostOutputArchiveType;
 
-  void
-  print_iterations() const final;
+      typedef TimeIntBDF<dim, Number> Base;
 
-  VectorType const &
-  get_velocity() const final;
+      typedef typename Base::VectorType VectorType;
 
-  VectorType const &
-  get_velocity_np() const final;
+      typedef OperatorPressureCorrection<dim, Number> Operator;
 
-  VectorType const &
-  get_pressure() const final;
+    public:
+      TimeIntBDFPressureCorrection(
+        std::shared_ptr<Operator>                       operator_in,
+        std::shared_ptr<HelpersALE<dim, Number> const>  helpers_ale_in,
+        std::shared_ptr<PostProcessorInterface<Number>> postprocessor_in,
+        Parameters const                               &param_in,
+        MPI_Comm const                                 &mpi_comm_in,
+        bool const                                      is_test_in);
 
-  VectorType const &
-  get_pressure_np() const final;
+      virtual ~TimeIntBDFPressureCorrection()
+      {}
 
-private:
-  void
-  allocate_vectors() final;
+      void
+      postprocessing_stability_analysis();
 
-  void
-  setup_derived() final;
+      void
+      print_iterations() const final;
 
-  void
-  update_time_integrator_constants() final;
+      VectorType const &
+      get_velocity() const final;
 
-  void
-  initialize_current_solution() final;
+      VectorType const &
+      get_velocity_np() const final;
 
-  void
-  initialize_former_multistep_dof_vectors() final;
+      VectorType const &
+      get_pressure() const final;
 
-  void
-  read_restart_vectors(BoostInputArchiveType & ia) final;
+      VectorType const &
+      get_pressure_np() const final;
 
-  void
-  write_restart_vectors(BoostOutputArchiveType & oa) const final;
+    private:
+      void
+      allocate_vectors() final;
 
-  void
-  initialize_pressure_on_boundary();
+      void
+      setup_derived() final;
 
-  void
-  do_timestep_solve() final;
+      void
+      update_time_integrator_constants() final;
 
-  void
-  solve_steady_problem() final;
+      void
+      initialize_current_solution() final;
 
-  double
-  evaluate_residual();
+      void
+      initialize_former_multistep_dof_vectors() final;
 
-  void
-  momentum_step();
+      void
+      read_restart_vectors(BoostInputArchiveType &ia) final;
 
-  void
-  rhs_momentum(VectorType & rhs, VectorType const & transport_velocity);
+      void
+      write_restart_vectors(BoostOutputArchiveType &oa) const final;
 
-  void
-  pressure_step(VectorType & pressure_increment);
+      void
+      initialize_pressure_on_boundary();
 
-  void
-  projection_step(VectorType const & pressure_increment);
+      void
+      do_timestep_solve() final;
 
-  void
-  evaluate_convective_term();
+      void
+      solve_steady_problem() final;
 
-  void
-  rhs_projection(VectorType & rhs, VectorType const & pressure_increment) const;
+      double
+      evaluate_residual();
 
-  void
-  pressure_update(VectorType const & pressure_increment);
+      void
+      momentum_step();
 
-  void
-  calculate_chi(double & chi) const;
+      void
+      rhs_momentum(VectorType &rhs, VectorType const &transport_velocity);
 
-  void
-  rhs_pressure(VectorType & rhs) const;
+      void
+      pressure_step(VectorType &pressure_increment);
 
-  void
-  prepare_vectors_for_next_timestep() final;
+      void
+      projection_step(VectorType const &pressure_increment);
 
-  VectorType const &
-  get_velocity(unsigned int i /* t_{n-i} */) const final;
+      void
+      evaluate_convective_term();
 
-  VectorType const &
-  get_pressure(unsigned int i /* t_{n-i} */) const final;
+      void
+      rhs_projection(VectorType       &rhs,
+                     VectorType const &pressure_increment) const;
 
-  void
-  set_velocity(VectorType const & velocity, unsigned int const i /* t_{n-i} */) final;
+      void
+      pressure_update(VectorType const &pressure_increment);
 
-  void
-  set_pressure(VectorType const & pressure, unsigned int const i /* t_{n-i} */) final;
+      void
+      calculate_chi(double &chi) const;
 
-  std::shared_ptr<Operator> pde_operator;
+      void
+      rhs_pressure(VectorType &rhs) const;
 
-  VectorType              velocity_np;
-  std::vector<VectorType> velocity;
+      void
+      prepare_vectors_for_next_timestep() final;
 
-  VectorType              pressure_np;
-  std::vector<VectorType> pressure;
+      VectorType const &
+      get_velocity(unsigned int i /* t_{n-i} */) const final;
 
-  // incremental formulation of pressure-correction scheme
-  unsigned int order_pressure_extrapolation;
+      VectorType const &
+      get_pressure(unsigned int i /* t_{n-i} */) const final;
 
-  // time integrator constants: extrapolation scheme
-  ExtrapolationConstants extra_pressure_gradient;
+      void
+      set_velocity(VectorType const  &velocity,
+                   unsigned int const i /* t_{n-i} */) final;
 
-  // stores pressure Dirichlet boundary values at previous times
-  std::vector<VectorType> pressure_dbc;
+      void
+      set_pressure(VectorType const  &pressure,
+                   unsigned int const i /* t_{n-i} */) final;
 
-  // required for strongly-coupled partitioned FSI
-  VectorType pressure_increment_last_iter;
-  VectorType velocity_momentum_last_iter;
-  VectorType velocity_projection_last_iter;
+      std::shared_ptr<Operator> pde_operator;
 
-  // iteration counts
-  std::pair<
-    unsigned int /* calls */,
-    std::tuple<unsigned long long, unsigned long long> /* iteration counts {Newton, linear} */>
-    iterations_momentum;
-  std::pair<unsigned int /* calls */, unsigned long long /* iteration counts */>
-    iterations_pressure;
-  std::pair<unsigned int /* calls */, unsigned long long /* iteration counts */>
-    iterations_projection;
-};
+      VectorType              velocity_np;
+      std::vector<VectorType> velocity;
 
-} // namespace IncNS
+      VectorType              pressure_np;
+      std::vector<VectorType> pressure;
+
+      // incremental formulation of pressure-correction scheme
+      unsigned int order_pressure_extrapolation;
+
+      // time integrator constants: extrapolation scheme
+      ExtrapolationConstants extra_pressure_gradient;
+
+      // stores pressure Dirichlet boundary values at previous times
+      std::vector<VectorType> pressure_dbc;
+
+      // required for strongly-coupled partitioned FSI
+      VectorType pressure_increment_last_iter;
+      VectorType velocity_momentum_last_iter;
+      VectorType velocity_projection_last_iter;
+
+      // iteration counts
+      std::pair<
+        unsigned int /* calls */,
+        std::tuple<unsigned long long,
+                   unsigned long long> /* iteration counts {Newton, linear} */>
+        iterations_momentum;
+      std::pair<unsigned int /* calls */,
+                unsigned long long /* iteration counts */>
+        iterations_pressure;
+      std::pair<unsigned int /* calls */,
+                unsigned long long /* iteration counts */>
+        iterations_projection;
+    };
+
+  } // namespace IncNS
 } // namespace ExaDG
 
 

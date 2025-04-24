@@ -25,54 +25,58 @@
 // deal.II
 #include <deal.II/distributed/solution_transfer.h>
 #include <deal.II/distributed/tria.h>
+
 #include <deal.II/grid/tria.h>
 
 namespace ExaDG
 {
-template<int dim, typename VectorType>
-class SolutionTransfer
-{
-public:
-  /*
-   * Constructor.
-   */
-  SolutionTransfer(dealii::DoFHandler<dim> const & dof_handler_in)
+  template <int dim, typename VectorType>
+  class SolutionTransfer
   {
-    dof_handler = &dof_handler_in;
-  }
-
-  void
-  prepare_coarsening_and_refinement(std::vector<VectorType *> & vectors)
-  {
-    std::vector<VectorType const *> vectors_old_grid_ptr(vectors.size());
-    for(unsigned int i = 0; i < vectors.size(); ++i)
+  public:
+    /*
+     * Constructor.
+     */
+    SolutionTransfer(dealii::DoFHandler<dim> const &dof_handler_in)
     {
-      vectors[i]->update_ghost_values();
-      vectors_old_grid_ptr[i] = vectors[i];
+      dof_handler = &dof_handler_in;
     }
 
-    pd_solution_transfer =
-      std::make_shared<dealii::parallel::distributed::SolutionTransfer<dim, VectorType>>(
+    void
+    prepare_coarsening_and_refinement(std::vector<VectorType *> &vectors)
+    {
+      std::vector<VectorType const *> vectors_old_grid_ptr(vectors.size());
+      for (unsigned int i = 0; i < vectors.size(); ++i)
+        {
+          vectors[i]->update_ghost_values();
+          vectors_old_grid_ptr[i] = vectors[i];
+        }
+
+      pd_solution_transfer = std::make_shared<
+        dealii::parallel::distributed::SolutionTransfer<dim, VectorType>>(
         *dof_handler);
 
-    pd_solution_transfer->prepare_for_coarsening_and_refinement(vectors_old_grid_ptr);
-  }
+      pd_solution_transfer->prepare_for_coarsening_and_refinement(
+        vectors_old_grid_ptr);
+    }
 
-  void
-  interpolate_after_coarsening_and_refinement(std::vector<VectorType *> & vectors)
-  {
-    // Note that the sequence of vectors per DofHandler/SolutionTransfer
-    // defined in Operator<dim, Number>::prepare_coarsening_and_refinement()
-    // and solution transfer calls here *need to match*.
-    pd_solution_transfer->interpolate(vectors);
-  }
+    void
+    interpolate_after_coarsening_and_refinement(
+      std::vector<VectorType *> &vectors)
+    {
+      // Note that the sequence of vectors per DofHandler/SolutionTransfer
+      // defined in Operator<dim, Number>::prepare_coarsening_and_refinement()
+      // and solution transfer calls here *need to match*.
+      pd_solution_transfer->interpolate(vectors);
+    }
 
-private:
-  std::shared_ptr<dealii::parallel::distributed::SolutionTransfer<dim, VectorType>>
-    pd_solution_transfer;
+  private:
+    std::shared_ptr<
+      dealii::parallel::distributed::SolutionTransfer<dim, VectorType>>
+      pd_solution_transfer;
 
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
-};
+    dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
+  };
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_OPERATORS_SOLUTION_TRANSFER_H */

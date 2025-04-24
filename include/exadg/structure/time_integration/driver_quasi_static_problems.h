@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/base/timer.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -31,99 +32,102 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-// forward declarations
-class Parameters;
+  namespace Structure
+  {
+    // forward declarations
+    class Parameters;
 
-template<typename Number>
-class PostProcessorBase;
+    template <typename Number>
+    class PostProcessorBase;
 
-namespace Interface
-{
-template<typename Number>
-class Operator;
-}
+    namespace Interface
+    {
+      template <typename Number>
+      class Operator;
+    }
 
-template<int dim, typename Number>
-class DriverQuasiStatic
-{
-private:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+    template <int dim, typename Number>
+    class DriverQuasiStatic
+    {
+    private:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-public:
-  DriverQuasiStatic(std::shared_ptr<Interface::Operator<Number>> operator_,
-                    std::shared_ptr<PostProcessorBase<Number>>   postprocessor_,
-                    Parameters const &                           param_,
-                    MPI_Comm const &                             mpi_comm_,
-                    bool const                                   is_test_);
+    public:
+      DriverQuasiStatic(
+        std::shared_ptr<Interface::Operator<Number>> operator_,
+        std::shared_ptr<PostProcessorBase<Number>>   postprocessor_,
+        Parameters const                            &param_,
+        MPI_Comm const                              &mpi_comm_,
+        bool const                                   is_test_);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve();
+      void
+      solve();
 
-  void
-  print_iterations() const;
+      void
+      print_iterations() const;
 
-  std::shared_ptr<TimerTree>
-  get_timings() const;
+      std::shared_ptr<TimerTree>
+      get_timings() const;
 
-private:
-  void
-  initialize_vectors();
+    private:
+      void
+      initialize_vectors();
 
-  void
-  initialize_solution();
+      void
+      initialize_solution();
 
-  void
-  do_solve();
+      void
+      do_solve();
 
-  void
-  output_solver_info_header(double const load_factor);
+      void
+      output_solver_info_header(double const load_factor);
 
-  std::tuple<unsigned int, unsigned int>
-  solve_step(double const load_factor, bool const update_preconditioner);
+      std::tuple<unsigned int, unsigned int>
+      solve_step(double const load_factor, bool const update_preconditioner);
 
-  void
-  postprocessing() const;
+      void
+      postprocessing() const;
 
-  std::shared_ptr<Interface::Operator<Number>> pde_operator;
+      std::shared_ptr<Interface::Operator<Number>> pde_operator;
 
-  std::shared_ptr<PostProcessorBase<Number>> postprocessor;
+      std::shared_ptr<PostProcessorBase<Number>> postprocessor;
 
-  Parameters const & param;
+      Parameters const &param;
 
-  MPI_Comm const mpi_comm;
+      MPI_Comm const mpi_comm;
 
-  bool const is_test;
+      bool const is_test;
 
-  dealii::ConditionalOStream pcout;
+      dealii::ConditionalOStream pcout;
 
-  // vectors
-  VectorType solution;
-  VectorType rhs_vector;
+      // vectors
+      VectorType solution;
+      VectorType rhs_vector;
 
-  // We need to store a vector in order to extrapolate the solution to the next
-  // load step and obtain an accurate initial guess for the Newton solver.
-  VectorType displacement_increment;
+      // We need to store a vector in order to extrapolate the solution to the
+      // next load step and obtain an accurate initial guess for the Newton
+      // solver.
+      VectorType displacement_increment;
 
-  // For the purpose of extrapolating the displacements, we also need to store the
-  // load_increment of the last load step.
-  double last_load_increment;
+      // For the purpose of extrapolating the displacements, we also need to
+      // store the load_increment of the last load step.
+      double last_load_increment;
 
-  unsigned int step_number;
+      unsigned int step_number;
 
-  std::shared_ptr<TimerTree> timer_tree;
+      std::shared_ptr<TimerTree> timer_tree;
 
-  std::pair<
-    unsigned int /* calls */,
-    std::tuple<unsigned long long, unsigned long long> /* iteration counts {Newton, linear}*/>
-    iterations;
-};
+      std::pair<
+        unsigned int /* calls */,
+        std::tuple<unsigned long long,
+                   unsigned long long> /* iteration counts {Newton, linear}*/>
+        iterations;
+    };
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

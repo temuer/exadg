@@ -35,129 +35,139 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-class Parameters
-{
-public:
-  // standard constructor that initializes parameters
-  Parameters();
+  namespace Acoustics
+  {
+    class Parameters
+    {
+    public:
+      // standard constructor that initializes parameters
+      Parameters();
 
-  void
-  check() const;
+      void
+      check() const;
 
-  void
-  print(dealii::ConditionalOStream const & pcout, std::string const & name) const;
+      void
+      print(dealii::ConditionalOStream const &pcout,
+            std::string const                &name) const;
 
-private:
-  void
-  print_parameters_mathematical_model(dealii::ConditionalOStream const & pcout) const;
+    private:
+      void
+      print_parameters_mathematical_model(
+        dealii::ConditionalOStream const &pcout) const;
 
-  void
-  print_parameters_physical_quantities(dealii::ConditionalOStream const & pcout) const;
+      void
+      print_parameters_physical_quantities(
+        dealii::ConditionalOStream const &pcout) const;
 
-  void
-  print_parameters_temporal_discretization(dealii::ConditionalOStream const & pcout) const;
+      void
+      print_parameters_temporal_discretization(
+        dealii::ConditionalOStream const &pcout) const;
 
-  void
-  print_parameters_spatial_discretization(dealii::ConditionalOStream const & pcout) const;
+      void
+      print_parameters_spatial_discretization(
+        dealii::ConditionalOStream const &pcout) const;
 
-public:
-  /**************************************************************************************/
-  /*                                                                                    */
-  /*                                 MATHEMATICAL MODEL                                 */
-  /*                                                                                    */
-  /**************************************************************************************/
+    public:
+      /**************************************************************************************/
+      /*                                                                                    */
+      /*                                 MATHEMATICAL MODEL */
+      /*                                                                                    */
+      /**************************************************************************************/
 
-  // description: see enum declaration
-  Formulation formulation;
+      // description: see enum declaration
+      Formulation formulation;
 
-  // if there are acoustic source terms, set right_hand_side = true
-  bool right_hand_side;
+      // if there are acoustic source terms, set right_hand_side = true
+      bool right_hand_side;
 
-  // Use the aero-acoustic source term that is internally computed from the fluid solution
-  bool aero_acoustic_source_term;
+      // Use the aero-acoustic source term that is internally computed from the
+      // fluid solution
+      bool aero_acoustic_source_term;
 
-  /**************************************************************************************/
-  /*                                                                                    */
-  /*                                 PHYSICAL QUANTITIES                                */
-  /*                                                                                    */
-  /**************************************************************************************/
+      /**************************************************************************************/
+      /*                                                                                    */
+      /*                                 PHYSICAL QUANTITIES */
+      /*                                                                                    */
+      /**************************************************************************************/
 
-  // start time of simulation
-  double start_time;
+      // start time of simulation
+      double start_time;
 
-  // end time of simulation
-  double end_time;
+      // end time of simulation
+      double end_time;
 
-  // speed_of_sound of underlying fluid
-  double speed_of_sound;
+      // speed_of_sound of underlying fluid
+      double speed_of_sound;
 
-  /**************************************************************************************/
-  /*                                                                                    */
-  /*                             TEMPORAL DISCRETIZATION                                */
-  /*                                                                                    */
-  /**************************************************************************************/
+      /**************************************************************************************/
+      /*                                                                                    */
+      /*                             TEMPORAL DISCRETIZATION */
+      /*                                                                                    */
+      /**************************************************************************************/
 
-  // description: see enum declaration
-  TimeStepCalculation calculation_of_time_step_size;
+      // description: see enum declaration
+      TimeStepCalculation calculation_of_time_step_size;
 
-  // cfl number: note that this cfl number is the first in a series of cfl numbers
-  // when performing temporal convergence tests, i.e., cfl_real = cfl, cfl/2, cfl/4, ...
-  double cfl;
+      // cfl number: note that this cfl number is the first in a series of cfl
+      // numbers when performing temporal convergence tests, i.e., cfl_real =
+      // cfl, cfl/2, cfl/4, ...
+      double cfl;
 
-  // dt = CFL/max(k_p,k_u)^{exp} * h / c
-  double cfl_exponent_fe_degree;
+      // dt = CFL/max(k_p,k_u)^{exp} * h / c
+      double cfl_exponent_fe_degree;
 
-  // user specified time step size:  note that this time_step_size is the first
-  // in a series of time_step_size's when performing temporal convergence tests,
-  // i.e., delta_t = time_step_size, time_step_size/2, ...
-  double time_step_size;
+      // user specified time step size:  note that this time_step_size is the
+      // first in a series of time_step_size's when performing temporal
+      // convergence tests, i.e., delta_t = time_step_size, time_step_size/2,
+      // ...
+      double time_step_size;
 
-  // maximum number of time steps
-  unsigned int max_number_of_time_steps;
+      // maximum number of time steps
+      unsigned int max_number_of_time_steps;
 
-  // number of refinements for temporal discretization
-  unsigned int n_refine_time;
+      // number of refinements for temporal discretization
+      unsigned int n_refine_time;
 
-  // order of time integration scheme
-  unsigned int order_time_integrator;
+      // order of time integration scheme
+      unsigned int order_time_integrator;
 
-  // start time integrator with low order time integrator, i.e., first order Euler method
-  bool start_with_low_order;
+      // start time integrator with low order time integrator, i.e., first order
+      // Euler method
+      bool start_with_low_order;
 
-  // set this variable to true to start the simulation from restart files
-  bool restarted_simulation;
+      // set this variable to true to start the simulation from restart files
+      bool restarted_simulation;
 
-  // use adaptive timestepping
-  bool adaptive_time_stepping;
+      // use adaptive timestepping
+      bool adaptive_time_stepping;
 
-  // restart
-  RestartData restart_data;
+      // restart
+      RestartData restart_data;
 
-  // show solver performance (wall time, number of iterations)
-  SolverInfoData solver_info_data;
+      // show solver performance (wall time, number of iterations)
+      SolverInfoData solver_info_data;
 
-  /**************************************************************************************/
-  /*                                                                                    */
-  /*                              SPATIAL DISCRETIZATION                                */
-  /*                                                                                    */
-  /**************************************************************************************/
+      /**************************************************************************************/
+      /*                                                                                    */
+      /*                              SPATIAL DISCRETIZATION */
+      /*                                                                                    */
+      /**************************************************************************************/
 
-  // Grid data
-  GridData grid;
+      // Grid data
+      GridData grid;
 
-  // Mapping
-  unsigned int mapping_degree;
+      // Mapping
+      unsigned int mapping_degree;
 
-  // Polynomial degree of velocity shape functions
-  unsigned int degree_u;
+      // Polynomial degree of velocity shape functions
+      unsigned int degree_u;
 
-  // Polynomial degree of pressure shape functions
-  unsigned int degree_p;
-};
+      // Polynomial degree of pressure shape functions
+      unsigned int degree_p;
+    };
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_INPUT_PARAMETERS_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_INPUT_PARAMETERS_H_ \
+        */

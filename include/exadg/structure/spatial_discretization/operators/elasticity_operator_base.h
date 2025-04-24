@@ -29,127 +29,131 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim>
-struct OperatorData : public OperatorBaseData
-{
-  OperatorData()
-    : OperatorBaseData(),
-      large_deformation(false),
-      pull_back_traction(false),
-      unsteady(false),
-      density(1.0),
-      quad_index_gauss_lobatto(0)
+  namespace Structure
   {
-  }
-
-  std::shared_ptr<BoundaryDescriptor<dim> const> bc;
-  std::shared_ptr<MaterialDescriptor const>      material_descriptor;
-
-  // Boolean parameter differentiating between linear elasticity and finite strain theory
-  bool large_deformation;
-
-  // This parameter is only relevant for nonlinear operator
-  // with large deformations. When set to true, the traction t
-  // is pulled back to the reference configuration, t_0 = da/dA t.
-  bool pull_back_traction;
-
-  // activates mass operator in operator evaluation for unsteady problems
-  bool unsteady;
-
-  // density
-  double density;
-
-  // for DirichletCached boundary conditions, another quadrature rule
-  // is needed to set the constrained DoFs.
-  unsigned int quad_index_gauss_lobatto;
-};
-
-template<int dim, typename Number>
-class ElasticityOperatorBase : public OperatorBase<dim, Number, dim>
-{
-public:
-  typedef Number value_type;
-
-protected:
-  typedef OperatorBase<dim, Number, dim> Base;
-  typedef typename Base::IntegratorCell  IntegratorCell;
-  typedef typename Base::VectorType      VectorType;
-  typedef typename Base::IntegratorFace  IntegratorFace;
-
-public:
-  ElasticityOperatorBase();
-
-  virtual ~ElasticityOperatorBase()
-  {
-  }
-
-  IntegratorFlags
-  get_integrator_flags(bool const unsteady) const;
-
-  static MappingFlags
-  get_mapping_flags();
-
-  virtual void
-  initialize(dealii::MatrixFree<dim, Number> const &   matrix_free,
-             dealii::AffineConstraints<Number> const & affine_constraints,
-             OperatorData<dim> const &                 data);
-
-  OperatorData<dim> const &
-  get_data() const;
-
-  /*
-   * Provide near null space basis vectors, that is, the rigid body modes, used e.g. in AMG setup.
-   */
-  void
-  get_constant_modes(std::vector<std::vector<bool>> &   constant_modes,
-                     std::vector<std::vector<double>> & constant_modes_values) const override
-  {
-    (void)constant_modes;
-
-    dealii::DoFHandler<dim> const & dof_handler =
-      this->matrix_free->get_dof_handler(this->get_dof_index());
-
-    if(dof_handler.has_level_dofs())
+    template <int dim>
+    struct OperatorData : public OperatorBaseData
     {
-      constant_modes_values = dealii::DoFTools::extract_level_rigid_body_modes(
-        0,
-        *this->matrix_free->get_mapping_info().mapping,
-        dof_handler,
-        dealii::ComponentMask(dim, true));
-    }
-    else
+      OperatorData()
+        : OperatorBaseData()
+        , large_deformation(false)
+        , pull_back_traction(false)
+        , unsteady(false)
+        , density(1.0)
+        , quad_index_gauss_lobatto(0)
+      {}
+
+      std::shared_ptr<BoundaryDescriptor<dim> const> bc;
+      std::shared_ptr<MaterialDescriptor const>      material_descriptor;
+
+      // Boolean parameter differentiating between linear elasticity and finite
+      // strain theory
+      bool large_deformation;
+
+      // This parameter is only relevant for nonlinear operator
+      // with large deformations. When set to true, the traction t
+      // is pulled back to the reference configuration, t_0 = da/dA t.
+      bool pull_back_traction;
+
+      // activates mass operator in operator evaluation for unsteady problems
+      bool unsteady;
+
+      // density
+      double density;
+
+      // for DirichletCached boundary conditions, another quadrature rule
+      // is needed to set the constrained DoFs.
+      unsigned int quad_index_gauss_lobatto;
+    };
+
+    template <int dim, typename Number>
+    class ElasticityOperatorBase : public OperatorBase<dim, Number, dim>
     {
-      constant_modes_values =
-        dealii::DoFTools::extract_rigid_body_modes(*this->matrix_free->get_mapping_info().mapping,
-                                                   dof_handler,
-                                                   dealii::ComponentMask(dim, true));
-    }
-  }
+    public:
+      typedef Number value_type;
 
-  void
-  set_scaling_factor_mass_operator(double const scaling_factor) const;
+    protected:
+      typedef OperatorBase<dim, Number, dim> Base;
+      typedef typename Base::IntegratorCell  IntegratorCell;
+      typedef typename Base::VectorType      VectorType;
+      typedef typename Base::IntegratorFace  IntegratorFace;
 
-  double
-  get_scaling_factor_mass_operator() const;
+    public:
+      ElasticityOperatorBase();
 
-  void
-  set_inhomogeneous_boundary_values(VectorType & dst) const final;
+      virtual ~ElasticityOperatorBase()
+      {}
 
-protected:
-  void
-  reinit_cell_derived(IntegratorCell & integrator, unsigned int const cell) const override;
+      IntegratorFlags
+      get_integrator_flags(bool const unsteady) const;
 
-  OperatorData<dim> operator_data;
+      static MappingFlags
+      get_mapping_flags();
 
-  mutable MaterialHandler<dim, Number> material_handler;
+      virtual void
+      initialize(dealii::MatrixFree<dim, Number> const   &matrix_free,
+                 dealii::AffineConstraints<Number> const &affine_constraints,
+                 OperatorData<dim> const                 &data);
 
-  mutable double scaling_factor_mass;
-};
+      OperatorData<dim> const &
+      get_data() const;
 
-} // namespace Structure
+      /*
+       * Provide near null space basis vectors, that is, the rigid body modes,
+       * used e.g. in AMG setup.
+       */
+      void
+      get_constant_modes(
+        std::vector<std::vector<bool>>   &constant_modes,
+        std::vector<std::vector<double>> &constant_modes_values) const override
+      {
+        (void)constant_modes;
+
+        dealii::DoFHandler<dim> const &dof_handler =
+          this->matrix_free->get_dof_handler(this->get_dof_index());
+
+        if (dof_handler.has_level_dofs())
+          {
+            constant_modes_values =
+              dealii::DoFTools::extract_level_rigid_body_modes(
+                0,
+                *this->matrix_free->get_mapping_info().mapping,
+                dof_handler,
+                dealii::ComponentMask(dim, true));
+          }
+        else
+          {
+            constant_modes_values = dealii::DoFTools::extract_rigid_body_modes(
+              *this->matrix_free->get_mapping_info().mapping,
+              dof_handler,
+              dealii::ComponentMask(dim, true));
+          }
+      }
+
+      void
+      set_scaling_factor_mass_operator(double const scaling_factor) const;
+
+      double
+      get_scaling_factor_mass_operator() const;
+
+      void
+      set_inhomogeneous_boundary_values(VectorType &dst) const final;
+
+    protected:
+      void
+      reinit_cell_derived(IntegratorCell    &integrator,
+                          unsigned int const cell) const override;
+
+      OperatorData<dim> operator_data;
+
+      mutable MaterialHandler<dim, Number> material_handler;
+
+      mutable double scaling_factor_mass;
+    };
+
+  } // namespace Structure
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_STRUCTURE_SPATIAL_DISCRETIZATION_OPERATORS_ELASTICITY_OPERATOR_BASE_H_ */
+#endif /* INCLUDE_EXADG_STRUCTURE_SPATIAL_DISCRETIZATION_OPERATORS_ELASTICITY_OPERATOR_BASE_H_ \
+        */

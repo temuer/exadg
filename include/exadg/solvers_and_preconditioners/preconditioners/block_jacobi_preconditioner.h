@@ -26,54 +26,58 @@
 
 namespace ExaDG
 {
-template<typename Operator>
-class BlockJacobiPreconditioner : public PreconditionerBase<typename Operator::value_type>
-{
-public:
-  typedef typename PreconditionerBase<typename Operator::value_type>::VectorType VectorType;
-
-  BlockJacobiPreconditioner(Operator const & underlying_operator_in, bool const initialize)
-    : underlying_operator(underlying_operator_in)
+  template <typename Operator>
+  class BlockJacobiPreconditioner
+    : public PreconditionerBase<typename Operator::value_type>
   {
-    // initialize block Jacobi
-    underlying_operator.initialize_block_diagonal_preconditioner(initialize);
+  public:
+    typedef
+      typename PreconditionerBase<typename Operator::value_type>::VectorType
+        VectorType;
 
-    if(initialize)
+    BlockJacobiPreconditioner(Operator const &underlying_operator_in,
+                              bool const      initialize)
+      : underlying_operator(underlying_operator_in)
+    {
+      // initialize block Jacobi
+      underlying_operator.initialize_block_diagonal_preconditioner(initialize);
+
+      if (initialize)
+        this->update_needed = false;
+    }
+
+    /*
+     *  This function updates the block Jacobi preconditioner.
+     *  Make sure that the underlying operator has been updated
+     *  when calling this function.
+     */
+    void
+    update() final
+    {
+      underlying_operator.update_block_diagonal_preconditioner();
+
       this->update_needed = false;
-  }
+    }
 
-  /*
-   *  This function updates the block Jacobi preconditioner.
-   *  Make sure that the underlying operator has been updated
-   *  when calling this function.
-   */
-  void
-  update() final
-  {
-    underlying_operator.update_block_diagonal_preconditioner();
+    /*
+     *  This function applies the block Jacobi preconditioner.
+     *  Make sure that the block Jacobi preconditioner has been
+     *  updated when calling this function.
+     */
+    void
+    vmult(VectorType &dst, VectorType const &src) const final
+    {
+      AssertThrow(
+        not this->update_needed,
+        dealii::ExcMessage(
+          "Block Jacobi preconditioner can not be applied because it needs to be updated."));
 
-    this->update_needed = false;
-  }
+      underlying_operator.apply_inverse_block_diagonal(dst, src);
+    }
 
-  /*
-   *  This function applies the block Jacobi preconditioner.
-   *  Make sure that the block Jacobi preconditioner has been
-   *  updated when calling this function.
-   */
-  void
-  vmult(VectorType & dst, VectorType const & src) const final
-  {
-    AssertThrow(
-      not this->update_needed,
-      dealii::ExcMessage(
-        "Block Jacobi preconditioner can not be applied because it needs to be updated."));
-
-    underlying_operator.apply_inverse_block_diagonal(dst, src);
-  }
-
-private:
-  Operator const & underlying_operator;
-};
+  private:
+    Operator const &underlying_operator;
+  };
 
 } // namespace ExaDG
 

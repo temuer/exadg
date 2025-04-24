@@ -24,12 +24,12 @@
 
 namespace ExaDG
 {
-enum class OperatorType
-{
-  full,
-  homogeneous,
-  inhomogeneous
-};
+  enum class OperatorType
+  {
+    full,
+    homogeneous,
+    inhomogeneous
+  };
 }
 
 #endif

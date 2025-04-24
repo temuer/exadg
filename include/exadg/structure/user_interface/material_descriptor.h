@@ -33,10 +33,11 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-using MaterialDescriptor = std::map<dealii::types::material_id, std::shared_ptr<MaterialData>>;
-} // namespace Structure
+  namespace Structure
+  {
+    using MaterialDescriptor =
+      std::map<dealii::types::material_id, std::shared_ptr<MaterialData>>;
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

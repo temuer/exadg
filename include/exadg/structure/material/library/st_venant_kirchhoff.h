@@ -25,6 +25,7 @@
 // deal.II
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
+
 #include <deal.II/matrix_free/matrix_free.h>
 
 // ExaDG
@@ -34,108 +35,120 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim>
-struct StVenantKirchhoffData : public MaterialData
-{
-  StVenantKirchhoffData(MaterialType const &                         type,
-                        double const &                               E,
-                        double const &                               nu,
-                        Type2D const &                               type_two_dim,
-                        std::shared_ptr<dealii::Function<dim>> const E_function = nullptr)
-    : MaterialData(type), E(E), E_function(E_function), nu(nu), type_two_dim(type_two_dim)
+  namespace Structure
   {
-  }
+    template <int dim>
+    struct StVenantKirchhoffData : public MaterialData
+    {
+      StVenantKirchhoffData(
+        MaterialType const                          &type,
+        double const                                &E,
+        double const                                &nu,
+        Type2D const                                &type_two_dim,
+        std::shared_ptr<dealii::Function<dim>> const E_function = nullptr)
+        : MaterialData(type)
+        , E(E)
+        , E_function(E_function)
+        , nu(nu)
+        , type_two_dim(type_two_dim)
+      {}
 
-  double                                 E;
-  std::shared_ptr<dealii::Function<dim>> E_function;
+      double                                 E;
+      std::shared_ptr<dealii::Function<dim>> E_function;
 
-  double nu;
-  Type2D type_two_dim;
-};
+      double nu;
+      Type2D type_two_dim;
+    };
 
-template<int dim, typename Number>
-class StVenantKirchhoff : public Material<dim, Number>
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-  typedef std::pair<unsigned int, unsigned int>              Range;
-  typedef CellIntegrator<dim, dim, Number>                   IntegratorCell;
+    template <int dim, typename Number>
+    class StVenantKirchhoff : public Material<dim, Number>
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+      typedef std::pair<unsigned int, unsigned int>              Range;
+      typedef CellIntegrator<dim, dim, Number>                   IntegratorCell;
 
-  StVenantKirchhoff(dealii::MatrixFree<dim, Number> const & matrix_free,
-                    unsigned int const                      dof_index,
-                    unsigned int const                      quad_index,
-                    StVenantKirchhoffData<dim> const &      data,
-                    bool const                              large_deformation);
+      StVenantKirchhoff(dealii::MatrixFree<dim, Number> const &matrix_free,
+                        unsigned int const                     dof_index,
+                        unsigned int const                     quad_index,
+                        StVenantKirchhoffData<dim> const      &data,
+                        bool const large_deformation);
 
-  dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
-  second_piola_kirchhoff_stress(
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const & gradient_displacement,
-    unsigned int const                                              cell,
-    unsigned int const                                              q) const final;
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
+      second_piola_kirchhoff_stress(
+        dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const
+                          &gradient_displacement,
+        unsigned int const cell,
+        unsigned int const q) const final;
 
-  dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
-  second_piola_kirchhoff_stress_displacement_derivative(
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const & gradient_increment,
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const & deformation_gradient,
-    unsigned int const                                              cell,
-    unsigned int const                                              q) const final;
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
+      second_piola_kirchhoff_stress_displacement_derivative(
+        dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const
+          &gradient_increment,
+        dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const
+                          &deformation_gradient,
+        unsigned int const cell,
+        unsigned int const q) const final;
 
-private:
-  /*
-   * Factor out coefficients for faster computation. Note that these factors do not contain the
-   * (potentially variable) Young's modulus.
-   */
-  Number
-  get_f0_factor() const;
+    private:
+      /*
+       * Factor out coefficients for faster computation. Note that these factors
+       * do not contain the (potentially variable) Young's modulus.
+       */
+      Number
+      get_f0_factor() const;
 
-  Number
-  get_f1_factor() const;
+      Number
+      get_f1_factor() const;
 
-  Number
-  get_f2_factor() const;
+      Number
+      get_f2_factor() const;
 
-  /*
-   * The second Piola-Kirchhoff stress tensor S is given as S = lambda * I * tr(E) + 2 mu E, with E
-   * being the Green-Lagrange strain tensor and Lamee parameters lambda and mu. This leads to
-   * Sii = f0 * Eii + f1 * sum_{j = 1, ..., dim; i!=j} Eij, for i = 1, ..., dim, and
-   * Sij = f2 * (Eij + Eji),    for i, j = 1, ..., dim and i != j.
-   * The latter symmetrizes the off-diagonal entries in the strain argument to reduce computations.
-   */
-  dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
-  second_piola_kirchhoff_stress_symmetrize(
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const & strain,
-    unsigned int const                                              cell,
-    unsigned int const                                              q) const;
+      /*
+       * The second Piola-Kirchhoff stress tensor S is given as S = lambda * I *
+       * tr(E) + 2 mu E, with E being the Green-Lagrange strain tensor and Lamee
+       * parameters lambda and mu. This leads to Sii = f0 * Eii + f1 * sum_{j =
+       * 1, ..., dim; i!=j} Eij, for i = 1, ..., dim, and Sij = f2 * (Eij +
+       * Eji),    for i, j = 1, ..., dim and i != j. The latter symmetrizes the
+       * off-diagonal entries in the strain argument to reduce computations.
+       */
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
+      second_piola_kirchhoff_stress_symmetrize(
+        dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> const &strain,
+        unsigned int const                                             cell,
+        unsigned int const                                             q) const;
 
-  /*
-   * Store factors involving (potentially variable) Young's modulus.
-   */
-  void
-  cell_loop_set_coefficients(dealii::MatrixFree<dim, Number> const & matrix_free,
-                             VectorType &,
-                             VectorType const & src,
-                             Range const &      cell_range) const;
+      /*
+       * Store factors involving (potentially variable) Young's modulus.
+       */
+      void
+      cell_loop_set_coefficients(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType &,
+        VectorType const &src,
+        Range const      &cell_range) const;
 
-  unsigned int dof_index;
-  unsigned int quad_index;
+      unsigned int dof_index;
+      unsigned int quad_index;
 
-  StVenantKirchhoffData<dim> const & data;
+      StVenantKirchhoffData<dim> const &data;
 
-  bool large_deformation;
+      bool large_deformation;
 
-  mutable dealii::VectorizedArray<Number> f0;
-  mutable dealii::VectorizedArray<Number> f1;
-  mutable dealii::VectorizedArray<Number> f2;
+      mutable dealii::VectorizedArray<Number> f0;
+      mutable dealii::VectorizedArray<Number> f1;
+      mutable dealii::VectorizedArray<Number> f2;
 
-  // cache coefficients for spatially varying material parameters
-  bool                                                          E_is_variable;
-  mutable VariableCoefficients<dealii::VectorizedArray<Number>> f0_coefficients;
-  mutable VariableCoefficients<dealii::VectorizedArray<Number>> f1_coefficients;
-  mutable VariableCoefficients<dealii::VectorizedArray<Number>> f2_coefficients;
-};
-} // namespace Structure
+      // cache coefficients for spatially varying material parameters
+      bool E_is_variable;
+      mutable VariableCoefficients<dealii::VectorizedArray<Number>>
+        f0_coefficients;
+      mutable VariableCoefficients<dealii::VectorizedArray<Number>>
+        f1_coefficients;
+      mutable VariableCoefficients<dealii::VectorizedArray<Number>>
+        f2_coefficients;
+    };
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

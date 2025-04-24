@@ -19,9 +19,9 @@
  *  ______________________________________________________________________
  */
 
-#include <iostream>
-
 #include <exadg/time_integration/am_constants.h>
+
+#include <iostream>
 
 // Check AM time integration constants
 
@@ -33,17 +33,17 @@ test(unsigned int const order)
   AMTimeIntegratorConstants constants(order, true);
 
   std::cout << "AMTimeIntegratorConstants of oder " << order << std::endl;
-  for(unsigned int current_order = 1; current_order <= order; ++current_order)
-  {
-    std::cout << "Current order " << current_order << std::endl;
-    constants.update(current_order, false, {});
+  for (unsigned int current_order = 1; current_order <= order; ++current_order)
+    {
+      std::cout << "Current order " << current_order << std::endl;
+      constants.update(current_order, false, {});
 
-    double sum = constants.get_gamma0();
-    for(unsigned int i = 0; i < order - 1; ++i)
-      sum += constants.get_alpha(i);
+      double sum = constants.get_gamma0();
+      for (unsigned int i = 0; i < order - 1; ++i)
+        sum += constants.get_alpha(i);
 
-    std::cout << "Sum: " << sum << std::endl;
-  }
+      std::cout << "Sum: " << sum << std::endl;
+    }
 }
 
 

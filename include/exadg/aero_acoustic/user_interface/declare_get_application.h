@@ -27,14 +27,15 @@
 
 namespace ExaDG
 {
-namespace AeroAcoustic
-{
-template<int dim, typename Number>
-std::shared_ptr<ApplicationBase<dim, Number>>
-get_application(std::string input_file, MPI_Comm const & comm);
+  namespace AeroAcoustic
+  {
+    template <int dim, typename Number>
+    std::shared_ptr<ApplicationBase<dim, Number>>
+    get_application(std::string input_file, MPI_Comm const &comm);
 
-} // namespace AeroAcoustic
+  } // namespace AeroAcoustic
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_AERO_ACOUSTIC_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ */
+#endif /* INCLUDE_EXADG_AERO_ACOUSTIC_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ \
+        */

@@ -24,69 +24,74 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-template<int dim, int n_components, typename Number>
-PostProcessor<dim, n_components, Number>::PostProcessor(PostProcessorData<dim> const & pp_data_in,
-                                                        MPI_Comm const &               mpi_comm_in)
-  : mpi_comm(mpi_comm_in),
-    pp_data(pp_data_in),
-    output_generator(mpi_comm_in),
-    error_calculator(mpi_comm_in)
-{
-}
-
-template<int dim, int n_components, typename Number>
-void
-PostProcessor<dim, n_components, Number>::setup(
-  Operator<dim, n_components, Number> const & pde_operator)
-{
-  error_calculator.setup(pde_operator.get_dof_handler(),
-                         *pde_operator.get_mapping(),
-                         pp_data.error_data);
-
-  output_generator.setup(pde_operator.get_dof_handler(),
-                         *pde_operator.get_mapping(),
-                         pp_data.output_data);
-
-  if(pp_data.normal_flux_data.evaluate)
+  namespace Poisson
   {
-    normal_flux_calculator =
-      std::make_shared<NormalFluxCalculator<dim, Number>>(*pde_operator.get_matrix_free(),
-                                                          pde_operator.get_dof_index(),
-                                                          pde_operator.get_quad_index(),
-                                                          pp_data.normal_flux_data,
-                                                          mpi_comm);
-  }
-}
+    template <int dim, int n_components, typename Number>
+    PostProcessor<dim, n_components, Number>::PostProcessor(
+      PostProcessorData<dim> const &pp_data_in,
+      MPI_Comm const               &mpi_comm_in)
+      : mpi_comm(mpi_comm_in)
+      , pp_data(pp_data_in)
+      , output_generator(mpi_comm_in)
+      , error_calculator(mpi_comm_in)
+    {}
 
-template<int dim, int n_components, typename Number>
-void
-PostProcessor<dim, n_components, Number>::do_postprocessing(VectorType const &     solution,
-                                                            double const           time,
-                                                            types::time_step const time_step_number)
-{
-  if(error_calculator.time_control.needs_evaluation(time, time_step_number))
-    error_calculator.evaluate(solution, time, Utilities::is_unsteady_timestep(time_step_number));
+    template <int dim, int n_components, typename Number>
+    void
+    PostProcessor<dim, n_components, Number>::setup(
+      Operator<dim, n_components, Number> const &pde_operator)
+    {
+      error_calculator.setup(pde_operator.get_dof_handler(),
+                             *pde_operator.get_mapping(),
+                             pp_data.error_data);
 
-  if(output_generator.time_control.needs_evaluation(time, time_step_number))
-    output_generator.evaluate(solution, time, Utilities::is_unsteady_timestep(time_step_number));
+      output_generator.setup(pde_operator.get_dof_handler(),
+                             *pde_operator.get_mapping(),
+                             pp_data.output_data);
 
-  if(pp_data.normal_flux_data.evaluate)
-    normal_flux_calculator->evaluate(solution,
-                                     time,
-                                     Utilities::is_unsteady_timestep(time_step_number));
-}
+      if (pp_data.normal_flux_data.evaluate)
+        {
+          normal_flux_calculator =
+            std::make_shared<NormalFluxCalculator<dim, Number>>(
+              *pde_operator.get_matrix_free(),
+              pde_operator.get_dof_index(),
+              pde_operator.get_quad_index(),
+              pp_data.normal_flux_data,
+              mpi_comm);
+        }
+    }
 
-template class PostProcessor<2, 1, float>;
-template class PostProcessor<3, 1, float>;
-template class PostProcessor<2, 2, float>;
-template class PostProcessor<3, 3, float>;
+    template <int dim, int n_components, typename Number>
+    void
+    PostProcessor<dim, n_components, Number>::do_postprocessing(
+      VectorType const      &solution,
+      double const           time,
+      types::time_step const time_step_number)
+    {
+      if (error_calculator.time_control.needs_evaluation(time,
+                                                         time_step_number))
+        error_calculator.evaluate(
+          solution, time, Utilities::is_unsteady_timestep(time_step_number));
 
-template class PostProcessor<2, 1, double>;
-template class PostProcessor<3, 1, double>;
-template class PostProcessor<2, 2, double>;
-template class PostProcessor<3, 3, double>;
+      if (output_generator.time_control.needs_evaluation(time,
+                                                         time_step_number))
+        output_generator.evaluate(
+          solution, time, Utilities::is_unsteady_timestep(time_step_number));
 
-} // namespace Poisson
+      if (pp_data.normal_flux_data.evaluate)
+        normal_flux_calculator->evaluate(
+          solution, time, Utilities::is_unsteady_timestep(time_step_number));
+    }
+
+    template class PostProcessor<2, 1, float>;
+    template class PostProcessor<3, 1, float>;
+    template class PostProcessor<2, 2, float>;
+    template class PostProcessor<3, 3, float>;
+
+    template class PostProcessor<2, 1, double>;
+    template class PostProcessor<3, 1, double>;
+    template class PostProcessor<2, 2, double>;
+    template class PostProcessor<3, 3, double>;
+
+  } // namespace Poisson
 } // namespace ExaDG

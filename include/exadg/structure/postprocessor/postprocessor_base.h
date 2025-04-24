@@ -29,26 +29,26 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<typename Number>
-class PostProcessorBase
-{
-protected:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-public:
-  virtual ~PostProcessorBase()
+  namespace Structure
   {
-  }
+    template <typename Number>
+    class PostProcessorBase
+    {
+    protected:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  virtual void
-  do_postprocessing(VectorType const &     solution,
-                    double const           time             = 0.0,
-                    types::time_step const time_step_number = numbers::steady_timestep) = 0;
-};
+    public:
+      virtual ~PostProcessorBase()
+      {}
 
-} // namespace Structure
+      virtual void
+      do_postprocessing(
+        VectorType const      &solution,
+        double const           time             = 0.0,
+        types::time_step const time_step_number = numbers::steady_timestep) = 0;
+    };
+
+  } // namespace Structure
 } // namespace ExaDG
 
 

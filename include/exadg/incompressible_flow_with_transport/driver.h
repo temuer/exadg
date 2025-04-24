@@ -49,109 +49,111 @@
 
 namespace ExaDG
 {
-namespace FTI
-{
-template<int dim, typename Number = double>
-class Driver
-{
-public:
-  Driver(MPI_Comm const &                              mpi_comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test);
+  namespace FTI
+  {
+    template <int dim, typename Number = double>
+    class Driver
+    {
+    public:
+      Driver(MPI_Comm const                               &mpi_comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve() const;
+      void
+      solve() const;
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-private:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+    private:
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  void
-  ale_update() const;
+      void
+      ale_update() const;
 
-  void
-  communicate_scalar_to_fluid() const;
+      void
+      communicate_scalar_to_fluid() const;
 
-  void
-  communicate_fluid_to_all_scalars() const;
+      void
+      communicate_fluid_to_all_scalars() const;
 
-  void
-  set_start_time() const;
+      void
+      set_start_time() const;
 
-  void
-  synchronize_time_step_size() const;
+      void
+      synchronize_time_step_size() const;
 
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+      // MPI communicator
+      MPI_Comm const mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      // output to std::cout
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      // application
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  std::shared_ptr<Grid<dim>> grid;
+      std::shared_ptr<Grid<dim>> grid;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-  // grid motion (ALE)
-  std::shared_ptr<DeformedMappingBase<dim, Number>> ale_mapping;
+      // grid motion (ALE)
+      std::shared_ptr<DeformedMappingBase<dim, Number>> ale_mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
 
-  // ALE helper functions required by time integrator
-  std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
+      // ALE helper functions required by time integrator
+      std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
 
-  bool use_adaptive_time_stepping;
+      bool use_adaptive_time_stepping;
 
-  //  MatrixFree (only a single object for both flow and transport problems)
-  std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
-  std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
+      //  MatrixFree (only a single object for both flow and transport problems)
+      std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
+      std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
 
-  // INCOMPRESSIBLE NAVIER-STOKES
+      // INCOMPRESSIBLE NAVIER-STOKES
 
-  std::shared_ptr<IncNS::SpatialOperatorBase<dim, Number>> fluid_operator;
+      std::shared_ptr<IncNS::SpatialOperatorBase<dim, Number>> fluid_operator;
 
-  typedef IncNS::PostProcessorBase<dim, Number> Postprocessor;
+      typedef IncNS::PostProcessorBase<dim, Number> Postprocessor;
 
-  std::shared_ptr<Postprocessor> fluid_postprocessor;
+      std::shared_ptr<Postprocessor> fluid_postprocessor;
 
-  std::shared_ptr<IncNS::TimeIntBDF<dim, Number>> fluid_time_integrator;
+      std::shared_ptr<IncNS::TimeIntBDF<dim, Number>> fluid_time_integrator;
 
-  // steady solver
-  typedef IncNS::DriverSteadyProblems<dim, Number> DriverSteady;
+      // steady solver
+      typedef IncNS::DriverSteadyProblems<dim, Number> DriverSteady;
 
-  std::shared_ptr<DriverSteady> fluid_driver_steady;
+      std::shared_ptr<DriverSteady> fluid_driver_steady;
 
-  // SCALAR TRANSPORT
+      // SCALAR TRANSPORT
 
-  std::vector<std::shared_ptr<ConvDiff::Operator<dim, Number>>> scalar_operator;
+      std::vector<std::shared_ptr<ConvDiff::Operator<dim, Number>>>
+        scalar_operator;
 
-  std::vector<std::shared_ptr<ConvDiff::PostProcessorBase<dim, Number>>> scalar_postprocessor;
+      std::vector<std::shared_ptr<ConvDiff::PostProcessorBase<dim, Number>>>
+        scalar_postprocessor;
 
-  std::vector<std::shared_ptr<TimeIntBase>> scalar_time_integrator;
+      std::vector<std::shared_ptr<TimeIntBase>> scalar_time_integrator;
 
-  mutable dealii::LinearAlgebra::distributed::Vector<Number> temperature;
+      mutable dealii::LinearAlgebra::distributed::Vector<Number> temperature;
 
-  /*
-   * Computation time (wall clock time).
-   */
-  mutable TimerTree timer_tree;
+      /*
+       * Computation time (wall clock time).
+       */
+      mutable TimerTree timer_tree;
 
-  mutable unsigned int N_time_steps;
-};
+      mutable unsigned int N_time_steps;
+    };
 
-} // namespace FTI
+  } // namespace FTI
 } // namespace ExaDG
 
 

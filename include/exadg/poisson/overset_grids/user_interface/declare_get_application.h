@@ -26,17 +26,19 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-namespace OversetGrids
-{
-template<int dim, int n_components, typename Number>
-std::shared_ptr<ApplicationBase<dim, n_components, Number>>
-get_application_overset_grids(std::string input_file, MPI_Comm const & comm);
+  namespace Poisson
+  {
+    namespace OversetGrids
+    {
+      template <int dim, int n_components, typename Number>
+      std::shared_ptr<ApplicationBase<dim, n_components, Number>>
+      get_application_overset_grids(std::string     input_file,
+                                    MPI_Comm const &comm);
 
-}
-} // namespace Poisson
+    }
+  } // namespace Poisson
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_POISSON_OVERSET_GRIDS_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ */
+#endif /* INCLUDE_EXADG_POISSON_OVERSET_GRIDS_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ \
+        */

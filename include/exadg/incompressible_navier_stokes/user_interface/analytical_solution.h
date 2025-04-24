@@ -26,23 +26,24 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim>
-struct AnalyticalSolution
-{
-  /*
-   *  velocity
-   */
-  std::shared_ptr<dealii::Function<dim>> velocity;
+  namespace IncNS
+  {
+    template <int dim>
+    struct AnalyticalSolution
+    {
+      /*
+       *  velocity
+       */
+      std::shared_ptr<dealii::Function<dim>> velocity;
 
-  /*
-   *  pressure
-   */
-  std::shared_ptr<dealii::Function<dim>> pressure;
-};
+      /*
+       *  pressure
+       */
+      std::shared_ptr<dealii::Function<dim>> pressure;
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_ANALYTICAL_SOLUTION_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_ANALYTICAL_SOLUTION_H_ \
+        */

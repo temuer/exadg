@@ -34,52 +34,53 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-template<int dim>
-struct PostProcessorData
-{
-  PostProcessorData()
+  namespace ConvDiff
   {
-  }
+    template <int dim>
+    struct PostProcessorData
+    {
+      PostProcessorData()
+      {}
 
-  OutputDataBase            output_data;
-  ErrorCalculationData<dim> error_data;
-};
+      OutputDataBase            output_data;
+      ErrorCalculationData<dim> error_data;
+    };
 
-template<int dim, typename Number>
-class PostProcessor : public PostProcessorBase<dim, Number>
-{
-protected:
-  typedef PostProcessorBase<dim, Number> Base;
+    template <int dim, typename Number>
+    class PostProcessor : public PostProcessorBase<dim, Number>
+    {
+    protected:
+      typedef PostProcessorBase<dim, Number> Base;
 
-  typedef typename Base::VectorType VectorType;
+      typedef typename Base::VectorType VectorType;
 
-public:
-  PostProcessor(PostProcessorData<dim> const & pp_data, MPI_Comm const & mpi_comm);
+    public:
+      PostProcessor(PostProcessorData<dim> const &pp_data,
+                    MPI_Comm const               &mpi_comm);
 
-  void
-  setup(Operator<dim, Number> const & pde_operator) override;
+      void
+      setup(Operator<dim, Number> const &pde_operator) override;
 
-  void
-  setup_after_coarsening_and_refinement() override;
+      void
+      setup_after_coarsening_and_refinement() override;
 
-  void
-  do_postprocessing(VectorType const &     solution,
-                    double const           time             = 0.0,
-                    types::time_step const time_step_number = numbers::steady_timestep) override;
+      void
+      do_postprocessing(VectorType const      &solution,
+                        double const           time = 0.0,
+                        types::time_step const time_step_number =
+                          numbers::steady_timestep) override;
 
-protected:
-  MPI_Comm const mpi_comm;
+    protected:
+      MPI_Comm const mpi_comm;
 
-private:
-  PostProcessorData<dim> pp_data;
+    private:
+      PostProcessorData<dim> pp_data;
 
-  OutputGenerator<dim, Number> output_generator;
-  ErrorCalculator<dim, Number> error_calculator;
-};
+      OutputGenerator<dim, Number> output_generator;
+      ErrorCalculator<dim, Number> error_calculator;
+    };
 
-} // namespace ConvDiff
+  } // namespace ConvDiff
 } // namespace ExaDG
 
 

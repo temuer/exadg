@@ -44,248 +44,252 @@
 
 namespace ExaDG
 {
-class TimeIntBase
-{
-public:
-  // Archive type used for serialization, alternatively choose text archive type.
-  typedef boost::archive::binary_iarchive BoostInputArchiveType;
-  typedef boost::archive::binary_oarchive BoostOutputArchiveType;
-  // typedef boost::archive::text_iarchive BoostInputArchiveType;
-  // typedef boost::archive::text_oarchive BoostOutputArchiveType;
-
-  TimeIntBase(double const &      start_time_,
-              double const &      end_time_,
-              unsigned int const  max_number_of_time_steps_,
-              RestartData const & restart_data_,
-              MPI_Comm const &    mpi_comm_,
-              bool const          is_test_);
-
-  virtual ~TimeIntBase()
+  class TimeIntBase
   {
-  }
+  public:
+    // Archive type used for serialization, alternatively choose text archive
+    // type.
+    typedef boost::archive::binary_iarchive BoostInputArchiveType;
+    typedef boost::archive::binary_oarchive BoostOutputArchiveType;
+    // typedef boost::archive::text_iarchive BoostInputArchiveType;
+    // typedef boost::archive::text_oarchive BoostOutputArchiveType;
 
-  /*
-   * Setup of time integration scheme.
-   */
-  virtual void
-  setup(bool const do_restart) = 0;
+    TimeIntBase(double const      &start_time_,
+                double const      &end_time_,
+                unsigned int const max_number_of_time_steps_,
+                RestartData const &restart_data_,
+                MPI_Comm const    &mpi_comm_,
+                bool const         is_test_);
 
-  /*
-   * Returns true if the start time has been reached.
-   */
-  bool
-  started() const;
+    virtual ~TimeIntBase()
+    {}
 
-  /*
-   * returns true if the end of time loop has been reached or the maximum number of time steps
-   */
-  bool
-  finished() const;
+    /*
+     * Setup of time integration scheme.
+     */
+    virtual void
+    setup(bool const do_restart) = 0;
 
-  /*
-   * Performs the time loop from start_time to end_time by repeatingly calling
-   * advance_one_timestep().
-   */
-  void
-  timeloop();
+    /*
+     * Returns true if the start time has been reached.
+     */
+    bool
+    started() const;
 
-  /*
-   * Perform only one time step (which is used when coupling different solvers, equations, etc.).
-   */
-  void
-  advance_one_timestep();
+    /*
+     * returns true if the end of time loop has been reached or the maximum
+     * number of time steps
+     */
+    bool
+    finished() const;
 
-  /*
-   * The main sub-routines of advance_one_timestep()
-   */
-  void
-  advance_one_timestep_pre_solve(bool const print_header);
+    /*
+     * Performs the time loop from start_time to end_time by repeatingly calling
+     * advance_one_timestep().
+     */
+    void
+    timeloop();
 
-  void
-  advance_one_timestep_solve();
+    /*
+     * Perform only one time step (which is used when coupling different
+     * solvers, equations, etc.).
+     */
+    void
+    advance_one_timestep();
 
-  void
-  advance_one_timestep_post_solve();
+    /*
+     * The main sub-routines of advance_one_timestep()
+     */
+    void
+    advance_one_timestep_pre_solve(bool const print_header);
 
-  /*
-   * Reset the current time.
-   */
-  void
-  reset_time(double const & current_time);
+    void
+    advance_one_timestep_solve();
 
-  /*
-   * In case of adaptive mesh refinement, the driver requests preparing the owned vectors
-   * for refinement and interpolation afterwards.
-   */
-  virtual void
-  prepare_coarsening_and_refinement();
+    void
+    advance_one_timestep_post_solve();
 
-  virtual void
-  interpolate_after_coarsening_and_refinement();
+    /*
+     * Reset the current time.
+     */
+    void
+    reset_time(double const &current_time);
 
-  /*
-   * Get the time step size.
-   */
-  virtual double
-  get_time_step_size() const = 0;
+    /*
+     * In case of adaptive mesh refinement, the driver requests preparing the
+     * owned vectors for refinement and interpolation afterwards.
+     */
+    virtual void
+    prepare_coarsening_and_refinement();
 
-  /*
-   * Set the time step size.
-   */
-  virtual void
-  set_current_time_step_size(double const & time_step_size) = 0;
+    virtual void
+    interpolate_after_coarsening_and_refinement();
 
-  /*
-   * Get the current time t_{n}.
-   */
-  double
-  get_time() const;
+    /*
+     * Get the time step size.
+     */
+    virtual double
+    get_time_step_size() const = 0;
 
-  /*
-   * Get time at the end of the current time step t_{n+1}.
-   */
-  double
-  get_next_time() const;
+    /*
+     * Set the time step size.
+     */
+    virtual void
+    set_current_time_step_size(double const &time_step_size) = 0;
 
-  /*
-   * Get number of computed time steps
-   */
-  unsigned int
-  get_number_of_time_steps() const;
+    /*
+     * Get the current time t_{n}.
+     */
+    double
+    get_time() const;
 
-  std::shared_ptr<TimerTree>
-  get_timings() const;
+    /*
+     * Get time at the end of the current time step t_{n+1}.
+     */
+    double
+    get_next_time() const;
 
-protected:
-  /*
-   * Do one time step including pre and post routines done before and after the actual solution of
-   * the current time step. Compared to the function advance_one_timestep(), do_timestep() is a raw
-   * version that does not call postprocessing routines, does not write output to pcout, and does
-   * not perform timer measurements within its sub-routines. The typical use case of do_timestep()
-   * is when using pseudo-timestepping to obtain the solution of a steady-state problem with a
-   * transient solver.
-   */
-  void
-  do_timestep();
+    /*
+     * Get number of computed time steps
+     */
+    unsigned int
+    get_number_of_time_steps() const;
 
-  /*
-   * e.g., update of time integrator constants
-   */
-  virtual void
-  do_timestep_pre_solve(bool const print_header) = 0;
+    std::shared_ptr<TimerTree>
+    get_timings() const;
 
-  /*
-   * The actual solution of the current time step
-   */
-  virtual void
-  do_timestep_solve() = 0;
+  protected:
+    /*
+     * Do one time step including pre and post routines done before and after
+     * the actual solution of the current time step. Compared to the function
+     * advance_one_timestep(), do_timestep() is a raw version that does not call
+     * postprocessing routines, does not write output to pcout, and does not
+     * perform timer measurements within its sub-routines. The typical use case
+     * of do_timestep() is when using pseudo-timestepping to obtain the solution
+     * of a steady-state problem with a transient solver.
+     */
+    void
+    do_timestep();
 
-  /*
-   * e.g., update of DoF vectors, increment time, adjust time step size, etc.
-   */
-  virtual void
-  do_timestep_post_solve() = 0;
+    /*
+     * e.g., update of time integrator constants
+     */
+    virtual void
+    do_timestep_pre_solve(bool const print_header) = 0;
 
-  /*
-   * Postprocessing of solution.
-   */
-  virtual void
-  postprocessing() const = 0;
+    /*
+     * The actual solution of the current time step
+     */
+    virtual void
+    do_timestep_solve() = 0;
 
-  /*
-   * Get the current time step number.
-   */
-  types::time_step
-  get_time_step_number() const;
+    /*
+     * e.g., update of DoF vectors, increment time, adjust time step size, etc.
+     */
+    virtual void
+    do_timestep_post_solve() = 0;
 
-  /*
-   * Write solution vectors to files so that the simulation can be restart from an intermediate
-   * state. Note that the sequence of writing and reading data in `write_restart` and `read_restart`
-   * needs to be identical.
-   */
-  void
-  write_restart() const;
+    /*
+     * Postprocessing of solution.
+     */
+    virtual void
+    postprocessing() const = 0;
 
-  /*
-   * Read all relevant data from restart files to start the time integrator. Note that the sequence
-   * of writing and reading data in `write_restart` and `read_restart` needs to be identical.
-   */
-  void
-  read_restart();
+    /*
+     * Get the current time step number.
+     */
+    types::time_step
+    get_time_step_number() const;
 
-  /*
-   * Output solver information before solving the time step.
-   */
-  void
-  output_solver_info_header() const;
+    /*
+     * Write solution vectors to files so that the simulation can be restart
+     * from an intermediate state. Note that the sequence of writing and reading
+     * data in `write_restart` and `read_restart` needs to be identical.
+     */
+    void
+    write_restart() const;
+
+    /*
+     * Read all relevant data from restart files to start the time integrator.
+     * Note that the sequence of writing and reading data in `write_restart` and
+     * `read_restart` needs to be identical.
+     */
+    void
+    read_restart();
+
+    /*
+     * Output solver information before solving the time step.
+     */
+    void
+    output_solver_info_header() const;
 
 
-  /*
-   * Output estimated computation time until completion of the simulation.
-   */
-  void
-  output_remaining_time() const;
+    /*
+     * Output estimated computation time until completion of the simulation.
+     */
+    void
+    output_remaining_time() const;
 
-  /*
-   * Start and end times.
-   */
-  double start_time, end_time;
+    /*
+     * Start and end times.
+     */
+    double start_time, end_time;
 
-  /*
-   * Physical time.
-   */
-  double time;
+    /*
+     * Physical time.
+     */
+    double time;
 
-  /*
-   * A small number which is much smaller than the time step size.
-   */
-  double const eps;
+    /*
+     * A small number which is much smaller than the time step size.
+     */
+    double const eps;
 
-  /*
-   * Output to screen.
-   */
-  dealii::ConditionalOStream pcout;
+    /*
+     * Output to screen.
+     */
+    dealii::ConditionalOStream pcout;
 
-  /*
-   * The number of the current time step starting with time_step_number = 1.
-   */
-  types::time_step time_step_number;
+    /*
+     * The number of the current time step starting with time_step_number = 1.
+     */
+    types::time_step time_step_number;
 
-  /*
-   * Maximum number of time steps.
-   */
-  unsigned int const max_number_of_time_steps;
+    /*
+     * Maximum number of time steps.
+     */
+    unsigned int const max_number_of_time_steps;
 
-  /*
-   * Restart.
-   */
-  RestartData const restart_data;
+    /*
+     * Restart.
+     */
+    RestartData const restart_data;
 
-  /*
-   * MPI communicator.
-   */
-  MPI_Comm const mpi_comm;
+    /*
+     * MPI communicator.
+     */
+    MPI_Comm const mpi_comm;
 
-  /*
-   * Computation time (wall clock time).
-   */
-  dealii::Timer              global_timer;
-  std::shared_ptr<TimerTree> timer_tree;
-  bool                       is_test;
+    /*
+     * Computation time (wall clock time).
+     */
+    dealii::Timer              global_timer;
+    std::shared_ptr<TimerTree> timer_tree;
+    bool                       is_test;
 
-private:
-  /*
-   * Write restart data.
-   */
-  virtual void
-  do_write_restart(std::string const & filename) const = 0;
+  private:
+    /*
+     * Write restart data.
+     */
+    virtual void
+    do_write_restart(std::string const &filename) const = 0;
 
-  /*
-   * Read restart data.
-   */
-  virtual void
-  do_read_restart(std::ifstream & in) = 0;
-};
+    /*
+     * Read restart data.
+     */
+    virtual void
+    do_read_restart(std::ifstream &in) = 0;
+  };
 
 } // namespace ExaDG
 

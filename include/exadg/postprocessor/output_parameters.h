@@ -28,28 +28,35 @@
 
 namespace ExaDG
 {
-struct OutputParameters
-{
-  OutputParameters() : directory("output/"), filename("solution"), write(false)
+  struct OutputParameters
   {
-  }
+    OutputParameters()
+      : directory("output/")
+      , filename("solution")
+      , write(false)
+    {}
 
-  void
-  add_parameters(dealii::ParameterHandler & prm, std::string const & subsection_name = "Output")
-  {
-    prm.enter_subsection(subsection_name);
+    void
+    add_parameters(dealii::ParameterHandler &prm,
+                   std::string const        &subsection_name = "Output")
     {
-      prm.add_parameter("OutputDirectory", directory, "Directory where output is written.");
-      prm.add_parameter("OutputName", filename, "Name of output files.");
-      prm.add_parameter("WriteOutput", write, "Decides whether output is written.");
+      prm.enter_subsection(subsection_name);
+      {
+        prm.add_parameter("OutputDirectory",
+                          directory,
+                          "Directory where output is written.");
+        prm.add_parameter("OutputName", filename, "Name of output files.");
+        prm.add_parameter("WriteOutput",
+                          write,
+                          "Decides whether output is written.");
+      }
+      prm.leave_subsection();
     }
-    prm.leave_subsection();
-  }
 
-  std::string directory;
-  std::string filename;
-  bool        write;
-};
+    std::string directory;
+    std::string filename;
+    bool        write;
+  };
 } // namespace ExaDG
 
 

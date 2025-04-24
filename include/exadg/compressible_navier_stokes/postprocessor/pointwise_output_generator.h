@@ -28,43 +28,46 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-template<int dim>
-struct PointwiseOutputData : public PointwiseOutputDataBase<dim>
-{
-  PointwiseOutputData();
+  namespace CompNS
+  {
+    template <int dim>
+    struct PointwiseOutputData : public PointwiseOutputDataBase<dim>
+    {
+      PointwiseOutputData();
 
-  void
-  print(dealii::ConditionalOStream & pcout) const;
+      void
+      print(dealii::ConditionalOStream &pcout) const;
 
-  bool write_rho;
-  bool write_rho_u;
-  bool write_rho_E;
-};
+      bool write_rho;
+      bool write_rho_u;
+      bool write_rho_E;
+    };
 
-template<int dim, typename Number>
-class PointwiseOutputGenerator : public PointwiseOutputGeneratorBase<dim, Number>
-{
-public:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+    template <int dim, typename Number>
+    class PointwiseOutputGenerator
+      : public PointwiseOutputGeneratorBase<dim, Number>
+    {
+    public:
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  PointwiseOutputGenerator(MPI_Comm const & comm);
+      PointwiseOutputGenerator(MPI_Comm const &comm);
 
-  void
-  setup(dealii::DoFHandler<dim> const &  dof_handler_in,
-        dealii::Mapping<dim> const &     mapping_in,
-        PointwiseOutputData<dim> const & pointwise_output_data_in);
+      void
+      setup(dealii::DoFHandler<dim> const  &dof_handler_in,
+            dealii::Mapping<dim> const     &mapping_in,
+            PointwiseOutputData<dim> const &pointwise_output_data_in);
 
-  void
-  evaluate(VectorType const & solution, double const time, bool const unsteady);
+      void
+      evaluate(VectorType const &solution,
+               double const      time,
+               bool const        unsteady);
 
-private:
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
-  PointwiseOutputData<dim>                            pointwise_output_data;
-};
+    private:
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
+      PointwiseOutputData<dim>                            pointwise_output_data;
+    };
 
-} // namespace CompNS
+  } // namespace CompNS
 } // namespace ExaDG
 
 

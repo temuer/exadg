@@ -24,12 +24,12 @@
 
 namespace ExaDG
 {
-enum class SparseMatrixType
-{
-  Undefined,
-  Trilinos,
-  PETSc
-};
+  enum class SparseMatrixType
+  {
+    Undefined,
+    Trilinos,
+    PETSc
+  };
 
 }
 

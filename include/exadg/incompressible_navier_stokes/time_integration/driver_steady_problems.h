@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/base/timer.h>
+
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
@@ -32,87 +33,92 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-// forward declarations
-class Parameters;
+  namespace IncNS
+  {
+    // forward declarations
+    class Parameters;
 
-template<int dim, typename Number>
-class OperatorCoupled;
+    template <int dim, typename Number>
+    class OperatorCoupled;
 
-template<typename Number>
-class PostProcessorInterface;
+    template <typename Number>
+    class PostProcessorInterface;
 
-template<int dim, typename Number>
-class DriverSteadyProblems
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number>      VectorType;
-  typedef dealii::LinearAlgebra::distributed::BlockVector<Number> BlockVectorType;
+    template <int dim, typename Number>
+    class DriverSteadyProblems
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+      typedef dealii::LinearAlgebra::distributed::BlockVector<Number>
+        BlockVectorType;
 
-  DriverSteadyProblems(std::shared_ptr<OperatorCoupled<dim, Number>>   operator_,
-                       std::shared_ptr<PostProcessorInterface<Number>> postprocessor_,
-                       Parameters const &                              param_,
-                       MPI_Comm const &                                mpi_comm_,
-                       bool const                                      is_test_);
+      DriverSteadyProblems(
+        std::shared_ptr<OperatorCoupled<dim, Number>>   operator_,
+        std::shared_ptr<PostProcessorInterface<Number>> postprocessor_,
+        Parameters const                               &param_,
+        MPI_Comm const                                 &mpi_comm_,
+        bool const                                      is_test_);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve(double const time = 0.0, bool unsteady_problem = false);
+      void
+      solve(double const time = 0.0, bool unsteady_problem = false);
 
-  VectorType const &
-  get_velocity() const;
+      VectorType const &
+      get_velocity() const;
 
-  std::shared_ptr<TimerTree>
-  get_timings() const;
+      std::shared_ptr<TimerTree>
+      get_timings() const;
 
-  void
-  print_iterations() const;
+      void
+      print_iterations() const;
 
-private:
-  void
-  initialize_vectors();
+    private:
+      void
+      initialize_vectors();
 
-  void
-  initialize_solution();
+      void
+      initialize_solution();
 
-  void
-  do_solve(double const time = 0.0, bool unsteady_problem = false);
+      void
+      do_solve(double const time = 0.0, bool unsteady_problem = false);
 
-  bool
-  print_solver_info(double const time, bool unsteady_problem = false) const;
+      bool
+      print_solver_info(double const time, bool unsteady_problem = false) const;
 
-  void
-  postprocessing(double const time = 0.0, bool unsteady_problem = false) const;
+      void
+      postprocessing(double const time             = 0.0,
+                     bool         unsteady_problem = false) const;
 
-  std::shared_ptr<OperatorCoupled<dim, Number>> pde_operator;
+      std::shared_ptr<OperatorCoupled<dim, Number>> pde_operator;
 
-  Parameters const & param;
+      Parameters const &param;
 
-  MPI_Comm const mpi_comm;
+      MPI_Comm const mpi_comm;
 
-  bool is_test;
+      bool is_test;
 
-  dealii::Timer              global_timer;
-  std::shared_ptr<TimerTree> timer_tree;
+      dealii::Timer              global_timer;
+      std::shared_ptr<TimerTree> timer_tree;
 
-  dealii::ConditionalOStream pcout;
+      dealii::ConditionalOStream pcout;
 
-  BlockVectorType solution;
-  BlockVectorType rhs_vector;
+      BlockVectorType solution;
+      BlockVectorType rhs_vector;
 
-  std::shared_ptr<PostProcessorInterface<Number>> postprocessor;
+      std::shared_ptr<PostProcessorInterface<Number>> postprocessor;
 
-  // iteration counts
-  std::pair<
-    unsigned int /* calls */,
-    std::tuple<unsigned long long, unsigned long long> /* iteration counts {Newton, linear} */>
-    iterations;
-};
+      // iteration counts
+      std::pair<
+        unsigned int /* calls */,
+        std::tuple<unsigned long long,
+                   unsigned long long> /* iteration counts {Newton, linear} */>
+        iterations;
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_TIME_INTEGRATION_DRIVER_STEADY_PROBLEMS_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_TIME_INTEGRATION_DRIVER_STEADY_PROBLEMS_H_ \
+        */

@@ -35,399 +35,428 @@
 
 namespace ExaDG
 {
-template<int rank, int dim, typename Number>
-struct FunctionEvaluator
-{
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> const &                               function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points)
+  template <int rank, int dim, typename Number>
+  struct FunctionEvaluator
   {
-    (void)function;
-    (void)q_points;
-
-    AssertThrow(false, dealii::ExcMessage("should not arrive here."));
-
-    return dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>();
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> &                                     function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points,
-          double const &                                              time)
-  {
-    function.set_time(time);
-    return value(function, q_points);
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
-    value(ContainerInterfaceData<rank, dim, double> const & function,
-          unsigned int const                                face,
-          unsigned int const                                q,
-          unsigned int const                                quad_index)
-  {
-    (void)function;
-    (void)face;
-    (void)q;
-    (void)quad_index;
-
-    AssertThrow(false, dealii::ExcMessage("should not arrive here."));
-
-    return dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>();
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
-    value(FunctionWithNormal<dim> const &                                 function_with_normal,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const &     q_points,
-          dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const & normals)
-  {
-    (void)function_with_normal;
-    (void)q_points;
-    (void)normals;
-
-    AssertThrow(false, dealii::ExcMessage("not implemented."));
-
-    return dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>();
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
-    value(FunctionWithNormal<dim> &                                       function_with_normal,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const &     q_points,
-          dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const & normals,
-          double const &                                                  time)
-  {
-    function_with_normal.set_time(time);
-    return value(function_with_normal, q_points, normals);
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>
-    value_symmetric(dealii::Function<dim> const &                               function,
-                    dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points)
-  {
-    (void)function;
-    (void)q_points;
-
-    AssertThrow(false, dealii::ExcMessage("should not arrive here."));
-
-    return dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>();
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>
-    value_symmetric(dealii::Function<dim> &                                     function,
-                    dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points,
-                    double const &                                              time)
-  {
-    function.set_time(time);
-    return value_symmetric(function, q_points);
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>
-    value_symmetric(ContainerInterfaceData<rank, dim, double> const & function,
-                    unsigned int const                                face,
-                    unsigned int const                                q,
-                    unsigned int const                                quad_index)
-  {
-    (void)function;
-    (void)face;
-    (void)q;
-    (void)quad_index;
-
-    AssertThrow(false, dealii::ExcMessage("should not arrive here."));
-
-    return dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>();
-  }
-};
-
-template<int dim, typename Number>
-struct FunctionEvaluator<0, dim, Number>
-{
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<0, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> const &                               function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points)
-  {
-    dealii::VectorizedArray<Number> value = dealii::make_vectorized_array<Number>(0.0);
-
-    for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim> const                               &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points)
     {
-      dealii::Point<dim> q_point;
-      for(unsigned int d = 0; d < dim; ++d)
-        q_point[d] = q_points[d][v];
+      (void)function;
+      (void)q_points;
 
-      value[v] = function.value(q_point);
+      AssertThrow(false, dealii::ExcMessage("should not arrive here."));
+
+      return dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>();
     }
 
-    return value;
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<0, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> &                                     function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points,
-          double const &                                              time)
-  {
-    function.set_time(time);
-    return value(function, q_points);
-  }
-
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<0, dim, dealii::VectorizedArray<Number>>
-    value(ContainerInterfaceData<0, dim, double> const & function,
-          unsigned int const                             face,
-          unsigned int const                             q,
-          unsigned int const                             quad_index)
-  {
-    dealii::VectorizedArray<Number> value = dealii::make_vectorized_array<Number>(0.0);
-
-    for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-      value[v] = function.get_data(quad_index, face, q, v);
-
-    return value;
-  }
-};
-
-template<int dim, typename Number>
-struct FunctionEvaluator<1, dim, Number>
-{
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> const &                               function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points)
-  {
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> value;
-
-    for(unsigned int d = 0; d < dim; ++d)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim>                                     &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points,
+            double const                                              &time)
     {
-      for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-      {
-        dealii::Point<dim> q_point;
-        for(unsigned int i = 0; i < dim; ++i)
-          q_point[i] = q_points[i][v];
-
-        value[d][v] = function.value(q_point, d);
-      }
+      function.set_time(time);
+      return value(function, q_points);
     }
 
-    return value;
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> &                                     function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points,
-          double const &                                              time)
-  {
-    function.set_time(time);
-    return value(function, q_points);
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
-    value(ContainerInterfaceData<1, dim, double> const & function,
-          unsigned int const                             face,
-          unsigned int const                             q,
-          unsigned int const                             quad_index)
-  {
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> value;
-
-    std::array<dealii::Tensor<1, dim, Number>, dealii::VectorizedArray<Number>::size()>
-      tensor_array;
-
-    for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-      tensor_array[v] = function.get_data(quad_index, face, q, v);
-
-    for(unsigned int d = 0; d < dim; ++d)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
+      value(ContainerInterfaceData<rank, dim, double> const &function,
+            unsigned int const                               face,
+            unsigned int const                               q,
+            unsigned int const                               quad_index)
     {
-      for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-        value[d][v] = tensor_array[v][d];
+      (void)function;
+      (void)face;
+      (void)q;
+      (void)quad_index;
+
+      AssertThrow(false, dealii::ExcMessage("should not arrive here."));
+
+      return dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>();
     }
 
-    return value;
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
-    value(FunctionWithNormal<dim> &                                       function_with_normal,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const &     q_points,
-          dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const & normals)
-  {
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> value;
-
-    for(unsigned int d = 0; d < dim; ++d)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
+      value(
+        FunctionWithNormal<dim> const &function_with_normal,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const     &q_points,
+        dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const &normals)
     {
-      for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-      {
-        dealii::Point<dim>     q_point;
-        dealii::Tensor<1, dim> normal;
-        for(unsigned int i = 0; i < dim; ++i)
-        {
-          q_point[i] = q_points[i][v];
-          normal[i]  = normals[i][v];
-        }
-        function_with_normal.set_normal_vector(normal);
-        value[d][v] = function_with_normal.value(q_point, d);
-      }
+      (void)function_with_normal;
+      (void)q_points;
+      (void)normals;
+
+      AssertThrow(false, dealii::ExcMessage("not implemented."));
+
+      return dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>();
     }
 
-    return value;
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
-    value(FunctionWithNormal<dim> &                                       function_with_normal,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const &     q_points,
-          dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const & normals,
-          double const &                                                  time)
-  {
-    function_with_normal.set_time(time);
-    return value(function_with_normal, q_points, normals);
-  }
-};
-
-template<int dim, typename Number>
-struct FunctionEvaluator<2, dim, Number>
-{
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> const &                               function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points)
-  {
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> value;
-
-    for(unsigned int d1 = 0; d1 < dim; ++d1)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<rank, dim, dealii::VectorizedArray<Number>>
+      value(
+        FunctionWithNormal<dim> &function_with_normal,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const     &q_points,
+        dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const &normals,
+        double const                                                  &time)
     {
-      for(unsigned int d2 = 0; d2 < dim; ++d2)
-      {
-        for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
+      function_with_normal.set_time(time);
+      return value(function_with_normal, q_points, normals);
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>
+      value_symmetric(
+        dealii::Function<dim> const                               &function,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points)
+    {
+      (void)function;
+      (void)q_points;
+
+      AssertThrow(false, dealii::ExcMessage("should not arrive here."));
+
+      return dealii::
+        SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>();
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>
+      value_symmetric(
+        dealii::Function<dim>                                     &function,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points,
+        double const                                              &time)
+    {
+      function.set_time(time);
+      return value_symmetric(function, q_points);
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>
+      value_symmetric(ContainerInterfaceData<rank, dim, double> const &function,
+                      unsigned int const                               face,
+                      unsigned int const                               q,
+                      unsigned int const quad_index)
+    {
+      (void)function;
+      (void)face;
+      (void)q;
+      (void)quad_index;
+
+      AssertThrow(false, dealii::ExcMessage("should not arrive here."));
+
+      return dealii::
+        SymmetricTensor<rank, dim, dealii::VectorizedArray<Number>>();
+    }
+  };
+
+  template <int dim, typename Number>
+  struct FunctionEvaluator<0, dim, Number>
+  {
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<0, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim> const                               &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points)
+    {
+      dealii::VectorizedArray<Number> value =
+        dealii::make_vectorized_array<Number>(0.0);
+
+      for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
         {
           dealii::Point<dim> q_point;
+          for (unsigned int d = 0; d < dim; ++d)
+            q_point[d] = q_points[d][v];
 
-          for(unsigned int i = 0; i < dim; ++i)
-            q_point[i] = q_points[i][v];
-
-          auto const unrolled_index =
-            dealii::Tensor<2, dim>::component_to_unrolled_index(dealii::TableIndices<2>(d1, d2));
-
-          value[d1][d2][v] = function.value(q_point, unrolled_index);
+          value[v] = function.value(q_point);
         }
-      }
+
+      return value;
     }
 
-    return value;
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
-    value(dealii::Function<dim> &                                     function,
-          dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points,
-          double const &                                              time)
-  {
-    function.set_time(time);
-    return value(function, q_points);
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
-    value(ContainerInterfaceData<2, dim, double> const & function,
-          unsigned int const                             face,
-          unsigned int const                             q,
-          unsigned int const                             quad_index)
-  {
-    dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> value;
-
-    std::array<dealii::Tensor<2, dim, Number>, dealii::VectorizedArray<Number>::size()>
-      tensor_array;
-
-    for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-      tensor_array[v] = function.get_data(quad_index, face, q, v);
-
-    for(unsigned int d1 = 0; d1 < dim; ++d1)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<0, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim>                                     &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points,
+            double const                                              &time)
     {
-      for(unsigned int d2 = 0; d2 < dim; ++d2)
-      {
-        for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-          value[d1][d2][v] = tensor_array[v][d1][d2];
-      }
+      function.set_time(time);
+      return value(function, q_points);
     }
 
-    return value;
-  }
 
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>
-    value_symmetric(dealii::Function<dim> const &                               function,
-                    dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points)
-  {
-    dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> value;
-
-    for(unsigned int d1 = 0; d1 < dim; ++d1)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<0, dim, dealii::VectorizedArray<Number>>
+      value(ContainerInterfaceData<0, dim, double> const &function,
+            unsigned int const                            face,
+            unsigned int const                            q,
+            unsigned int const                            quad_index)
     {
-      for(unsigned int d2 = d1; d2 < dim; ++d2)
-      {
-        for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
+      dealii::VectorizedArray<Number> value =
+        dealii::make_vectorized_array<Number>(0.0);
+
+      for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
+        value[v] = function.get_data(quad_index, face, q, v);
+
+      return value;
+    }
+  };
+
+  template <int dim, typename Number>
+  struct FunctionEvaluator<1, dim, Number>
+  {
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim> const                               &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points)
+    {
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> value;
+
+      for (unsigned int d = 0; d < dim; ++d)
         {
-          dealii::Point<dim> q_point;
+          for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size();
+               ++v)
+            {
+              dealii::Point<dim> q_point;
+              for (unsigned int i = 0; i < dim; ++i)
+                q_point[i] = q_points[i][v];
 
-          for(unsigned int i = 0; i < dim; ++i)
-            q_point[i] = q_points[i][v];
-
-          auto const unrolled_index = dealii::SymmetricTensor<2, dim>::component_to_unrolled_index(
-            dealii::TableIndices<2>(d1, d2));
-
-          value[d1][d2][v] = function.value(q_point, unrolled_index);
+              value[d][v] = function.value(q_point, d);
+            }
         }
-      }
+
+      return value;
     }
 
-    return value;
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>
-    value_symmetric(dealii::Function<dim> &                                     function,
-                    dealii::Point<dim, dealii::VectorizedArray<Number>> const & q_points,
-                    double const &                                              time)
-  {
-    function.set_time(time);
-    return value(q_points, time);
-  }
-
-  static inline DEAL_II_ALWAYS_INLINE //
-    dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>
-    value_symmetric(ContainerInterfaceData<2, dim, double> const & function,
-                    unsigned int const                             face,
-                    unsigned int const                             q,
-                    unsigned int const                             quad_index)
-  {
-    dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> value;
-
-    std::array<dealii::SymmetricTensor<2, dim, Number>, dealii::VectorizedArray<Number>::size()>
-      tensor_array;
-
-    for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-      tensor_array[v] = function.get_data(quad_index, face, q, v);
-
-    for(unsigned int d1 = 0; d1 < dim; ++d1)
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim>                                     &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points,
+            double const                                              &time)
     {
-      for(unsigned int d2 = d1; d2 < dim; ++d2)
-      {
-        for(unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
-          value[d1][d2][v] = tensor_array[v][d1][d2];
-      }
+      function.set_time(time);
+      return value(function, q_points);
     }
 
-    return value;
-  }
-};
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
+      value(ContainerInterfaceData<1, dim, double> const &function,
+            unsigned int const                            face,
+            unsigned int const                            q,
+            unsigned int const                            quad_index)
+    {
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> value;
+
+      std::array<dealii::Tensor<1, dim, Number>,
+                 dealii::VectorizedArray<Number>::size()>
+        tensor_array;
+
+      for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
+        tensor_array[v] = function.get_data(quad_index, face, q, v);
+
+      for (unsigned int d = 0; d < dim; ++d)
+        {
+          for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size();
+               ++v)
+            value[d][v] = tensor_array[v][d];
+        }
+
+      return value;
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
+      value(
+        FunctionWithNormal<dim> &function_with_normal,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const     &q_points,
+        dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const &normals)
+    {
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> value;
+
+      for (unsigned int d = 0; d < dim; ++d)
+        {
+          for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size();
+               ++v)
+            {
+              dealii::Point<dim>     q_point;
+              dealii::Tensor<1, dim> normal;
+              for (unsigned int i = 0; i < dim; ++i)
+                {
+                  q_point[i] = q_points[i][v];
+                  normal[i]  = normals[i][v];
+                }
+              function_with_normal.set_normal_vector(normal);
+              value[d][v] = function_with_normal.value(q_point, d);
+            }
+        }
+
+      return value;
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
+      value(
+        FunctionWithNormal<dim> &function_with_normal,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const     &q_points,
+        dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> const &normals,
+        double const                                                  &time)
+    {
+      function_with_normal.set_time(time);
+      return value(function_with_normal, q_points, normals);
+    }
+  };
+
+  template <int dim, typename Number>
+  struct FunctionEvaluator<2, dim, Number>
+  {
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim> const                               &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points)
+    {
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> value;
+
+      for (unsigned int d1 = 0; d1 < dim; ++d1)
+        {
+          for (unsigned int d2 = 0; d2 < dim; ++d2)
+            {
+              for (unsigned int v = 0;
+                   v < dealii::VectorizedArray<Number>::size();
+                   ++v)
+                {
+                  dealii::Point<dim> q_point;
+
+                  for (unsigned int i = 0; i < dim; ++i)
+                    q_point[i] = q_points[i][v];
+
+                  auto const unrolled_index =
+                    dealii::Tensor<2, dim>::component_to_unrolled_index(
+                      dealii::TableIndices<2>(d1, d2));
+
+                  value[d1][d2][v] = function.value(q_point, unrolled_index);
+                }
+            }
+        }
+
+      return value;
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
+      value(dealii::Function<dim>                                     &function,
+            dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points,
+            double const                                              &time)
+    {
+      function.set_time(time);
+      return value(function, q_points);
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>
+      value(ContainerInterfaceData<2, dim, double> const &function,
+            unsigned int const                            face,
+            unsigned int const                            q,
+            unsigned int const                            quad_index)
+    {
+      dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> value;
+
+      std::array<dealii::Tensor<2, dim, Number>,
+                 dealii::VectorizedArray<Number>::size()>
+        tensor_array;
+
+      for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
+        tensor_array[v] = function.get_data(quad_index, face, q, v);
+
+      for (unsigned int d1 = 0; d1 < dim; ++d1)
+        {
+          for (unsigned int d2 = 0; d2 < dim; ++d2)
+            {
+              for (unsigned int v = 0;
+                   v < dealii::VectorizedArray<Number>::size();
+                   ++v)
+                value[d1][d2][v] = tensor_array[v][d1][d2];
+            }
+        }
+
+      return value;
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>
+      value_symmetric(
+        dealii::Function<dim> const                               &function,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points)
+    {
+      dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> value;
+
+      for (unsigned int d1 = 0; d1 < dim; ++d1)
+        {
+          for (unsigned int d2 = d1; d2 < dim; ++d2)
+            {
+              for (unsigned int v = 0;
+                   v < dealii::VectorizedArray<Number>::size();
+                   ++v)
+                {
+                  dealii::Point<dim> q_point;
+
+                  for (unsigned int i = 0; i < dim; ++i)
+                    q_point[i] = q_points[i][v];
+
+                  auto const unrolled_index = dealii::SymmetricTensor<2, dim>::
+                    component_to_unrolled_index(
+                      dealii::TableIndices<2>(d1, d2));
+
+                  value[d1][d2][v] = function.value(q_point, unrolled_index);
+                }
+            }
+        }
+
+      return value;
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>
+      value_symmetric(
+        dealii::Function<dim>                                     &function,
+        dealii::Point<dim, dealii::VectorizedArray<Number>> const &q_points,
+        double const                                              &time)
+    {
+      function.set_time(time);
+      return value(q_points, time);
+    }
+
+    static inline DEAL_II_ALWAYS_INLINE //
+      dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>
+      value_symmetric(ContainerInterfaceData<2, dim, double> const &function,
+                      unsigned int const                            face,
+                      unsigned int const                            q,
+                      unsigned int const                            quad_index)
+    {
+      dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> value;
+
+      std::array<dealii::SymmetricTensor<2, dim, Number>,
+                 dealii::VectorizedArray<Number>::size()>
+        tensor_array;
+
+      for (unsigned int v = 0; v < dealii::VectorizedArray<Number>::size(); ++v)
+        tensor_array[v] = function.get_data(quad_index, face, q, v);
+
+      for (unsigned int d1 = 0; d1 < dim; ++d1)
+        {
+          for (unsigned int d2 = d1; d2 < dim; ++d2)
+            {
+              for (unsigned int v = 0;
+                   v < dealii::VectorizedArray<Number>::size();
+                   ++v)
+                value[d1][d2][v] = tensor_array[v][d1][d2];
+            }
+        }
+
+      return value;
+    }
+  };
 
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_FUNCTIONS_AND_BOUNDARY_CONDITIONS_EVALUATE_FUNCTIONS_H_ */
+#endif /* INCLUDE_EXADG_FUNCTIONS_AND_BOUNDARY_CONDITIONS_EVALUATE_FUNCTIONS_H_ \
+        */

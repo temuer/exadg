@@ -35,60 +35,60 @@
 
 namespace ExaDG
 {
-namespace AeroAcoustic
-{
-template<int dim, typename Number>
-class Driver
-{
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+  namespace AeroAcoustic
+  {
+    template <int dim, typename Number>
+    class Driver
+    {
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-public:
-  Driver(MPI_Comm const &                              comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test);
+    public:
+      Driver(MPI_Comm const                               &comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve();
+      void
+      solve();
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-private:
-  void
-  setup_volume_coupling();
+    private:
+      void
+      setup_volume_coupling();
 
-  void
-  set_start_time() const;
+      void
+      set_start_time() const;
 
-  void
-  couple_fluid_to_acoustic();
+      void
+      couple_fluid_to_acoustic();
 
-  MPI_Comm const mpi_comm;
+      MPI_Comm const mpi_comm;
 
-  dealii::ConditionalOStream pcout;
+      dealii::ConditionalOStream pcout;
 
-  bool const is_test;
+      bool const is_test;
 
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  // single field solvers
-  std::shared_ptr<SolverAcoustic<dim, Number>> acoustic;
-  std::shared_ptr<SolverFluid<dim, Number>>    fluid;
+      // single field solvers
+      std::shared_ptr<SolverAcoustic<dim, Number>> acoustic;
+      std::shared_ptr<SolverFluid<dim, Number>>    fluid;
 
-  // class that manages volume coupling
-  VolumeCoupling<dim, Number> volume_coupling;
+      // class that manages volume coupling
+      VolumeCoupling<dim, Number> volume_coupling;
 
-  // computation time
-  mutable TimerTree timer_tree;
+      // computation time
+      mutable TimerTree timer_tree;
 
-  // wall time fluid and acoustic solvers ran together
-  double time_solvers_side_by_side;
-};
+      // wall time fluid and acoustic solvers ran together
+      double time_solvers_side_by_side;
+    };
 
-} // namespace AeroAcoustic
+  } // namespace AeroAcoustic
 } // namespace ExaDG
 
 

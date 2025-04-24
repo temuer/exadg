@@ -23,16 +23,16 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-template<int dim>
-struct FieldFunctions
-{
-  std::shared_ptr<dealii::Function<dim>> initial_solution;
-  std::shared_ptr<dealii::Function<dim>> right_hand_side;
-};
+  namespace Poisson
+  {
+    template <int dim>
+    struct FieldFunctions
+    {
+      std::shared_ptr<dealii::Function<dim>> initial_solution;
+      std::shared_ptr<dealii::Function<dim>> right_hand_side;
+    };
 
-} // namespace Poisson
+  } // namespace Poisson
 } // namespace ExaDG
 
 #endif /* INCLUDE_LAPLACE_FIELD_FUNCTIONS_H_ */

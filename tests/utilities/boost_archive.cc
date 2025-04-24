@@ -28,10 +28,15 @@
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/utilities.h>
+
 #include <deal.II/distributed/tria.h>
+
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/fe/fe_q.h>
+
 #include <deal.II/grid/grid_generator.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // boost
@@ -43,7 +48,7 @@
 
 using namespace dealii;
 
-template<int dim>
+template <int dim>
 class ArchiveVector
 {
 public:
@@ -67,14 +72,13 @@ private:
   LinearAlgebra::distributed::Vector<double> vector_in;
 };
 
-template<int dim>
+template <int dim>
 ArchiveVector<dim>::ArchiveVector()
-  : mpi_communicator(MPI_COMM_WORLD),
-    pcout(std::cout, (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
-{
-}
+  : mpi_communicator(MPI_COMM_WORLD)
+  , pcout(std::cout, (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
+{}
 
-template<int dim>
+template <int dim>
 void
 ArchiveVector<dim>::setup()
 {
@@ -90,25 +94,28 @@ ArchiveVector<dim>::setup()
   locally_owned_dofs = dof_handler.locally_owned_dofs();
 
   // Fill vector with global indices
-  pcout << "Filling vector with ordered global indices [0, " << locally_owned_dofs.size() << ").\n";
+  pcout << "Filling vector with ordered global indices [0, "
+        << locally_owned_dofs.size() << ").\n";
 
   vector_out.reinit(locally_owned_dofs, mpi_communicator);
 
   double const this_mpi_process =
     static_cast<double>(Utilities::MPI::this_mpi_process(mpi_communicator));
 
-  for(unsigned int i = 0; i < locally_owned_dofs.n_elements(); ++i)
-  {
-    vector_out.local_element(i) = static_cast<double>(locally_owned_dofs.nth_index_in_set(i));
-  }
+  for (unsigned int i = 0; i < locally_owned_dofs.n_elements(); ++i)
+    {
+      vector_out.local_element(i) =
+        static_cast<double>(locally_owned_dofs.nth_index_in_set(i));
+    }
 }
 
-template<int dim>
+template <int dim>
 void
 ArchiveVector<dim>::write_and_read()
 {
   std::string filename =
-    "vector_proc_" + std::to_string(Utilities::MPI::this_mpi_process(mpi_communicator));
+    "vector_proc_" +
+    std::to_string(Utilities::MPI::this_mpi_process(mpi_communicator));
 
   pcout << "Storing the vector in the archive.\n";
   {
@@ -133,7 +140,7 @@ ArchiveVector<dim>::write_and_read()
   }
 }
 
-template<int dim>
+template <int dim>
 void
 ArchiveVector<dim>::check()
 {
@@ -150,7 +157,7 @@ ArchiveVector<dim>::check()
   pcout << "error in l2_norm     = " << norm << "\n";
 }
 
-template<int dim>
+template <int dim>
 void
 ArchiveVector<dim>::run()
 {
@@ -160,37 +167,41 @@ ArchiveVector<dim>::run()
 }
 
 int
-main(int argc, char * argv[])
+main(int argc, char *argv[])
 {
   try
-  {
-    Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
+    {
+      Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-    ArchiveVector<3> archive_vector;
-    archive_vector.run();
-  }
-  catch(std::exception & exc)
-  {
-    std::cerr << std::endl
-              << std::endl
-              << "----------------------------------------------------" << std::endl;
-    std::cerr << "Exception on processing: " << std::endl
-              << exc.what() << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------" << std::endl;
+      ArchiveVector<3> archive_vector;
+      archive_vector.run();
+    }
+  catch (std::exception &exc)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Exception on processing: " << std::endl
+                << exc.what() << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
 
-    return 1;
-  }
-  catch(...)
-  {
-    std::cerr << std::endl
-              << std::endl
-              << "----------------------------------------------------" << std::endl;
-    std::cerr << "Unknown exception!" << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------" << std::endl;
-    return 1;
-  }
+      return 1;
+    }
+  catch (...)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Unknown exception!" << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      return 1;
+    }
 
   return 0;
 }

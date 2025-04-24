@@ -23,31 +23,32 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim, typename Number>
-ViscosityModelBase<dim, Number>::ViscosityModelBase()
-  : dealii::Subscriptor(), dof_index_velocity(0), matrix_free(nullptr)
-{
-}
+  namespace IncNS
+  {
+    template <int dim, typename Number>
+    ViscosityModelBase<dim, Number>::ViscosityModelBase()
+      : dealii::Subscriptor()
+      , dof_index_velocity(0)
+      , matrix_free(nullptr)
+    {}
 
-template<int dim, typename Number>
-void
-ViscosityModelBase<dim, Number>::initialize(
-  dealii::MatrixFree<dim, Number> const &                matrix_free_in,
-  std::shared_ptr<Operators::ViscousKernel<dim, Number>> viscous_kernel_in,
-  unsigned int const                                     dof_index_velocity_in)
-{
-  matrix_free    = &matrix_free_in;
-  viscous_kernel = viscous_kernel_in;
+    template <int dim, typename Number>
+    void
+    ViscosityModelBase<dim, Number>::initialize(
+      dealii::MatrixFree<dim, Number> const                 &matrix_free_in,
+      std::shared_ptr<Operators::ViscousKernel<dim, Number>> viscous_kernel_in,
+      unsigned int const dof_index_velocity_in)
+    {
+      matrix_free    = &matrix_free_in;
+      viscous_kernel = viscous_kernel_in;
 
-  dof_index_velocity = dof_index_velocity_in;
-}
+      dof_index_velocity = dof_index_velocity_in;
+    }
 
-template class ViscosityModelBase<2, float>;
-template class ViscosityModelBase<2, double>;
-template class ViscosityModelBase<3, float>;
-template class ViscosityModelBase<3, double>;
+    template class ViscosityModelBase<2, float>;
+    template class ViscosityModelBase<2, double>;
+    template class ViscosityModelBase<3, float>;
+    template class ViscosityModelBase<3, double>;
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG

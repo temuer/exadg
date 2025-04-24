@@ -45,182 +45,203 @@
 
 namespace ExaDG
 {
-namespace FSI
-{
-template<int dim, typename Number>
-class SolverFluid
-{
-public:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
-
-  SolverFluid()
+  namespace FSI
   {
-    timer_tree = std::make_shared<TimerTree>();
-  }
+    template <int dim, typename Number>
+    class SolverFluid
+    {
+    public:
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  void
-  setup(std::shared_ptr<FluidFSI::ApplicationBase<dim, Number>> application,
-        MPI_Comm const                                          mpi_comm,
-        bool const                                              is_test);
+      SolverFluid()
+      {
+        timer_tree = std::make_shared<TimerTree>();
+      }
 
-  void
-  solve_ale() const;
+      void
+      setup(std::shared_ptr<FluidFSI::ApplicationBase<dim, Number>> application,
+            MPI_Comm const                                          mpi_comm,
+            bool const                                              is_test);
 
-  std::shared_ptr<TimerTree>
-  get_timings_ale() const;
+      void
+      solve_ale() const;
 
-  // grid and mapping
-  std::shared_ptr<Grid<dim>>            grid;
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<TimerTree>
+      get_timings_ale() const;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      // grid and mapping
+      std::shared_ptr<Grid<dim>>            grid;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  // spatial discretization
-  std::shared_ptr<IncNS::SpatialOperatorBase<dim, Number>> pde_operator;
+      std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-  // temporal discretization
-  std::shared_ptr<IncNS::TimeIntBDF<dim, Number>> time_integrator;
+      // spatial discretization
+      std::shared_ptr<IncNS::SpatialOperatorBase<dim, Number>> pde_operator;
 
-  // Postprocessor
-  std::shared_ptr<IncNS::PostProcessorBase<dim, Number>> postprocessor;
+      // temporal discretization
+      std::shared_ptr<IncNS::TimeIntBDF<dim, Number>> time_integrator;
 
-  // ALE mapping
-  std::shared_ptr<DeformedMappingBase<dim, Number>> ale_mapping;
+      // Postprocessor
+      std::shared_ptr<IncNS::PostProcessorBase<dim, Number>> postprocessor;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
+      // ALE mapping
+      std::shared_ptr<DeformedMappingBase<dim, Number>> ale_mapping;
 
-  // ALE helper functions required by fluid time integrator
-  std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
+      std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
 
-  /*
-   * Computation time (wall clock time).
-   */
-  std::shared_ptr<TimerTree> timer_tree;
-};
+      // ALE helper functions required by fluid time integrator
+      std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
 
-template<int dim, typename Number>
-void
-SolverFluid<dim, Number>::setup(std::shared_ptr<FluidFSI::ApplicationBase<dim, Number>> application,
-                                MPI_Comm const                                          mpi_comm,
-                                bool const                                              is_test)
-{
-  // setup application
-  application->setup(grid, mapping, multigrid_mappings);
+      /*
+       * Computation time (wall clock time).
+       */
+      std::shared_ptr<TimerTree> timer_tree;
+    };
 
-  // ALE: create grid motion object
-  if(application->get_parameters().mesh_movement_type == IncNS::MeshMovementType::Poisson)
-  {
-    ale_mapping = std::make_shared<Poisson::DeformedMapping<dim, Number>>(
-      grid,
-      mapping,
-      multigrid_mappings,
-      application->get_boundary_descriptor_ale_poisson(),
-      application->get_field_functions_ale_poisson(),
-      application->get_parameters_ale_poisson(),
-      "Poisson",
-      mpi_comm);
-  }
-  else if(application->get_parameters().mesh_movement_type == IncNS::MeshMovementType::Elasticity)
-  {
-    ale_mapping = std::make_shared<Structure::DeformedMapping<dim, Number>>(
-      grid,
-      mapping,
-      multigrid_mappings,
-      application->get_boundary_descriptor_ale_elasticity(),
-      application->get_field_functions_ale_elasticity(),
-      application->get_material_descriptor_ale_elasticity(),
-      application->get_parameters_ale_elasticity(),
-      "ale_elasticity",
-      mpi_comm);
-  }
-  else
-  {
-    AssertThrow(false, dealii::ExcMessage("not implemented."));
-  }
+    template <int dim, typename Number>
+    void
+    SolverFluid<dim, Number>::setup(
+      std::shared_ptr<FluidFSI::ApplicationBase<dim, Number>> application,
+      MPI_Comm const                                          mpi_comm,
+      bool const                                              is_test)
+    {
+      // setup application
+      application->setup(grid, mapping, multigrid_mappings);
 
-  ale_multigrid_mappings = std::make_shared<MultigridMappings<dim, Number>>(
-    ale_mapping, application->get_parameters().mapping_degree_coarse_grids);
+      // ALE: create grid motion object
+      if (application->get_parameters().mesh_movement_type ==
+          IncNS::MeshMovementType::Poisson)
+        {
+          ale_mapping = std::make_shared<Poisson::DeformedMapping<dim, Number>>(
+            grid,
+            mapping,
+            multigrid_mappings,
+            application->get_boundary_descriptor_ale_poisson(),
+            application->get_field_functions_ale_poisson(),
+            application->get_parameters_ale_poisson(),
+            "Poisson",
+            mpi_comm);
+        }
+      else if (application->get_parameters().mesh_movement_type ==
+               IncNS::MeshMovementType::Elasticity)
+        {
+          ale_mapping =
+            std::make_shared<Structure::DeformedMapping<dim, Number>>(
+              grid,
+              mapping,
+              multigrid_mappings,
+              application->get_boundary_descriptor_ale_elasticity(),
+              application->get_field_functions_ale_elasticity(),
+              application->get_material_descriptor_ale_elasticity(),
+              application->get_parameters_ale_elasticity(),
+              "ale_elasticity",
+              mpi_comm);
+        }
+      else
+        {
+          AssertThrow(false, dealii::ExcMessage("not implemented."));
+        }
 
-  // initialize pde_operator
-  pde_operator = IncNS::create_operator<dim, Number>(grid,
-                                                     ale_mapping->get_mapping(),
-                                                     ale_multigrid_mappings,
-                                                     application->get_boundary_descriptor(),
-                                                     application->get_field_functions(),
-                                                     application->get_parameters(),
-                                                     "fluid",
-                                                     mpi_comm);
+      ale_multigrid_mappings = std::make_shared<MultigridMappings<dim, Number>>(
+        ale_mapping, application->get_parameters().mapping_degree_coarse_grids);
 
-  // setup Navier-Stokes operator
-  pde_operator->setup();
+      // initialize pde_operator
+      pde_operator = IncNS::create_operator<dim, Number>(
+        grid,
+        ale_mapping->get_mapping(),
+        ale_multigrid_mappings,
+        application->get_boundary_descriptor(),
+        application->get_field_functions(),
+        application->get_parameters(),
+        "fluid",
+        mpi_comm);
 
-  // setup postprocessor
-  postprocessor = application->create_postprocessor();
-  postprocessor->setup(*pde_operator);
+      // setup Navier-Stokes operator
+      pde_operator->setup();
 
-  // setup time integrator before calling setup_solvers (this is necessary since the setup
-  // of the solvers depends on quantities such as the time_step_size or gamma0!)
-  AssertThrow(application->get_parameters().solver_type == IncNS::SolverType::Unsteady,
-              dealii::ExcMessage("Invalid parameter in context of fluid-structure interaction."));
+      // setup postprocessor
+      postprocessor = application->create_postprocessor();
+      postprocessor->setup(*pde_operator);
 
-  // initialize time_integrator
-  helpers_ale = std::make_shared<HelpersALE<dim, Number>>();
+      // setup time integrator before calling setup_solvers (this is necessary
+      // since the setup of the solvers depends on quantities such as the
+      // time_step_size or gamma0!)
+      AssertThrow(
+        application->get_parameters().solver_type ==
+          IncNS::SolverType::Unsteady,
+        dealii::ExcMessage(
+          "Invalid parameter in context of fluid-structure interaction."));
 
-  helpers_ale->move_grid = [&](double const & time) {
-    ale_mapping->update(time,
-                        time_integrator->print_solver_info(),
-                        this->time_integrator->get_number_of_time_steps());
-  };
+      // initialize time_integrator
+      helpers_ale = std::make_shared<HelpersALE<dim, Number>>();
 
-  helpers_ale->update_pde_operator_after_grid_motion = [&]() {
-    pde_operator->update_after_grid_motion(true /* update_matrix_free */);
-  };
+      helpers_ale->move_grid = [&](double const &time) {
+        ale_mapping->update(time,
+                            time_integrator->print_solver_info(),
+                            this->time_integrator->get_number_of_time_steps());
+      };
 
-  helpers_ale->fill_grid_coordinates_vector = [&](VectorType &                    grid_coordinates,
-                                                  dealii::DoFHandler<dim> const & dof_handler) {
-    ale_mapping->fill_grid_coordinates_vector(grid_coordinates, dof_handler);
-  };
+      helpers_ale->update_pde_operator_after_grid_motion = [&]() {
+        pde_operator->update_after_grid_motion(true /* update_matrix_free */);
+      };
 
-  time_integrator = IncNS::create_time_integrator<dim, Number>(
-    pde_operator, helpers_ale, postprocessor, application->get_parameters(), mpi_comm, is_test);
+      helpers_ale->fill_grid_coordinates_vector =
+        [&](VectorType                    &grid_coordinates,
+            dealii::DoFHandler<dim> const &dof_handler) {
+          ale_mapping->fill_grid_coordinates_vector(grid_coordinates,
+                                                    dof_handler);
+        };
 
-  time_integrator->setup(application->get_parameters().restarted_simulation);
-}
+      time_integrator = IncNS::create_time_integrator<dim, Number>(
+        pde_operator,
+        helpers_ale,
+        postprocessor,
+        application->get_parameters(),
+        mpi_comm,
+        is_test);
 
-template<int dim, typename Number>
-void
-SolverFluid<dim, Number>::solve_ale() const
-{
-  dealii::Timer timer;
-  timer.restart();
+      time_integrator->setup(
+        application->get_parameters().restarted_simulation);
+    }
 
-  dealii::Timer sub_timer;
+    template <int dim, typename Number>
+    void
+    SolverFluid<dim, Number>::solve_ale() const
+    {
+      dealii::Timer timer;
+      timer.restart();
 
-  sub_timer.restart();
-  helpers_ale->move_grid(time_integrator->get_next_time());
-  timer_tree->insert({"ALE", "Solve and reinit mapping"}, sub_timer.wall_time());
+      dealii::Timer sub_timer;
 
-  sub_timer.restart();
-  helpers_ale->update_pde_operator_after_grid_motion();
-  timer_tree->insert({"ALE", "Update matrix-free / PDE operator"}, sub_timer.wall_time());
+      sub_timer.restart();
+      helpers_ale->move_grid(time_integrator->get_next_time());
+      timer_tree->insert({"ALE", "Solve and reinit mapping"},
+                         sub_timer.wall_time());
 
-  sub_timer.restart();
-  time_integrator->ale_update();
-  timer_tree->insert({"ALE", "Update time integrator"}, sub_timer.wall_time());
+      sub_timer.restart();
+      helpers_ale->update_pde_operator_after_grid_motion();
+      timer_tree->insert({"ALE", "Update matrix-free / PDE operator"},
+                         sub_timer.wall_time());
 
-  timer_tree->insert({"ALE"}, timer.wall_time());
-}
+      sub_timer.restart();
+      time_integrator->ale_update();
+      timer_tree->insert({"ALE", "Update time integrator"},
+                         sub_timer.wall_time());
 
-template<int dim, typename Number>
-std::shared_ptr<TimerTree>
-SolverFluid<dim, Number>::get_timings_ale() const
-{
-  return timer_tree;
-}
+      timer_tree->insert({"ALE"}, timer.wall_time());
+    }
 
-} // namespace FSI
+    template <int dim, typename Number>
+    std::shared_ptr<TimerTree>
+    SolverFluid<dim, Number>::get_timings_ale() const
+    {
+      return timer_tree;
+    }
+
+  } // namespace FSI
 } // namespace ExaDG
 
 
 
-#endif /* INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_SINGLE_FIELD_SOLVERS_FLUID_H_ */
+#endif /* INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_SINGLE_FIELD_SOLVERS_FLUID_H_ \
+        */

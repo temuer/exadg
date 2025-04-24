@@ -26,47 +26,48 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim, typename Number>
-class LinearOperator : public ElasticityOperatorBase<dim, Number>
-{
-private:
-  typedef ElasticityOperatorBase<dim, Number> Base;
+  namespace Structure
+  {
+    template <int dim, typename Number>
+    class LinearOperator : public ElasticityOperatorBase<dim, Number>
+    {
+    private:
+      typedef ElasticityOperatorBase<dim, Number> Base;
 
-  typedef typename Base::VectorType     VectorType;
-  typedef typename Base::IntegratorCell IntegratorCell;
-  typedef typename Base::IntegratorFace IntegratorFace;
+      typedef typename Base::VectorType     VectorType;
+      typedef typename Base::IntegratorCell IntegratorCell;
+      typedef typename Base::IntegratorFace IntegratorFace;
 
-  typedef dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> tensor;
+      typedef dealii::Tensor<2, dim, dealii::VectorizedArray<Number>> tensor;
 
-  /*
-   * Calculates the integral
-   *
-   *  (v_h, factor * d_h)_Omega + (grad(v_h), sigma_h)_Omega
-   *
-   * with
-   *
-   *  sigma_h = C : eps_h, eps_h = grad(d_h)
-   *
-   * where
-   *
-   *  d_h denotes the displacement vector.
-   */
-  void
-  do_cell_integral(IntegratorCell & integrator) const override;
+      /*
+       * Calculates the integral
+       *
+       *  (v_h, factor * d_h)_Omega + (grad(v_h), sigma_h)_Omega
+       *
+       * with
+       *
+       *  sigma_h = C : eps_h, eps_h = grad(d_h)
+       *
+       * where
+       *
+       *  d_h denotes the displacement vector.
+       */
+      void
+      do_cell_integral(IntegratorCell &integrator) const override;
 
-  /*
-   * Computes Neumann BC integral
-   *
-   *  - (v_h, t)_{Gamma_N}
-   */
-  void
-  do_boundary_integral_continuous(IntegratorFace &                   integrator_m,
-                                  dealii::types::boundary_id const & boundary_id) const override;
-};
+      /*
+       * Computes Neumann BC integral
+       *
+       *  - (v_h, t)_{Gamma_N}
+       */
+      void
+      do_boundary_integral_continuous(
+        IntegratorFace                   &integrator_m,
+        dealii::types::boundary_id const &boundary_id) const override;
+    };
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

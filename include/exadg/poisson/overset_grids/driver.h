@@ -30,80 +30,88 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-namespace OversetGrids
-{
-template<int dim, int n_components, typename Number>
-class Solver
-{
-public:
-  void
-  setup(std::shared_ptr<Domain<dim, n_components, Number> const> const & domain,
-        std::shared_ptr<Grid<dim> const> const &                         grid,
-        std::shared_ptr<dealii::Mapping<dim> const> const &              mapping,
-        std::shared_ptr<MultigridMappings<dim, Number>> const            multigrid_mappings,
-        MPI_Comm const                                                   mpi_comm)
+  namespace Poisson
   {
-    pde_operator =
-      std::make_shared<Operator<dim, n_components, Number>>(grid,
-                                                            mapping,
-                                                            multigrid_mappings,
-                                                            domain->get_boundary_descriptor(),
-                                                            domain->get_field_functions(),
-                                                            domain->get_parameters(),
-                                                            "Poisson",
-                                                            mpi_comm);
+    namespace OversetGrids
+    {
+      template <int dim, int n_components, typename Number>
+      class Solver
+      {
+      public:
+        void
+        setup(std::shared_ptr<Domain<dim, n_components, Number> const> const
+                                                                &domain,
+              std::shared_ptr<Grid<dim> const> const            &grid,
+              std::shared_ptr<dealii::Mapping<dim> const> const &mapping,
+              std::shared_ptr<MultigridMappings<dim, Number>> const
+                             multigrid_mappings,
+              MPI_Comm const mpi_comm)
+        {
+          pde_operator = std::make_shared<Operator<dim, n_components, Number>>(
+            grid,
+            mapping,
+            multigrid_mappings,
+            domain->get_boundary_descriptor(),
+            domain->get_field_functions(),
+            domain->get_parameters(),
+            "Poisson",
+            mpi_comm);
 
-    pde_operator->setup();
+          pde_operator->setup();
 
-    postprocessor = domain->create_postprocessor();
-    postprocessor->setup(*pde_operator);
-  }
+          postprocessor = domain->create_postprocessor();
+          postprocessor->setup(*pde_operator);
+        }
 
-  std::shared_ptr<Operator<dim, n_components, Number>>          pde_operator;
-  std::shared_ptr<PostProcessorBase<dim, n_components, Number>> postprocessor;
-};
+        std::shared_ptr<Operator<dim, n_components, Number>> pde_operator;
+        std::shared_ptr<PostProcessorBase<dim, n_components, Number>>
+          postprocessor;
+      };
 
-template<int dim, int n_components, typename Number>
-class Driver
-{
-public:
-  Driver(MPI_Comm const &                                            mpi_comm,
-         std::shared_ptr<ApplicationBase<dim, n_components, Number>> application);
+      template <int dim, int n_components, typename Number>
+      class Driver
+      {
+      public:
+        Driver(MPI_Comm const &mpi_comm,
+               std::shared_ptr<ApplicationBase<dim, n_components, Number>>
+                 application);
 
-  void
-  setup();
+        void
+        setup();
 
-  void
-  solve();
+        void
+        solve();
 
-private:
-  static unsigned int const rank =
-    (n_components == 1) ? 0 : ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
+      private:
+        static unsigned int const rank =
+          (n_components == 1) ?
+            0 :
+            ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
 
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+        // MPI communicator
+        MPI_Comm const mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+        // output to std::cout
+        dealii::ConditionalOStream pcout;
 
-  std::shared_ptr<ApplicationBase<dim, n_components, Number>> application;
+        std::shared_ptr<ApplicationBase<dim, n_components, Number>> application;
 
-  std::shared_ptr<Grid<dim>> grid1, grid2;
+        std::shared_ptr<Grid<dim>> grid1, grid2;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping1, mapping2;
+        std::shared_ptr<dealii::Mapping<dim>> mapping1, mapping2;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings1, multigrid_mappings2;
+        std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings1,
+          multigrid_mappings2;
 
-  // Poisson solvers
-  std::shared_ptr<Solver<dim, n_components, Number>> poisson1, poisson2;
+        // Poisson solvers
+        std::shared_ptr<Solver<dim, n_components, Number>> poisson1, poisson2;
 
-  // interface coupling
-  std::shared_ptr<InterfaceCoupling<rank, dim, Number>> first_to_second, second_to_first;
-};
-} // namespace OversetGrids
-} // namespace Poisson
+        // interface coupling
+        std::shared_ptr<InterfaceCoupling<rank, dim, Number>> first_to_second,
+          second_to_first;
+      };
+    } // namespace OversetGrids
+  }   // namespace Poisson
 } // namespace ExaDG
 
 

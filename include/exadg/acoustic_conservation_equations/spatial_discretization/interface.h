@@ -27,37 +27,42 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-namespace Interface
-{
-template<typename Number>
-class SpatialOperator
-{
-public:
-  using BlockVectorType = dealii::LinearAlgebra::distributed::BlockVector<Number>;
+  namespace Acoustics
+  {
+    namespace Interface
+    {
+      template <typename Number>
+      class SpatialOperator
+      {
+      public:
+        using BlockVectorType =
+          dealii::LinearAlgebra::distributed::BlockVector<Number>;
 
-  virtual ~SpatialOperator() = default;
+        virtual ~SpatialOperator() = default;
 
 
-  // time integration: initialize dof vector
-  virtual void
-  initialize_dof_vector(BlockVectorType & dst) const = 0;
+        // time integration: initialize dof vector
+        virtual void
+        initialize_dof_vector(BlockVectorType &dst) const = 0;
 
-  // time integration: prescribe initial conditions
-  virtual void
-  prescribe_initial_conditions(BlockVectorType & src, double const evaluation_time) const = 0;
+        // time integration: prescribe initial conditions
+        virtual void
+        prescribe_initial_conditions(BlockVectorType &src,
+                                     double const evaluation_time) const = 0;
 
-  // time integration: evaluate
-  virtual void
-  evaluate(BlockVectorType & dst, BlockVectorType const & src, double const time) const = 0;
+        // time integration: evaluate
+        virtual void
+        evaluate(BlockVectorType       &dst,
+                 BlockVectorType const &src,
+                 double const           time) const = 0;
 
-  virtual double
-  calculate_time_step_cfl() const = 0;
-};
+        virtual double
+        calculate_time_step_cfl() const = 0;
+      };
 
-} // namespace Interface
-} // namespace Acoustics
+    } // namespace Interface
+  }   // namespace Acoustics
 } // namespace ExaDG
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_SPATIAL_DISCRETIZATION_INTERFACE_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_SPATIAL_DISCRETIZATION_INTERFACE_H_ \
+        */

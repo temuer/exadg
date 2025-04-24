@@ -25,6 +25,7 @@
 // deal.II
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_system.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -41,261 +42,281 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-template<int dim, typename Number>
-class Operator : public dealii::Subscriptor, public Interface::Operator<Number>
-{
-private:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  namespace CompNS
+  {
+    template <int dim, typename Number>
+    class Operator : public dealii::Subscriptor,
+                     public Interface::Operator<Number>
+    {
+    private:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-public:
-  Operator(std::shared_ptr<Grid<dim> const>               grid,
-           std::shared_ptr<dealii::Mapping<dim> const>    mapping,
-           std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor,
-           std::shared_ptr<FieldFunctions<dim> const>     field_functions,
-           Parameters const &                             param,
-           std::string const &                            field,
-           MPI_Comm const &                               mpi_comm);
+    public:
+      Operator(
+        std::shared_ptr<Grid<dim> const>               grid,
+        std::shared_ptr<dealii::Mapping<dim> const>    mapping,
+        std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor,
+        std::shared_ptr<FieldFunctions<dim> const>     field_functions,
+        Parameters const                              &param,
+        std::string const                             &field,
+        MPI_Comm const                                &mpi_comm);
 
-  void
-  fill_matrix_free_data(MatrixFreeData<dim, Number> & matrix_free_data) const;
+      void
+      fill_matrix_free_data(
+        MatrixFreeData<dim, Number> &matrix_free_data) const;
 
-  /**
-   * Call this setup() function if the dealii::MatrixFree object can be set up by the present class.
-   */
-  void
-  setup();
+      /**
+       * Call this setup() function if the dealii::MatrixFree object can be set
+       * up by the present class.
+       */
+      void
+      setup();
 
-  /**
-   * Call this setup() function if the dealii::MatrixFree object needs to be created outside this
-   * class. The typical use case would be multiphysics-coupling with one MatrixFree object handed
-   * over to several single-field solvers.
-   */
-  void
-  setup(std::shared_ptr<dealii::MatrixFree<dim, Number> const> matrix_free,
-        std::shared_ptr<MatrixFreeData<dim, Number> const>     matrix_free_data);
+      /**
+       * Call this setup() function if the dealii::MatrixFree object needs to be
+       * created outside this class. The typical use case would be
+       * multiphysics-coupling with one MatrixFree object handed over to several
+       * single-field solvers.
+       */
+      void
+      setup(
+        std::shared_ptr<dealii::MatrixFree<dim, Number> const> matrix_free,
+        std::shared_ptr<MatrixFreeData<dim, Number> const> matrix_free_data);
 
-  dealii::types::global_dof_index
-  get_number_of_dofs() const;
+      dealii::types::global_dof_index
+      get_number_of_dofs() const;
 
-  // initialization of DoF vectors
-  void
-  initialize_dof_vector(VectorType & src) const final;
+      // initialization of DoF vectors
+      void
+      initialize_dof_vector(VectorType &src) const final;
 
-  void
-  initialize_dof_vector_scalar(VectorType & src) const;
+      void
+      initialize_dof_vector_scalar(VectorType &src) const;
 
-  void
-  initialize_dof_vector_dim_components(VectorType & src) const;
+      void
+      initialize_dof_vector_dim_components(VectorType &src) const;
 
-  // set initial conditions
-  void
-  prescribe_initial_conditions(VectorType & src, double const time) const final;
+      // set initial conditions
+      void
+      prescribe_initial_conditions(VectorType  &src,
+                                   double const time) const final;
 
-  /*
-   *  This function is used in case of explicit time integration:
-   *  This function evaluates the right-hand side operator, the
-   *  convective and viscous terms (subsequently multiplied by -1.0 in order
-   *  to shift these terms to the right-hand side of the equations)
-   *  and finally applies the inverse mass operator.
-   */
-  void
-  evaluate(VectorType & dst, VectorType const & src, Number const time) const final;
+      /*
+       *  This function is used in case of explicit time integration:
+       *  This function evaluates the right-hand side operator, the
+       *  convective and viscous terms (subsequently multiplied by -1.0 in order
+       *  to shift these terms to the right-hand side of the equations)
+       *  and finally applies the inverse mass operator.
+       */
+      void
+      evaluate(VectorType       &dst,
+               VectorType const &src,
+               Number const      time) const final;
 
-  void
-  evaluate_convective(VectorType & dst, VectorType const & src, Number const time) const;
+      void
+      evaluate_convective(VectorType       &dst,
+                          VectorType const &src,
+                          Number const      time) const;
 
-  void
-  evaluate_viscous(VectorType & dst, VectorType const & src, Number const time) const;
+      void
+      evaluate_viscous(VectorType       &dst,
+                       VectorType const &src,
+                       Number const      time) const;
 
-  void
-  evaluate_convective_and_viscous(VectorType &       dst,
-                                  VectorType const & src,
-                                  Number const       time) const;
+      void
+      evaluate_convective_and_viscous(VectorType       &dst,
+                                      VectorType const &src,
+                                      Number const      time) const;
 
-  void
-  apply_inverse_mass(VectorType & dst, VectorType const & src) const;
+      void
+      apply_inverse_mass(VectorType &dst, VectorType const &src) const;
 
-  // getters
-  dealii::MatrixFree<dim, Number> const &
-  get_matrix_free() const;
+      // getters
+      dealii::MatrixFree<dim, Number> const &
+      get_matrix_free() const;
 
-  dealii::Mapping<dim> const &
-  get_mapping() const;
+      dealii::Mapping<dim> const &
+      get_mapping() const;
 
-  dealii::FiniteElement<dim> const &
-  get_fe() const;
+      dealii::FiniteElement<dim> const &
+      get_fe() const;
 
-  dealii::DoFHandler<dim> const &
-  get_dof_handler() const;
+      dealii::DoFHandler<dim> const &
+      get_dof_handler() const;
 
-  dealii::DoFHandler<dim> const &
-  get_dof_handler_scalar() const;
+      dealii::DoFHandler<dim> const &
+      get_dof_handler_scalar() const;
 
-  dealii::DoFHandler<dim> const &
-  get_dof_handler_vector() const;
+      dealii::DoFHandler<dim> const &
+      get_dof_handler_vector() const;
 
-  unsigned int
-  get_dof_index_vector() const;
+      unsigned int
+      get_dof_index_vector() const;
 
-  unsigned int
-  get_dof_index_scalar() const;
+      unsigned int
+      get_dof_index_scalar() const;
 
-  unsigned int
-  get_quad_index_standard() const;
+      unsigned int
+      get_quad_index_standard() const;
 
-  // pressure
-  void
-  compute_pressure(VectorType & dst, VectorType const & src) const;
+      // pressure
+      void
+      compute_pressure(VectorType &dst, VectorType const &src) const;
 
-  // velocity
-  void
-  compute_velocity(VectorType & dst, VectorType const & src) const;
+      // velocity
+      void
+      compute_velocity(VectorType &dst, VectorType const &src) const;
 
-  // temperature
-  void
-  compute_temperature(VectorType & dst, VectorType const & src) const;
+      // temperature
+      void
+      compute_temperature(VectorType &dst, VectorType const &src) const;
 
-  // vorticity
-  void
-  compute_vorticity(VectorType & dst, VectorType const & src) const;
+      // vorticity
+      void
+      compute_vorticity(VectorType &dst, VectorType const &src) const;
 
-  // divergence
-  void
-  compute_divergence(VectorType & dst, VectorType const & src) const;
+      // divergence
+      void
+      compute_divergence(VectorType &dst, VectorType const &src) const;
 
-  // shear rate
-  void
-  compute_shear_rate(VectorType & dst, VectorType const & src) const;
+      // shear rate
+      void
+      compute_shear_rate(VectorType &dst, VectorType const &src) const;
 
-  double
-  get_wall_time_operator_evaluation() const final;
+      double
+      get_wall_time_operator_evaluation() const final;
 
-  // global CFL criterion: calculates the time step size for a given global maximum velocity
-  double
-  calculate_time_step_cfl_global() const final;
+      // global CFL criterion: calculates the time step size for a given global
+      // maximum velocity
+      double
+      calculate_time_step_cfl_global() const final;
 
-  // Calculate time step size according to diffusion term
-  double
-  calculate_time_step_diffusion() const final;
+      // Calculate time step size according to diffusion term
+      double
+      calculate_time_step_diffusion() const final;
 
-private:
-  void
-  initialize_dof_handler_and_constraints();
+    private:
+      void
+      initialize_dof_handler_and_constraints();
 
-  void
-  setup_operators();
+      void
+      setup_operators();
 
-  unsigned int
-  get_dof_index_all() const;
+      unsigned int
+      get_dof_index_all() const;
 
-  unsigned int
-  get_quad_index_overintegration_conv() const;
+      unsigned int
+      get_quad_index_overintegration_conv() const;
 
-  unsigned int
-  get_quad_index_overintegration_vis() const;
+      unsigned int
+      get_quad_index_overintegration_vis() const;
 
-  unsigned int
-  get_quad_index_l2_projections() const;
+      unsigned int
+      get_quad_index_l2_projections() const;
 
-  /*
-   * Grid
-   */
-  std::shared_ptr<Grid<dim> const> grid;
+      /*
+       * Grid
+       */
+      std::shared_ptr<Grid<dim> const> grid;
 
-  /*
-   * Mapping
-   */
-  std::shared_ptr<dealii::Mapping<dim> const> mapping;
+      /*
+       * Mapping
+       */
+      std::shared_ptr<dealii::Mapping<dim> const> mapping;
 
-  /*
-   * User interface: Boundary conditions and field functions.
-   */
-  std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor;
-  std::shared_ptr<FieldFunctions<dim> const>     field_functions;
+      /*
+       * User interface: Boundary conditions and field functions.
+       */
+      std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor;
+      std::shared_ptr<FieldFunctions<dim> const>     field_functions;
 
-  /*
-   * List of parameters.
-   */
-  Parameters const & param;
+      /*
+       * List of parameters.
+       */
+      Parameters const &param;
 
-  std::string const field;
+      std::string const field;
 
-  /*
-   * Basic finite element ingredients.
-   */
+      /*
+       * Basic finite element ingredients.
+       */
 
-  std::shared_ptr<dealii::FiniteElement<dim>> fe; // all (dim+2) components: (rho, rho u, rho E)
-  std::shared_ptr<dealii::FiniteElement<dim>> fe_vector; // e.g. velocity
-  std::shared_ptr<dealii::FiniteElement<dim>> fe_scalar; // scalar quantity, e.g, pressure
+      std::shared_ptr<dealii::FiniteElement<dim>>
+        fe; // all (dim+2) components: (rho, rho u, rho E)
+      std::shared_ptr<dealii::FiniteElement<dim>> fe_vector; // e.g. velocity
+      std::shared_ptr<dealii::FiniteElement<dim>>
+        fe_scalar; // scalar quantity, e.g, pressure
 
-  // dealii::DoFHandler
-  dealii::DoFHandler<dim> dof_handler;        // all (dim+2) components: (rho, rho u, rho E)
-  dealii::DoFHandler<dim> dof_handler_vector; // e.g. velocity
-  dealii::DoFHandler<dim> dof_handler_scalar; // scalar quantity, e.g, pressure
+      // dealii::DoFHandler
+      dealii::DoFHandler<dim>
+        dof_handler; // all (dim+2) components: (rho, rho u, rho E)
+      dealii::DoFHandler<dim> dof_handler_vector; // e.g. velocity
+      dealii::DoFHandler<dim>
+        dof_handler_scalar; // scalar quantity, e.g, pressure
 
-  std::string const dof_index_all    = "all_fields";
-  std::string const dof_index_vector = "vector";
-  std::string const dof_index_scalar = "scalar";
+      std::string const dof_index_all    = "all_fields";
+      std::string const dof_index_vector = "vector";
+      std::string const dof_index_scalar = "scalar";
 
-  std::string const quad_index_standard             = "standard";
-  std::string const quad_index_overintegration_conv = "overintegration_conv";
-  std::string const quad_index_overintegration_vis  = "overintegration_vis";
+      std::string const quad_index_standard = "standard";
+      std::string const quad_index_overintegration_conv =
+        "overintegration_conv";
+      std::string const quad_index_overintegration_vis = "overintegration_vis";
 
-  std::string const quad_index_l2_projections = quad_index_standard;
-  // alternative: use more accurate over-integration strategy
-  //  std::string const quad_index_l2_projections = quad_index_overintegration_conv;
+      std::string const quad_index_l2_projections = quad_index_standard;
+      // alternative: use more accurate over-integration strategy
+      //  std::string const quad_index_l2_projections =
+      //  quad_index_overintegration_conv;
 
-  /*
-   * Constraints.
-   */
-  dealii::AffineConstraints<Number> constraint;
+      /*
+       * Constraints.
+       */
+      dealii::AffineConstraints<Number> constraint;
 
-  /*
-   * Matrix-free operator evaluation.
-   */
-  std::shared_ptr<MatrixFreeData<dim, Number> const>     matrix_free_data;
-  std::shared_ptr<dealii::MatrixFree<dim, Number> const> matrix_free;
+      /*
+       * Matrix-free operator evaluation.
+       */
+      std::shared_ptr<MatrixFreeData<dim, Number> const>     matrix_free_data;
+      std::shared_ptr<dealii::MatrixFree<dim, Number> const> matrix_free;
 
-  /*
-   * Basic operators.
-   */
-  MassOperator<dim, Number>       mass_operator;
-  BodyForceOperator<dim, Number>  body_force_operator;
-  ConvectiveOperator<dim, Number> convective_operator;
-  ViscousOperator<dim, Number>    viscous_operator;
+      /*
+       * Basic operators.
+       */
+      MassOperator<dim, Number>       mass_operator;
+      BodyForceOperator<dim, Number>  body_force_operator;
+      ConvectiveOperator<dim, Number> convective_operator;
+      ViscousOperator<dim, Number>    viscous_operator;
 
-  /*
-   * Merged operators.
-   */
-  CombinedOperator<dim, Number> combined_operator;
+      /*
+       * Merged operators.
+       */
+      CombinedOperator<dim, Number> combined_operator;
 
-  InverseMassOperator<dim, dim + 2, Number> inverse_mass_all;
-  InverseMassOperator<dim, dim, Number>     inverse_mass_vector;
-  InverseMassOperator<dim, 1, Number>       inverse_mass_scalar;
+      InverseMassOperator<dim, dim + 2, Number> inverse_mass_all;
+      InverseMassOperator<dim, dim, Number>     inverse_mass_vector;
+      InverseMassOperator<dim, 1, Number>       inverse_mass_scalar;
 
-  // L2 projections to calculate derived quantities
-  p_u_T_Calculator<dim, Number>     p_u_T_calculator;
-  VorticityCalculator<dim, Number>  vorticity_calculator;
-  DivergenceCalculator<dim, Number> divergence_calculator;
-  ShearRateCalculator<dim, Number>  shear_rate_calculator;
+      // L2 projections to calculate derived quantities
+      p_u_T_Calculator<dim, Number>     p_u_T_calculator;
+      VorticityCalculator<dim, Number>  vorticity_calculator;
+      DivergenceCalculator<dim, Number> divergence_calculator;
+      ShearRateCalculator<dim, Number>  shear_rate_calculator;
 
-  /*
-   * MPI
-   */
-  MPI_Comm const mpi_comm;
+      /*
+       * MPI
+       */
+      MPI_Comm const mpi_comm;
 
-  /*
-   * Output to screen.
-   */
-  dealii::ConditionalOStream pcout;
+      /*
+       * Output to screen.
+       */
+      dealii::ConditionalOStream pcout;
 
-  // wall time for operator evaluation
-  mutable double wall_time_operator_evaluation;
-};
+      // wall time for operator evaluation
+      mutable double wall_time_operator_evaluation;
+    };
 
-} // namespace CompNS
+  } // namespace CompNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_CONVECTION_DIFFUSION_DG_CONVECTION_DIFFUSION_OPERATION_H_ */

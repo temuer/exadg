@@ -28,56 +28,58 @@
 
 namespace ExaDG
 {
-/**
- * Base class to access boundary values with a similar interface to FaceIntegrators.
- * In the derived class a @c get_value() has to be implemented. Since the return type
- * depends on the derived class, a pure virtual function for this purpose can not be added.
- */
-template<typename BoundaryDescriptorType, typename Number>
-class BoundaryFaceIntegratorBase
-{
-  using BoundaryType       = typename BoundaryDescriptorType::boundary_type;
-  static constexpr int dim = BoundaryDescriptorType::dimension;
-
-public:
-  void
-  reinit(unsigned int const face, Number const time)
+  /**
+   * Base class to access boundary values with a similar interface to
+   * FaceIntegrators. In the derived class a @c get_value() has to be
+   * implemented. Since the return type depends on the derived class, a pure
+   * virtual function for this purpose can not be added.
+   */
+  template <typename BoundaryDescriptorType, typename Number>
+  class BoundaryFaceIntegratorBase
   {
-    evaluation_time = time;
+    using BoundaryType       = typename BoundaryDescriptorType::boundary_type;
+    static constexpr int dim = BoundaryDescriptorType::dimension;
 
-    auto const boundary_id_new = matrix_free.get_boundary_id(face);
-
-    // only update boundary_type if needed to avoid an unnecessary search in boundary_descriptor
-    if(boundary_id_new != boundary_id)
+  public:
+    void
+    reinit(unsigned int const face, Number const time)
     {
-      boundary_id   = boundary_id_new;
-      boundary_type = boundary_descriptor.get_boundary_type(boundary_id);
+      evaluation_time = time;
+
+      auto const boundary_id_new = matrix_free.get_boundary_id(face);
+
+      // only update boundary_type if needed to avoid an unnecessary search in
+      // boundary_descriptor
+      if (boundary_id_new != boundary_id)
+        {
+          boundary_id   = boundary_id_new;
+          boundary_type = boundary_descriptor.get_boundary_type(boundary_id);
+        }
     }
-  }
 
-  // A corresponding function has to be implemented in the deriving class.
-  // The return type varies dependent on the value type.
-  // auto
-  // get_value();
+    // A corresponding function has to be implemented in the deriving class.
+    // The return type varies dependent on the value type.
+    // auto
+    // get_value();
 
-protected:
-  BoundaryFaceIntegratorBase(dealii::MatrixFree<dim, Number> const & matrix_free_in,
-                             BoundaryDescriptorType const &          boundary_descriptor_in)
-    : matrix_free(matrix_free_in),
-      boundary_descriptor(boundary_descriptor_in),
-      evaluation_time(Number{0.0}),
-      boundary_id(dealii::numbers::invalid_boundary_id),
-      boundary_type(Utilities::default_constructor<BoundaryType>())
-  {
-  }
+  protected:
+    BoundaryFaceIntegratorBase(
+      dealii::MatrixFree<dim, Number> const &matrix_free_in,
+      BoundaryDescriptorType const          &boundary_descriptor_in)
+      : matrix_free(matrix_free_in)
+      , boundary_descriptor(boundary_descriptor_in)
+      , evaluation_time(Number{0.0})
+      , boundary_id(dealii::numbers::invalid_boundary_id)
+      , boundary_type(Utilities::default_constructor<BoundaryType>())
+    {}
 
-  dealii::MatrixFree<dim, Number> const & matrix_free;
-  BoundaryDescriptorType const &          boundary_descriptor;
+    dealii::MatrixFree<dim, Number> const &matrix_free;
+    BoundaryDescriptorType const          &boundary_descriptor;
 
-  Number                     evaluation_time;
-  dealii::types::boundary_id boundary_id;
-  BoundaryType               boundary_type;
-};
+    Number                     evaluation_time;
+    dealii::types::boundary_id boundary_id;
+    BoundaryType               boundary_type;
+  };
 
 } // namespace ExaDG
 

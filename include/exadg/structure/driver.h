@@ -39,84 +39,85 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-enum class OperatorType
-{
-  Evaluate, // includes inhomogeneous boundary conditions, where the nonlinear operator is evaluated
-            // in case of nonlinear problems
-  Apply     // homogeneous action of operator, where the linearized operator is applied in case of
-            // nonlinear problems
-};
+  namespace Structure
+  {
+    enum class OperatorType
+    {
+      Evaluate, // includes inhomogeneous boundary conditions, where the
+                // nonlinear operator is evaluated in case of nonlinear problems
+      Apply // homogeneous action of operator, where the linearized operator is
+            // applied in case of nonlinear problems
+    };
 
-template<int dim, typename Number>
-class Driver
-{
-public:
-  Driver(MPI_Comm const &                              comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test,
-         bool const                                    is_throughput_study);
+    template <int dim, typename Number>
+    class Driver
+    {
+    public:
+      Driver(MPI_Comm const                               &comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test,
+             bool const                                    is_throughput_study);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve() const;
+      void
+      solve() const;
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-  /*
-   * Throughput study
-   */
-  std::tuple<unsigned int, dealii::types::global_dof_index, double>
-  apply_operator(OperatorType const & operator_type,
-                 unsigned int const   n_repetitions_inner,
-                 unsigned int const   n_repetitions_outer) const;
+      /*
+       * Throughput study
+       */
+      std::tuple<unsigned int, dealii::types::global_dof_index, double>
+      apply_operator(OperatorType const &operator_type,
+                     unsigned int const  n_repetitions_inner,
+                     unsigned int const  n_repetitions_outer) const;
 
-private:
-  // MPI communicator
-  MPI_Comm mpi_comm;
+    private:
+      // MPI communicator
+      MPI_Comm mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      // output to std::cout
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // do not set up certain data structures (solver, postprocessor) in case of throughput study
-  bool const is_throughput_study;
+      // do not set up certain data structures (solver, postprocessor) in case
+      // of throughput study
+      bool const is_throughput_study;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      // application
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  std::shared_ptr<Grid<dim>> grid;
+      std::shared_ptr<Grid<dim>> grid;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-  // operator
-  std::shared_ptr<Operator<dim, Number>> pde_operator;
+      // operator
+      std::shared_ptr<Operator<dim, Number>> pde_operator;
 
-  // postprocessor
-  std::shared_ptr<PostProcessor<dim, Number>> postprocessor;
+      // postprocessor
+      std::shared_ptr<PostProcessor<dim, Number>> postprocessor;
 
-  // driver steady-state
-  std::shared_ptr<DriverSteady<dim, Number>> driver_steady;
+      // driver steady-state
+      std::shared_ptr<DriverSteady<dim, Number>> driver_steady;
 
-  // driver quasi-static
-  std::shared_ptr<DriverQuasiStatic<dim, Number>> driver_quasi_static;
+      // driver quasi-static
+      std::shared_ptr<DriverQuasiStatic<dim, Number>> driver_quasi_static;
 
-  // time integration scheme
-  std::shared_ptr<TimeIntGenAlpha<dim, Number>> time_integrator;
+      // time integration scheme
+      std::shared_ptr<TimeIntGenAlpha<dim, Number>> time_integrator;
 
-  // computation time
-  mutable TimerTree timer_tree;
-};
+      // computation time
+      mutable TimerTree timer_tree;
+    };
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_STRUCTURE_DRIVER_H_ */

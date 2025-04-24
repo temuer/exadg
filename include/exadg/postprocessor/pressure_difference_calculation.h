@@ -25,8 +25,11 @@
 // deal.II
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/point.h>
+
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/fe/mapping_q.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -35,63 +38,64 @@
 
 namespace ExaDG
 {
-template<int dim>
-struct PressureDifferenceData
-{
-  PressureDifferenceData() : directory("output/"), filename("pressure_difference")
+  template <int dim>
+  struct PressureDifferenceData
   {
-  }
+    PressureDifferenceData()
+      : directory("output/")
+      , filename("pressure_difference")
+    {}
 
-  /*
-   *  Data to control output: Set is_active also in the unsteady case
-   */
-  TimeControlData time_control_data;
+    /*
+     *  Data to control output: Set is_active also in the unsteady case
+     */
+    TimeControlData time_control_data;
 
-  /*
-   *  Points:
-   *  calculation of pressure difference: p(point_1) - p(point_2)
-   */
-  dealii::Point<dim> point_1;
-  dealii::Point<dim> point_2;
+    /*
+     *  Points:
+     *  calculation of pressure difference: p(point_1) - p(point_2)
+     */
+    dealii::Point<dim> point_1;
+    dealii::Point<dim> point_2;
 
-  /*
-   *  directory and filename
-   */
-  std::string directory;
-  std::string filename;
+    /*
+     *  directory and filename
+     */
+    std::string directory;
+    std::string filename;
 
-  void
-  print(dealii::ConditionalOStream & pcout, bool const unsteady) const;
-};
+    void
+    print(dealii::ConditionalOStream &pcout, bool const unsteady) const;
+  };
 
-template<int dim, typename Number>
-class PressureDifferenceCalculator
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  template <int dim, typename Number>
+  class PressureDifferenceCalculator
+  {
+  public:
+    typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  PressureDifferenceCalculator(MPI_Comm const & comm);
+    PressureDifferenceCalculator(MPI_Comm const &comm);
 
-  void
-  setup(dealii::DoFHandler<dim> const &     dof_handler_pressure_in,
-        dealii::Mapping<dim> const &        mapping_in,
-        PressureDifferenceData<dim> const & pressure_difference_data_in);
+    void
+    setup(dealii::DoFHandler<dim> const     &dof_handler_pressure_in,
+          dealii::Mapping<dim> const        &mapping_in,
+          PressureDifferenceData<dim> const &pressure_difference_data_in);
 
-  void
-  evaluate(VectorType const & pressure, double const time) const;
+    void
+    evaluate(VectorType const &pressure, double const time) const;
 
-  TimeControl time_control;
+    TimeControl time_control;
 
-private:
-  MPI_Comm const mpi_comm;
+  private:
+    MPI_Comm const mpi_comm;
 
-  mutable bool clear_files;
+    mutable bool clear_files;
 
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
-  dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
+    dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
+    dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
 
-  PressureDifferenceData<dim> data;
-};
+    PressureDifferenceData<dim> data;
+  };
 
 } // namespace ExaDG
 

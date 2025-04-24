@@ -26,36 +26,37 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim, typename Number>
-class SpatialOperatorBase;
-
-/*
- *  Base class for postprocessor of the incompressible Navier-Stokes equation.
- */
-template<int dim, typename Number>
-class PostProcessorBase : public PostProcessorInterface<Number>
-{
-protected:
-  typedef typename PostProcessorInterface<Number>::VectorType VectorType;
-
-  typedef SpatialOperatorBase<dim, Number> Operator;
-
-public:
-  virtual ~PostProcessorBase()
+  namespace IncNS
   {
-  }
+    template <int dim, typename Number>
+    class SpatialOperatorBase;
 
-  /*
-   * Setup function.
-   */
-  virtual void
-  setup(Operator const & pde_operator) = 0;
-};
+    /*
+     *  Base class for postprocessor of the incompressible Navier-Stokes
+     * equation.
+     */
+    template <int dim, typename Number>
+    class PostProcessorBase : public PostProcessorInterface<Number>
+    {
+    protected:
+      typedef typename PostProcessorInterface<Number>::VectorType VectorType;
+
+      typedef SpatialOperatorBase<dim, Number> Operator;
+
+    public:
+      virtual ~PostProcessorBase()
+      {}
+
+      /*
+       * Setup function.
+       */
+      virtual void
+      setup(Operator const &pde_operator) = 0;
+    };
 
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ \
+        */

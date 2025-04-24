@@ -19,9 +19,9 @@
  *  ______________________________________________________________________
  */
 
-#include <iostream>
-
 #include <exadg/time_integration/ab_constants.h>
+
+#include <iostream>
 
 // Check AB time integration constants
 
@@ -33,17 +33,17 @@ test(unsigned int const order)
   ABTimeIntegratorConstants constants(order, true);
 
   std::cout << "ABTimeIntegratorConstants of oder " << order << std::endl;
-  for(unsigned int current_order = 1; current_order <= order; ++current_order)
-  {
-    std::cout << "Current order " << current_order << std::endl;
-    constants.update(current_order, false, {});
+  for (unsigned int current_order = 1; current_order <= order; ++current_order)
+    {
+      std::cout << "Current order " << current_order << std::endl;
+      constants.update(current_order, false, {});
 
-    double sum = 0.0;
-    for(unsigned int i = 0; i < order; ++i)
-      sum += constants.get_alpha(i);
+      double sum = 0.0;
+      for (unsigned int i = 0; i < order; ++i)
+        sum += constants.get_alpha(i);
 
-    std::cout << "Sum: " << sum << std::endl;
-  }
+      std::cout << "Sum: " << sum << std::endl;
+    }
 }
 
 

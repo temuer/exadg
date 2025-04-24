@@ -27,17 +27,18 @@
 
 namespace ExaDG
 {
-namespace FSI
-{
-template<int dim, typename Number>
-std::shared_ptr<ApplicationBase<dim, Number>>
-get_application(std::string input_file, MPI_Comm const & comm)
-{
-  return std::make_shared<Application<dim, Number>>(input_file, comm);
-}
+  namespace FSI
+  {
+    template <int dim, typename Number>
+    std::shared_ptr<ApplicationBase<dim, Number>>
+    get_application(std::string input_file, MPI_Comm const &comm)
+    {
+      return std::make_shared<Application<dim, Number>>(input_file, comm);
+    }
 
-} // namespace FSI
+  } // namespace FSI
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_USER_INTERFACE_IMPLEMENT_GET_APPLICATION_H_ */
+#endif /* INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_USER_INTERFACE_IMPLEMENT_GET_APPLICATION_H_ \
+        */

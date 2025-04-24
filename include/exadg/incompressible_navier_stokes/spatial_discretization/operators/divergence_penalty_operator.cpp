@@ -23,84 +23,89 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim, typename Number>
-DivergencePenaltyOperator<dim, Number>::DivergencePenaltyOperator() : matrix_free(nullptr)
-{
-}
-
-template<int dim, typename Number>
-void
-DivergencePenaltyOperator<dim, Number>::initialize(
-  dealii::MatrixFree<dim, Number> const & matrix_free,
-  DivergencePenaltyData const &           data,
-  std::shared_ptr<Kernel> const           kernel)
-{
-  this->matrix_free = &matrix_free;
-  this->data        = data;
-  this->kernel      = kernel;
-}
-
-template<int dim, typename Number>
-void
-DivergencePenaltyOperator<dim, Number>::update(VectorType const & velocity)
-{
-  kernel->calculate_penalty_parameter(velocity);
-}
-
-template<int dim, typename Number>
-void
-DivergencePenaltyOperator<dim, Number>::apply(VectorType & dst, VectorType const & src) const
-{
-  matrix_free->cell_loop(&This::cell_loop, this, dst, src, true);
-}
-
-template<int dim, typename Number>
-void
-DivergencePenaltyOperator<dim, Number>::apply_add(VectorType & dst, VectorType const & src) const
-{
-  matrix_free->cell_loop(&This::cell_loop, this, dst, src, false);
-}
-
-template<int dim, typename Number>
-void
-DivergencePenaltyOperator<dim, Number>::cell_loop(
-  dealii::MatrixFree<dim, Number> const & matrix_free,
-  VectorType &                            dst,
-  VectorType const &                      src,
-  Range const &                           range) const
-{
-  IntegratorCell integrator(matrix_free, data.dof_index, data.quad_index);
-
-  for(unsigned int cell = range.first; cell < range.second; ++cell)
+  namespace IncNS
   {
-    integrator.reinit(cell);
-    integrator.gather_evaluate(src, dealii::EvaluationFlags::gradients);
+    template <int dim, typename Number>
+    DivergencePenaltyOperator<dim, Number>::DivergencePenaltyOperator()
+      : matrix_free(nullptr)
+    {}
 
-    kernel->reinit_cell(integrator);
+    template <int dim, typename Number>
+    void
+    DivergencePenaltyOperator<dim, Number>::initialize(
+      dealii::MatrixFree<dim, Number> const &matrix_free,
+      DivergencePenaltyData const           &data,
+      std::shared_ptr<Kernel> const          kernel)
+    {
+      this->matrix_free = &matrix_free;
+      this->data        = data;
+      this->kernel      = kernel;
+    }
 
-    do_cell_integral(integrator);
+    template <int dim, typename Number>
+    void
+    DivergencePenaltyOperator<dim, Number>::update(VectorType const &velocity)
+    {
+      kernel->calculate_penalty_parameter(velocity);
+    }
 
-    integrator.integrate_scatter(dealii::EvaluationFlags::gradients, dst);
-  }
-}
+    template <int dim, typename Number>
+    void
+    DivergencePenaltyOperator<dim, Number>::apply(VectorType       &dst,
+                                                  VectorType const &src) const
+    {
+      matrix_free->cell_loop(&This::cell_loop, this, dst, src, true);
+    }
 
-template<int dim, typename Number>
-void
-DivergencePenaltyOperator<dim, Number>::do_cell_integral(IntegratorCell & integrator) const
-{
-  for(unsigned int q = 0; q < integrator.n_q_points; ++q)
-  {
-    integrator.submit_divergence(kernel->get_volume_flux(integrator, q), q);
-  }
-}
+    template <int dim, typename Number>
+    void
+    DivergencePenaltyOperator<dim, Number>::apply_add(
+      VectorType       &dst,
+      VectorType const &src) const
+    {
+      matrix_free->cell_loop(&This::cell_loop, this, dst, src, false);
+    }
 
-template class DivergencePenaltyOperator<2, float>;
-template class DivergencePenaltyOperator<2, double>;
+    template <int dim, typename Number>
+    void
+    DivergencePenaltyOperator<dim, Number>::cell_loop(
+      dealii::MatrixFree<dim, Number> const &matrix_free,
+      VectorType                            &dst,
+      VectorType const                      &src,
+      Range const                           &range) const
+    {
+      IntegratorCell integrator(matrix_free, data.dof_index, data.quad_index);
 
-template class DivergencePenaltyOperator<3, float>;
-template class DivergencePenaltyOperator<3, double>;
+      for (unsigned int cell = range.first; cell < range.second; ++cell)
+        {
+          integrator.reinit(cell);
+          integrator.gather_evaluate(src, dealii::EvaluationFlags::gradients);
 
-} // namespace IncNS
+          kernel->reinit_cell(integrator);
+
+          do_cell_integral(integrator);
+
+          integrator.integrate_scatter(dealii::EvaluationFlags::gradients, dst);
+        }
+    }
+
+    template <int dim, typename Number>
+    void
+    DivergencePenaltyOperator<dim, Number>::do_cell_integral(
+      IntegratorCell &integrator) const
+    {
+      for (unsigned int q = 0; q < integrator.n_q_points; ++q)
+        {
+          integrator.submit_divergence(kernel->get_volume_flux(integrator, q),
+                                       q);
+        }
+    }
+
+    template class DivergencePenaltyOperator<2, float>;
+    template class DivergencePenaltyOperator<2, double>;
+
+    template class DivergencePenaltyOperator<3, float>;
+    template class DivergencePenaltyOperator<3, double>;
+
+  } // namespace IncNS
 } // namespace ExaDG

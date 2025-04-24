@@ -24,23 +24,22 @@
 
 namespace ExaDG
 {
-template<typename VectorType>
-class SmootherBase
-{
-public:
-  virtual ~SmootherBase()
+  template <typename VectorType>
+  class SmootherBase
   {
-  }
+  public:
+    virtual ~SmootherBase()
+    {}
 
-  virtual void
-  vmult(VectorType & dst, VectorType const & src) const = 0;
+    virtual void
+    vmult(VectorType &dst, VectorType const &src) const = 0;
 
-  virtual void
-  step(VectorType & dst, VectorType const & src) const = 0;
+    virtual void
+    step(VectorType &dst, VectorType const &src) const = 0;
 
-  virtual void
-  update() = 0;
-};
+    virtual void
+    update() = 0;
+  };
 
 } // namespace ExaDG
 

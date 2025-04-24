@@ -27,19 +27,19 @@
 
 namespace ExaDG
 {
-enum class CFLConditionType
-{
-  VelocityNorm,
-  VelocityComponents
-};
+  enum class CFLConditionType
+  {
+    VelocityNorm,
+    VelocityComponents
+  };
 
-enum class GenAlphaType
-{
-  Newmark,
-  GenAlpha,
-  HHTAlpha,
-  BossakAlpha
-};
+  enum class GenAlphaType
+  {
+    Newmark,
+    GenAlpha,
+    HHTAlpha,
+    BossakAlpha
+  };
 
 } // namespace ExaDG
 

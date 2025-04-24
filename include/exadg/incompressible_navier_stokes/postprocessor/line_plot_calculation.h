@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -31,49 +32,50 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-/*
- *  Evaluate quantities along lines.
- *
- *  Assumptions/Restrictions:
- *
- *   - straight lines, points are distributed equidistantly along the line
- *
- *   - no statistical averaging, instantaneous quantities are calculated
- */
-template<int dim, typename Number>
-class LinePlotCalculator
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  namespace IncNS
+  {
+    /*
+     *  Evaluate quantities along lines.
+     *
+     *  Assumptions/Restrictions:
+     *
+     *   - straight lines, points are distributed equidistantly along the line
+     *
+     *   - no statistical averaging, instantaneous quantities are calculated
+     */
+    template <int dim, typename Number>
+    class LinePlotCalculator
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  LinePlotCalculator(MPI_Comm const & comm);
+      LinePlotCalculator(MPI_Comm const &comm);
 
-  void
-  setup(dealii::DoFHandler<dim> const & dof_handler_velocity_in,
-        dealii::DoFHandler<dim> const & dof_handler_pressure_in,
-        dealii::Mapping<dim> const &    mapping_in,
-        LinePlotData<dim> const &       line_plot_data_in);
+      void
+      setup(dealii::DoFHandler<dim> const &dof_handler_velocity_in,
+            dealii::DoFHandler<dim> const &dof_handler_pressure_in,
+            dealii::Mapping<dim> const    &mapping_in,
+            LinePlotData<dim> const       &line_plot_data_in);
 
-  void
-  evaluate(VectorType const & velocity, VectorType const & pressure) const;
+      void
+      evaluate(VectorType const &velocity, VectorType const &pressure) const;
 
-  TimeControl time_control;
+      TimeControl time_control;
 
-private:
-  MPI_Comm const mpi_comm;
+    private:
+      MPI_Comm const mpi_comm;
 
-  mutable bool clear_files;
+      mutable bool clear_files;
 
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_velocity;
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
-  dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_velocity;
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
+      dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
 
-  LinePlotData<dim> data;
-};
+      LinePlotData<dim> data;
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_LINE_PLOT_CALCULATION_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_LINE_PLOT_CALCULATION_H_ \
+        */

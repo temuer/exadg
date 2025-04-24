@@ -26,115 +26,117 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-/**************************************************************************************/
-/*                                                                                    */
-/*                                 MATHEMATICAL MODEL                                 */
-/*                                                                                    */
-/**************************************************************************************/
+  namespace CompNS
+  {
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                                 MATHEMATICAL MODEL */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-/*
- *  EquationType describes the physical/mathematical model that has to be solved,
- *  i.e., Euler euqations or Navier-Stokes equations
- */
-enum class EquationType
-{
-  Undefined,
-  Euler,
-  NavierStokes
-};
+    /*
+     *  EquationType describes the physical/mathematical model that has to be
+     * solved, i.e., Euler euqations or Navier-Stokes equations
+     */
+    enum class EquationType
+    {
+      Undefined,
+      Euler,
+      NavierStokes
+    };
 
-/*
- *  For energy boundary conditions, one can prescribe the temperature or the energy
- */
-enum class EnergyBoundaryVariable
-{
-  Undefined,
-  Energy,
-  Temperature
-};
+    /*
+     *  For energy boundary conditions, one can prescribe the temperature or the
+     * energy
+     */
+    enum class EnergyBoundaryVariable
+    {
+      Undefined,
+      Energy,
+      Temperature
+    };
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                                 PHYSICAL QUANTITIES                                */
-/*                                                                                    */
-/**************************************************************************************/
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                                 PHYSICAL QUANTITIES */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-// there are currently no enums for this section
-
-
-
-/**************************************************************************************/
-/*                                                                                    */
-/*                             TEMPORAL DISCRETIZATION                                */
-/*                                                                                    */
-/**************************************************************************************/
-
-/*
- *  Temporal discretization method:
- *
- *    Explicit Runge-Kutta methods
- */
-enum class TemporalDiscretization
-{
-  Undefined,
-  ExplRK, // specify order of time integration scheme (order = stages)
-  ExplRK3Stage4Reg2C,
-  ExplRK3Stage7Reg2, // optimized for maximum time step sizes in DG context
-  ExplRK4Stage5Reg2C,
-  ExplRK4Stage8Reg2, // optimized for maximum time step sizes in DG context
-  ExplRK4Stage5Reg3C,
-  ExplRK5Stage9Reg2S,
-  SSPRK // specify order and stages of time integration scheme
-};
-
-/*
- * calculation of time step size
- */
-enum class TimeStepCalculation
-{
-  Undefined,
-  UserSpecified,
-  CFL,
-  Diffusion,
-  CFLAndDiffusion
-};
-
-/**************************************************************************************/
-/*                                                                                    */
-/*                               SPATIAL DISCRETIZATION                               */
-/*                                                                                    */
-/**************************************************************************************/
-
-/*
- *  QuadratureRule
- */
-enum class QuadratureRule
-{
-  Standard,
-  Overintegration32k,
-  Overintegration2k
-};
-
-
-/**************************************************************************************/
-/*                                                                                    */
-/*                                       SOLVER                                       */
-/*                                                                                    */
-/**************************************************************************************/
+    // there are currently no enums for this section
 
 
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                               OUTPUT AND POSTPROCESSING                            */
-/*                                                                                    */
-/**************************************************************************************/
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                             TEMPORAL DISCRETIZATION */
+    /*                                                                                    */
+    /**************************************************************************************/
+
+    /*
+     *  Temporal discretization method:
+     *
+     *    Explicit Runge-Kutta methods
+     */
+    enum class TemporalDiscretization
+    {
+      Undefined,
+      ExplRK, // specify order of time integration scheme (order = stages)
+      ExplRK3Stage4Reg2C,
+      ExplRK3Stage7Reg2, // optimized for maximum time step sizes in DG context
+      ExplRK4Stage5Reg2C,
+      ExplRK4Stage8Reg2, // optimized for maximum time step sizes in DG context
+      ExplRK4Stage5Reg3C,
+      ExplRK5Stage9Reg2S,
+      SSPRK // specify order and stages of time integration scheme
+    };
+
+    /*
+     * calculation of time step size
+     */
+    enum class TimeStepCalculation
+    {
+      Undefined,
+      UserSpecified,
+      CFL,
+      Diffusion,
+      CFLAndDiffusion
+    };
+
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                               SPATIAL DISCRETIZATION */
+    /*                                                                                    */
+    /**************************************************************************************/
+
+    /*
+     *  QuadratureRule
+     */
+    enum class QuadratureRule
+    {
+      Standard,
+      Overintegration32k,
+      Overintegration2k
+    };
 
 
-} // namespace CompNS
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                                       SOLVER */
+    /*                                                                                    */
+    /**************************************************************************************/
+
+
+
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                               OUTPUT AND POSTPROCESSING */
+    /*                                                                                    */
+    /**************************************************************************************/
+
+
+  } // namespace CompNS
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_ENUM_TYPES_H_ */
+#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_ENUM_TYPES_H_ \
+        */

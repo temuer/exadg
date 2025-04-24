@@ -27,10 +27,10 @@
 
 namespace ExaDG
 {
-void
-print_exadg_header(dealii::ConditionalOStream const & pcout)
-{
-  // clang-format off
+  void
+  print_exadg_header(dealii::ConditionalOStream const &pcout)
+  {
+    // clang-format off
   pcout << std::endl << std::endl << std::endl
         << print_horizontal_line() << std::endl
         << "                                                                                " << std::endl
@@ -42,39 +42,42 @@ print_exadg_header(dealii::ConditionalOStream const & pcout)
         << "                                                                                " << std::endl
         << "               High-Order Discontinuous Galerkin for the Exa-Scale              " << std::endl
         << print_horizontal_line() << std::endl << std::endl;
-  // clang-format on
-}
+    // clang-format on
+  }
 
-// print MPI info
-void
-print_MPI_info(dealii::ConditionalOStream const & pcout, MPI_Comm const & mpi_comm)
-{
-  pcout << std::endl << "MPI info:" << std::endl << std::endl;
-  print_parameter(pcout, "Number of processes", dealii::Utilities::MPI::n_mpi_processes(mpi_comm));
-}
+  // print MPI info
+  void
+  print_MPI_info(dealii::ConditionalOStream const &pcout,
+                 MPI_Comm const                   &mpi_comm)
+  {
+    pcout << std::endl << "MPI info:" << std::endl << std::endl;
+    print_parameter(pcout,
+                    "Number of processes",
+                    dealii::Utilities::MPI::n_mpi_processes(mpi_comm));
+  }
 
 
 
-// print deal.II info
-void
-print_dealii_info(dealii::ConditionalOStream const & pcout)
-{
-  pcout << std::endl
-        << "deal.II info:" << std::endl
-        << std::endl
-        << "  deal.II git version " << DEAL_II_GIT_SHORTREV << " on branch " << DEAL_II_GIT_BRANCH
-        << std::endl;
-}
+  // print deal.II info
+  void
+  print_dealii_info(dealii::ConditionalOStream const &pcout)
+  {
+    pcout << std::endl
+          << "deal.II info:" << std::endl
+          << std::endl
+          << "  deal.II git version " << DEAL_II_GIT_SHORTREV << " on branch "
+          << DEAL_II_GIT_BRANCH << std::endl;
+  }
 
-// print ExaDG info
-void
-print_exadg_info(dealii::ConditionalOStream const & pcout)
-{
-  pcout << std::endl
-        << "ExaDG info:" << std::endl
-        << std::endl
-        << "  ExaDG git version " << EXADG_GIT_SHORTREV << " on branch " << EXADG_GIT_BRANCH
-        << std::endl;
-}
+  // print ExaDG info
+  void
+  print_exadg_info(dealii::ConditionalOStream const &pcout)
+  {
+    pcout << std::endl
+          << "ExaDG info:" << std::endl
+          << std::endl
+          << "  ExaDG git version " << EXADG_GIT_SHORTREV << " on branch "
+          << EXADG_GIT_BRANCH << std::endl;
+  }
 
 } // namespace ExaDG

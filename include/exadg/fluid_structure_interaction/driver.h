@@ -37,85 +37,85 @@
 
 namespace ExaDG
 {
-namespace FSI
-{
-template<int dim, typename Number>
-class Driver
-{
-private:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  namespace FSI
+  {
+    template <int dim, typename Number>
+    class Driver
+    {
+    private:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-public:
-  Driver(std::string const &                           input_file,
-         MPI_Comm const &                              comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test);
+    public:
+      Driver(std::string const                            &input_file,
+             MPI_Comm const                               &comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve() const;
+      void
+      solve() const;
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-private:
-  void
-  setup_interface_coupling();
+    private:
+      void
+      setup_interface_coupling();
 
-  void
-  set_start_time() const;
+      void
+      set_start_time() const;
 
-  void
-  synchronize_time_step_size() const;
+      void
+      synchronize_time_step_size() const;
 
-  void
-  coupling_structure_to_ale(VectorType const & displacement_structure) const;
+      void
+      coupling_structure_to_ale(VectorType const &displacement_structure) const;
 
-  void
-  coupling_structure_to_fluid(unsigned int const iteration) const;
+      void
+      coupling_structure_to_fluid(unsigned int const iteration) const;
 
-  void
-  coupling_fluid_to_structure(bool const end_of_time_step) const;
+      void
+      coupling_fluid_to_structure(bool const end_of_time_step) const;
 
-  void
-  apply_dirichlet_neumann_scheme(VectorType &       d_tilde,
-                                 VectorType const & d,
-                                 unsigned int       iteration) const;
+      void
+      apply_dirichlet_neumann_scheme(VectorType       &d_tilde,
+                                     VectorType const &d,
+                                     unsigned int      iteration) const;
 
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+      // MPI communicator
+      MPI_Comm const mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      // output to std::cout
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      // application
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  std::shared_ptr<SolverStructure<dim, Number>> structure;
+      std::shared_ptr<SolverStructure<dim, Number>> structure;
 
-  std::shared_ptr<SolverFluid<dim, Number>> fluid;
+      std::shared_ptr<SolverFluid<dim, Number>> fluid;
 
-  // interface coupling
-  std::shared_ptr<InterfaceCoupling<1, dim, Number>> structure_to_fluid;
-  std::shared_ptr<InterfaceCoupling<1, dim, Number>> structure_to_ale;
-  std::shared_ptr<InterfaceCoupling<1, dim, Number>> fluid_to_structure;
+      // interface coupling
+      std::shared_ptr<InterfaceCoupling<1, dim, Number>> structure_to_fluid;
+      std::shared_ptr<InterfaceCoupling<1, dim, Number>> structure_to_ale;
+      std::shared_ptr<InterfaceCoupling<1, dim, Number>> fluid_to_structure;
 
-  // Parameters for partitioned FSI schemes
-  Parameters parameters;
+      // Parameters for partitioned FSI schemes
+      Parameters parameters;
 
-  // Computation time
-  mutable TimerTree timer_tree;
+      // Computation time
+      mutable TimerTree timer_tree;
 
-  // Partitioned FSI solver
-  std::shared_ptr<PartitionedSolver<dim, Number>> partitioned_solver;
-};
+      // Partitioned FSI solver
+      std::shared_ptr<PartitionedSolver<dim, Number>> partitioned_solver;
+    };
 
-} // namespace FSI
+  } // namespace FSI
 } // namespace ExaDG
 
 

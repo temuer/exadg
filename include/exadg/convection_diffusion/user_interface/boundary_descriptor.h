@@ -32,59 +32,67 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-enum class BoundaryType
-{
-  Undefined,
-  Dirichlet,
-  Neumann
-};
-
-template<int dim>
-struct BoundaryDescriptor
-{
-  std::map<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>> dirichlet_bc;
-
-  std::map<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>> neumann_bc;
-
-  // returns the boundary type
-  inline DEAL_II_ALWAYS_INLINE //
-    BoundaryType
-    get_boundary_type(dealii::types::boundary_id const & boundary_id) const
+  namespace ConvDiff
   {
-    if(this->dirichlet_bc.find(boundary_id) != this->dirichlet_bc.end())
-      return BoundaryType::Dirichlet;
-    else if(this->neumann_bc.find(boundary_id) != this->neumann_bc.end())
-      return BoundaryType::Neumann;
+    enum class BoundaryType
+    {
+      Undefined,
+      Dirichlet,
+      Neumann
+    };
 
-    AssertThrow(false, dealii::ExcMessage("Boundary type of face is invalid or not implemented."));
+    template <int dim>
+    struct BoundaryDescriptor
+    {
+      std::map<dealii::types::boundary_id,
+               std::shared_ptr<dealii::Function<dim>>>
+        dirichlet_bc;
 
-    return BoundaryType::Undefined;
-  }
+      std::map<dealii::types::boundary_id,
+               std::shared_ptr<dealii::Function<dim>>>
+        neumann_bc;
 
-  inline DEAL_II_ALWAYS_INLINE //
-    void
-    verify_boundary_conditions(
-      dealii::types::boundary_id const             boundary_id,
-      std::set<dealii::types::boundary_id> const & periodic_boundary_ids) const
-  {
-    unsigned int counter = 0;
-    if(dirichlet_bc.find(boundary_id) != dirichlet_bc.end())
-      counter++;
+      // returns the boundary type
+      inline DEAL_II_ALWAYS_INLINE //
+        BoundaryType
+        get_boundary_type(dealii::types::boundary_id const &boundary_id) const
+      {
+        if (this->dirichlet_bc.find(boundary_id) != this->dirichlet_bc.end())
+          return BoundaryType::Dirichlet;
+        else if (this->neumann_bc.find(boundary_id) != this->neumann_bc.end())
+          return BoundaryType::Neumann;
 
-    if(neumann_bc.find(boundary_id) != neumann_bc.end())
-      counter++;
+        AssertThrow(false,
+                    dealii::ExcMessage(
+                      "Boundary type of face is invalid or not implemented."));
 
-    if(periodic_boundary_ids.find(boundary_id) != periodic_boundary_ids.end())
-      counter++;
+        return BoundaryType::Undefined;
+      }
 
-    AssertThrow(counter == 1,
-                dealii::ExcMessage("Boundary face with non-unique boundary type found."));
-  }
-};
+      inline DEAL_II_ALWAYS_INLINE //
+        void
+        verify_boundary_conditions(dealii::types::boundary_id const boundary_id,
+                                   std::set<dealii::types::boundary_id> const
+                                     &periodic_boundary_ids) const
+      {
+        unsigned int counter = 0;
+        if (dirichlet_bc.find(boundary_id) != dirichlet_bc.end())
+          counter++;
 
-} // namespace ConvDiff
+        if (neumann_bc.find(boundary_id) != neumann_bc.end())
+          counter++;
+
+        if (periodic_boundary_ids.find(boundary_id) !=
+            periodic_boundary_ids.end())
+          counter++;
+
+        AssertThrow(counter == 1,
+                    dealii::ExcMessage(
+                      "Boundary face with non-unique boundary type found."));
+      }
+    };
+
+  } // namespace ConvDiff
 } // namespace ExaDG
 
 #endif /* INCLUDE_CONVECTION_DIFFUSION_BOUNDARY_DESCRIPTOR_H_ */

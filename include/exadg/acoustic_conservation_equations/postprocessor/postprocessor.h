@@ -31,66 +31,71 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim>
-struct PostProcessorData
-{
-  PostProcessorData() = default;
+  namespace Acoustics
+  {
+    template <int dim>
+    struct PostProcessorData
+    {
+      PostProcessorData() = default;
 
-  OutputData                output_data;
-  PointwiseOutputData<dim>  pointwise_output_data;
-  ErrorCalculationData<dim> error_data_p;
-  ErrorCalculationData<dim> error_data_u;
-  SoundEnergyCalculatorData sound_energy_data;
-};
+      OutputData                output_data;
+      PointwiseOutputData<dim>  pointwise_output_data;
+      ErrorCalculationData<dim> error_data_p;
+      ErrorCalculationData<dim> error_data_u;
+      SoundEnergyCalculatorData sound_energy_data;
+    };
 
-template<int dim, typename Number>
-class PostProcessor : public PostProcessorBase<dim, Number>
-{
-public:
-  using Base = PostProcessorBase<dim, Number>;
+    template <int dim, typename Number>
+    class PostProcessor : public PostProcessorBase<dim, Number>
+    {
+    public:
+      using Base = PostProcessorBase<dim, Number>;
 
-  using BlockVectorType = typename Base::BlockVectorType;
+      using BlockVectorType = typename Base::BlockVectorType;
 
-  using AcousticsOperator = typename Base::AcousticsOperator;
+      using AcousticsOperator = typename Base::AcousticsOperator;
 
-  static unsigned int const block_index_pressure = AcousticsOperator::block_index_pressure;
-  static unsigned int const block_index_velocity = AcousticsOperator::block_index_velocity;
+      static unsigned int const block_index_pressure =
+        AcousticsOperator::block_index_pressure;
+      static unsigned int const block_index_velocity =
+        AcousticsOperator::block_index_velocity;
 
-  PostProcessor(PostProcessorData<dim> const & postprocessor_data, MPI_Comm const & mpi_comm);
+      PostProcessor(PostProcessorData<dim> const &postprocessor_data,
+                    MPI_Comm const               &mpi_comm);
 
-  void
-  setup(AcousticsOperator const & pde_operator) final;
+      void
+      setup(AcousticsOperator const &pde_operator) final;
 
-  void
-  do_postprocessing(BlockVectorType const & solution,
-                    double const            time             = 0.0,
-                    types::time_step const  time_step_number = numbers::steady_timestep) final;
+      void
+      do_postprocessing(BlockVectorType const &solution,
+                        double const           time = 0.0,
+                        types::time_step const time_step_number =
+                          numbers::steady_timestep) final;
 
-protected:
-  MPI_Comm const mpi_comm;
+    protected:
+      MPI_Comm const mpi_comm;
 
-private:
-  PostProcessorData<dim> pp_data;
+    private:
+      PostProcessorData<dim> pp_data;
 
-  // write output for visualization of results (e.g., using paraview)
-  OutputGenerator<dim, Number> output_generator;
+      // write output for visualization of results (e.g., using paraview)
+      OutputGenerator<dim, Number> output_generator;
 
-  // writes output at certain points in space
-  PointwiseOutputGenerator<dim, Number> pointwise_output_generator;
+      // writes output at certain points in space
+      PointwiseOutputGenerator<dim, Number> pointwise_output_generator;
 
-  // calculate errors for verification purposes for problems with known analytical solution
-  ErrorCalculator<dim, Number> error_calculator_p;
-  ErrorCalculator<dim, Number> error_calculator_u;
+      // calculate errors for verification purposes for problems with known
+      // analytical solution
+      ErrorCalculator<dim, Number> error_calculator_p;
+      ErrorCalculator<dim, Number> error_calculator_u;
 
-  // calculates the sound energy in the computational domain
-  SoundEnergyCalculator<dim, Number> sound_energy_calculator;
-};
+      // calculates the sound energy in the computational domain
+      SoundEnergyCalculator<dim, Number> sound_energy_calculator;
+    };
 
 
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
 

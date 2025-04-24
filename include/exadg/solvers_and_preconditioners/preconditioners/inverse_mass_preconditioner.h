@@ -27,48 +27,52 @@
 
 namespace ExaDG
 {
-/**
- * A preconditioner available for discontinuous Galerkin methods. This class is simply a wrapper
- * around the InverseMassOperator, realizing the interface defined by PreconditionerBase. It is
- * not only available for ElementType:::Hypercube, but e.g. also for ElementType::Simplex.
- *
- * Note, however, that application of this preconditioner might be expensive in case that the
- * inverse mass can not be realized as a matrix-free operator evaluation (which is the case for
- * simplex elements). In this case, you might want to use a simple Jacobi preconditioner as an
- * efficient alternative to the inverse mass preconditioner.
- */
-template<int dim, int n_components, typename Number>
-class InverseMassPreconditioner : public PreconditionerBase<Number>
-{
-public:
-  typedef typename PreconditionerBase<Number>::VectorType VectorType;
-
-  InverseMassPreconditioner(dealii::MatrixFree<dim, Number> const & matrix_free,
-                            InverseMassOperatorData const           inverse_mass_operator_data)
+  /**
+   * A preconditioner available for discontinuous Galerkin methods. This class
+   * is simply a wrapper around the InverseMassOperator, realizing the interface
+   * defined by PreconditionerBase. It is not only available for
+   * ElementType:::Hypercube, but e.g. also for ElementType::Simplex.
+   *
+   * Note, however, that application of this preconditioner might be expensive
+   * in case that the inverse mass can not be realized as a matrix-free operator
+   * evaluation (which is the case for simplex elements). In this case, you
+   * might want to use a simple Jacobi preconditioner as an efficient
+   * alternative to the inverse mass preconditioner.
+   */
+  template <int dim, int n_components, typename Number>
+  class InverseMassPreconditioner : public PreconditionerBase<Number>
   {
-    inverse_mass_operator.initialize(matrix_free, inverse_mass_operator_data);
+  public:
+    typedef typename PreconditionerBase<Number>::VectorType VectorType;
 
-    this->update_needed = false;
-  }
+    InverseMassPreconditioner(
+      dealii::MatrixFree<dim, Number> const &matrix_free,
+      InverseMassOperatorData const          inverse_mass_operator_data)
+    {
+      inverse_mass_operator.initialize(matrix_free, inverse_mass_operator_data);
 
-  void
-  vmult(VectorType & dst, VectorType const & src) const final
-  {
-    inverse_mass_operator.apply(dst, src);
-  }
+      this->update_needed = false;
+    }
 
-  void
-  update() final
-  {
-    inverse_mass_operator.update();
+    void
+    vmult(VectorType &dst, VectorType const &src) const final
+    {
+      inverse_mass_operator.apply(dst, src);
+    }
 
-    this->update_needed = false;
-  }
+    void
+    update() final
+    {
+      inverse_mass_operator.update();
 
-private:
-  InverseMassOperator<dim, n_components, Number> inverse_mass_operator;
-};
+      this->update_needed = false;
+    }
+
+  private:
+    InverseMassOperator<dim, n_components, Number> inverse_mass_operator;
+  };
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_SOLVERS_AND_PRECONDITIONERS_INVERSEMASSMATRIXPRECONDITIONER_H_ */
+#endif /* INCLUDE_SOLVERS_AND_PRECONDITIONERS_INVERSEMASSMATRIXPRECONDITIONER_H_ \
+        */

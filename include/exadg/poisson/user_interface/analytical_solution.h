@@ -26,15 +26,15 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-template<int dim>
-struct AnalyticalSolution
-{
-  std::shared_ptr<dealii::Function<dim>> solution;
-};
+  namespace Poisson
+  {
+    template <int dim>
+    struct AnalyticalSolution
+    {
+      std::shared_ptr<dealii::Function<dim>> solution;
+    };
 
-} // namespace Poisson
+  } // namespace Poisson
 } // namespace ExaDG
 
 #endif /* INCLUDE_LAPLACE_ANALYTICAL_SOLUTION_H_ */

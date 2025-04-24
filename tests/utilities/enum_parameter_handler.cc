@@ -20,12 +20,12 @@
  */
 
 // C++
-#include <iostream>
-#include <sstream>
-
 #include <deal.II/base/parameter_handler.h>
 
 #include <exadg/utilities/enum_patterns.h>
+
+#include <iostream>
+#include <sstream>
 
 enum class EnumClass
 {
@@ -43,7 +43,7 @@ enum Enum
   C
 };
 
-template<typename EnumType>
+template <typename EnumType>
 void
 test_enum(EnumType enum_type)
 {
@@ -51,20 +51,22 @@ test_enum(EnumType enum_type)
 
   prm.add_parameter("EnumType", enum_type);
 
-  prm.print_parameters(std::cout, dealii::ParameterHandler::OutputStyle::Description);
+  prm.print_parameters(std::cout,
+                       dealii::ParameterHandler::OutputStyle::Description);
   std::cout << std::endl;
 
   prm.print_parameters(std::cout, dealii::ParameterHandler::OutputStyle::PRM);
   std::cout << std::endl;
 
   auto const enum_strings = magic_enum::enum_names<EnumType>();
-  for(const auto e : enum_strings)
-  {
-    std::istringstream is("{\"EnumType\" : \"" + std::string(e) + "\"}");
-    prm.parse_input_from_json(is);
-    prm.print_parameters(std::cout, dealii::ParameterHandler::OutputStyle::PRM);
-    std::cout << std::endl;
-  }
+  for (auto const e : enum_strings)
+    {
+      std::istringstream is("{\"EnumType\" : \"" + std::string(e) + "\"}");
+      prm.parse_input_from_json(is);
+      prm.print_parameters(std::cout,
+                           dealii::ParameterHandler::OutputStyle::PRM);
+      std::cout << std::endl;
+    }
 }
 
 

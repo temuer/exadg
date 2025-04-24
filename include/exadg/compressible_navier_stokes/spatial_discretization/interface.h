@@ -26,51 +26,53 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-namespace Interface
-{
-template<typename Number>
-class Operator
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  Operator()
+  namespace CompNS
   {
-  }
+    namespace Interface
+    {
+      template <typename Number>
+      class Operator
+      {
+      public:
+        typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  virtual ~Operator()
-  {
-  }
+        Operator()
+        {}
 
-  // time integration: initialize dof vectors
-  virtual void
-  initialize_dof_vector(VectorType & src) const = 0;
+        virtual ~Operator()
+        {}
 
-  // time integration: prescribe initial conditions
-  virtual void
-  prescribe_initial_conditions(VectorType & src, double const evaluation_time) const = 0;
+        // time integration: initialize dof vectors
+        virtual void
+        initialize_dof_vector(VectorType &src) const = 0;
 
-  // time step calculation: CFL condition
-  virtual double
-  calculate_time_step_cfl_global() const = 0;
+        // time integration: prescribe initial conditions
+        virtual void
+        prescribe_initial_conditions(VectorType  &src,
+                                     double const evaluation_time) const = 0;
 
-  // Calculate time step size according to diffusion term
-  virtual double
-  calculate_time_step_diffusion() const = 0;
+        // time step calculation: CFL condition
+        virtual double
+        calculate_time_step_cfl_global() const = 0;
 
-  // explicit time integration: evaluate operator
-  virtual void
-  evaluate(VectorType & dst, VectorType const & src, Number const evaluation_time) const = 0;
+        // Calculate time step size according to diffusion term
+        virtual double
+        calculate_time_step_diffusion() const = 0;
 
-  // analysis of computational costs
-  virtual double
-  get_wall_time_operator_evaluation() const = 0;
-};
+        // explicit time integration: evaluate operator
+        virtual void
+        evaluate(VectorType       &dst,
+                 VectorType const &src,
+                 Number const      evaluation_time) const = 0;
 
-} // namespace Interface
-} // namespace CompNS
+        // analysis of computational costs
+        virtual double
+        get_wall_time_operator_evaluation() const = 0;
+      };
+
+    } // namespace Interface
+  }   // namespace CompNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_SPATIAL_DISCRETIZATION_INTERFACE_H_ */
+#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_SPATIAL_DISCRETIZATION_INTERFACE_H_ \
+        */

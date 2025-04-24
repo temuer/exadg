@@ -24,32 +24,34 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim>
-struct FieldFunctions
-{
-  /*
-   * The function initial_solution_pressure is used to initialize the pressure field at the
-   * beginning of the simulation.
-   */
-  std::shared_ptr<dealii::Function<dim>> initial_solution_pressure;
+  namespace Acoustics
+  {
+    template <int dim>
+    struct FieldFunctions
+    {
+      /*
+       * The function initial_solution_pressure is used to initialize the
+       * pressure field at the beginning of the simulation.
+       */
+      std::shared_ptr<dealii::Function<dim>> initial_solution_pressure;
 
-  /*
-   * The function initial_solution_velocity is used to initialize the velocity field at the
-   * beginning of the simulation.
-   */
-  std::shared_ptr<dealii::Function<dim>> initial_solution_velocity;
+      /*
+       * The function initial_solution_velocity is used to initialize the
+       * velocity field at the beginning of the simulation.
+       */
+      std::shared_ptr<dealii::Function<dim>> initial_solution_velocity;
 
-  /*
-   * The function right_hand_side is used to evaluate the acoustic source term on the right-hand
-   * side of the mass conservation equation of the acoustic conservation equations.
-   * Thus, the right_hand_side is scalar and acts on the pressure DoFs.
-   */
-  std::shared_ptr<dealii::Function<dim>> right_hand_side;
-};
+      /*
+       * The function right_hand_side is used to evaluate the acoustic source
+       * term on the right-hand side of the mass conservation equation of the
+       * acoustic conservation equations. Thus, the right_hand_side is scalar
+       * and acts on the pressure DoFs.
+       */
+      std::shared_ptr<dealii::Function<dim>> right_hand_side;
+    };
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_FIELD_FUNCTIONS_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_FIELD_FUNCTIONS_H_ \
+        */

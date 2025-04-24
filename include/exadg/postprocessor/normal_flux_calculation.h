@@ -26,51 +26,53 @@
 
 namespace ExaDG
 {
-struct NormalFluxCalculatorData
-{
-  NormalFluxCalculatorData() : evaluate(false)
+  struct NormalFluxCalculatorData
   {
-  }
+    NormalFluxCalculatorData()
+      : evaluate(false)
+    {}
 
-  bool                                 evaluate;
-  std::set<dealii::types::boundary_id> boundary_ids;
+    bool                                 evaluate;
+    std::set<dealii::types::boundary_id> boundary_ids;
 
-  // specify where to write output files
-  std::string directory;
-  std::string filename;
-};
+    // specify where to write output files
+    std::string directory;
+    std::string filename;
+  };
 
-template<int dim, typename Number>
-class NormalFluxCalculator
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  template <int dim, typename Number>
+  class NormalFluxCalculator
+  {
+  public:
+    typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  typedef FaceIntegrator<dim, 1, Number> FaceIntegratorScalar;
+    typedef FaceIntegrator<dim, 1, Number> FaceIntegratorScalar;
 
-  typedef dealii::VectorizedArray<Number> scalar;
+    typedef dealii::VectorizedArray<Number> scalar;
 
-  NormalFluxCalculator(dealii::MatrixFree<dim, Number> const & matrix_free_in,
-                       unsigned int                            dof_index_in,
-                       unsigned int                            quad_index_in,
-                       NormalFluxCalculatorData const &        data,
-                       MPI_Comm const &                        mpi_comm_in);
+    NormalFluxCalculator(dealii::MatrixFree<dim, Number> const &matrix_free_in,
+                         unsigned int                           dof_index_in,
+                         unsigned int                           quad_index_in,
+                         NormalFluxCalculatorData const        &data,
+                         MPI_Comm const                        &mpi_comm_in);
 
-  void
-  evaluate(VectorType const & solution, double const time, bool const unsteady);
+    void
+    evaluate(VectorType const &solution,
+             double const      time,
+             bool const        unsteady);
 
-private:
-  dealii::MatrixFree<dim, Number> const & matrix_free;
-  unsigned int                            dof_index, quad_index;
+  private:
+    dealii::MatrixFree<dim, Number> const &matrix_free;
+    unsigned int                           dof_index, quad_index;
 
-  NormalFluxCalculatorData data;
+    NormalFluxCalculatorData data;
 
-  bool clear_files;
+    bool clear_files;
 
-  std::map<dealii::types::boundary_id, double> flux;
+    std::map<dealii::types::boundary_id, double> flux;
 
-  MPI_Comm const mpi_comm;
-};
+    MPI_Comm const mpi_comm;
+  };
 
 } // namespace ExaDG
 

@@ -24,8 +24,11 @@
 
 // deal.II
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/fe/mapping_q.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
+
 #include <deal.II/matrix_free/matrix_free.h>
 
 // ExaDG
@@ -33,43 +36,42 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-template<int dim, int n_components, typename Number>
-class Operator;
-
-template<typename Number>
-class PostProcessorInterface
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  virtual ~PostProcessorInterface()
+  namespace Poisson
   {
-  }
+    template <int dim, int n_components, typename Number>
+    class Operator;
 
-  virtual void
-  do_postprocessing(VectorType const &     solution,
-                    double const           time             = 0.0,
-                    types::time_step const time_step_number = numbers::steady_timestep) = 0;
-};
+    template <typename Number>
+    class PostProcessorInterface
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-template<int dim, int n_components, typename Number>
-class PostProcessorBase : public PostProcessorInterface<Number>
-{
-protected:
-  typedef typename PostProcessorInterface<Number>::VectorType VectorType;
+      virtual ~PostProcessorInterface()
+      {}
 
-public:
-  virtual ~PostProcessorBase()
-  {
-  }
+      virtual void
+      do_postprocessing(
+        VectorType const      &solution,
+        double const           time             = 0.0,
+        types::time_step const time_step_number = numbers::steady_timestep) = 0;
+    };
 
-  virtual void
-  setup(Operator<dim, n_components, Number> const & pde_operator) = 0;
-};
+    template <int dim, int n_components, typename Number>
+    class PostProcessorBase : public PostProcessorInterface<Number>
+    {
+    protected:
+      typedef typename PostProcessorInterface<Number>::VectorType VectorType;
 
-} // namespace Poisson
+    public:
+      virtual ~PostProcessorBase()
+      {}
+
+      virtual void
+      setup(Operator<dim, n_components, Number> const &pde_operator) = 0;
+    };
+
+  } // namespace Poisson
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_POISSON_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ */

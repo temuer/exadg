@@ -26,91 +26,98 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-template<int dim>
-PointwiseOutputData<dim>::PointwiseOutputData()
-  : write_rho(false), write_rho_u(false), write_rho_E(false)
-{
-}
-
-template<int dim>
-void
-PointwiseOutputData<dim>::print(dealii::ConditionalOStream & pcout) const
-{
-  PointwiseOutputDataBase<dim>::print(pcout);
-
-  if(this->time_control_data.is_active and this->evaluation_points.size() > 0)
+  namespace CompNS
   {
-    print_parameter(pcout, "Write rho", write_rho);
-    print_parameter(pcout, "Write rho_u", write_rho_u);
-    print_parameter(pcout, "Write rho_E", write_rho_E);
-  }
-}
+    template <int dim>
+    PointwiseOutputData<dim>::PointwiseOutputData()
+      : write_rho(false)
+      , write_rho_u(false)
+      , write_rho_E(false)
+    {}
 
-template struct PointwiseOutputData<2>;
-template struct PointwiseOutputData<3>;
+    template <int dim>
+    void
+    PointwiseOutputData<dim>::print(dealii::ConditionalOStream &pcout) const
+    {
+      PointwiseOutputDataBase<dim>::print(pcout);
 
-template<int dim, typename Number>
-PointwiseOutputGenerator<dim, Number>::PointwiseOutputGenerator(MPI_Comm const & comm)
-  : PointwiseOutputGeneratorBase<dim, Number>(comm)
-{
-}
+      if (this->time_control_data.is_active and
+          this->evaluation_points.size() > 0)
+        {
+          print_parameter(pcout, "Write rho", write_rho);
+          print_parameter(pcout, "Write rho_u", write_rho_u);
+          print_parameter(pcout, "Write rho_E", write_rho_E);
+        }
+    }
 
-template<int dim, typename Number>
-void
-PointwiseOutputGenerator<dim, Number>::setup(
-  dealii::DoFHandler<dim> const &  dof_handler_in,
-  dealii::Mapping<dim> const &     mapping_in,
-  PointwiseOutputData<dim> const & pointwise_output_data_in)
-{
-  this->setup_base(dof_handler_in.get_triangulation(), mapping_in, pointwise_output_data_in);
+    template struct PointwiseOutputData<2>;
+    template struct PointwiseOutputData<3>;
 
-  dof_handler           = &dof_handler_in;
-  pointwise_output_data = pointwise_output_data_in;
+    template <int dim, typename Number>
+    PointwiseOutputGenerator<dim, Number>::PointwiseOutputGenerator(
+      MPI_Comm const &comm)
+      : PointwiseOutputGeneratorBase<dim, Number>(comm)
+    {}
 
-  if(pointwise_output_data.time_control_data.is_active and
-     pointwise_output_data.evaluation_points.size() > 0)
-  {
-    if(pointwise_output_data.write_rho)
-      this->add_quantity("Rho", 1);
-    if(pointwise_output_data.write_rho_u)
-      this->add_quantity("Rho_U", dim);
-    if(pointwise_output_data.write_rho_E)
-      this->add_quantity("Rho_E", 1);
-  }
-}
+    template <int dim, typename Number>
+    void
+    PointwiseOutputGenerator<dim, Number>::setup(
+      dealii::DoFHandler<dim> const  &dof_handler_in,
+      dealii::Mapping<dim> const     &mapping_in,
+      PointwiseOutputData<dim> const &pointwise_output_data_in)
+    {
+      this->setup_base(dof_handler_in.get_triangulation(),
+                       mapping_in,
+                       pointwise_output_data_in);
 
-template<int dim, typename Number>
-void
-PointwiseOutputGenerator<dim, Number>::evaluate(VectorType const & solution,
-                                                double const       time,
-                                                bool const         unsteady)
-{
-  this->do_evaluate(
-    [&]() {
-      if(pointwise_output_data.write_rho or pointwise_output_data.write_rho_u or
-         pointwise_output_data.write_rho_E)
-      {
-        auto const values = this->template compute_point_values<dim + 2>(solution, *dof_handler);
-        if(pointwise_output_data.write_rho)
-          this->write_quantity("Rho", values, 0);
-        if(pointwise_output_data.write_rho_u)
-          this->write_quantity("Rho_U", values, 1);
-        if(pointwise_output_data.write_rho_E)
-          this->write_quantity("Rho_E", values, dim + 1);
-      }
-    },
-    time,
-    unsteady);
-}
+      dof_handler           = &dof_handler_in;
+      pointwise_output_data = pointwise_output_data_in;
+
+      if (pointwise_output_data.time_control_data.is_active and
+          pointwise_output_data.evaluation_points.size() > 0)
+        {
+          if (pointwise_output_data.write_rho)
+            this->add_quantity("Rho", 1);
+          if (pointwise_output_data.write_rho_u)
+            this->add_quantity("Rho_U", dim);
+          if (pointwise_output_data.write_rho_E)
+            this->add_quantity("Rho_E", 1);
+        }
+    }
+
+    template <int dim, typename Number>
+    void
+    PointwiseOutputGenerator<dim, Number>::evaluate(VectorType const &solution,
+                                                    double const      time,
+                                                    bool const        unsteady)
+    {
+      this->do_evaluate(
+        [&]() {
+          if (pointwise_output_data.write_rho or
+              pointwise_output_data.write_rho_u or
+              pointwise_output_data.write_rho_E)
+            {
+              auto const values =
+                this->template compute_point_values<dim + 2>(solution,
+                                                             *dof_handler);
+              if (pointwise_output_data.write_rho)
+                this->write_quantity("Rho", values, 0);
+              if (pointwise_output_data.write_rho_u)
+                this->write_quantity("Rho_U", values, 1);
+              if (pointwise_output_data.write_rho_E)
+                this->write_quantity("Rho_E", values, dim + 1);
+            }
+        },
+        time,
+        unsteady);
+    }
 
 
-template class PointwiseOutputGenerator<2, float>;
-template class PointwiseOutputGenerator<2, double>;
+    template class PointwiseOutputGenerator<2, float>;
+    template class PointwiseOutputGenerator<2, double>;
 
-template class PointwiseOutputGenerator<3, float>;
-template class PointwiseOutputGenerator<3, double>;
+    template class PointwiseOutputGenerator<3, float>;
+    template class PointwiseOutputGenerator<3, double>;
 
-} // namespace CompNS
+  } // namespace CompNS
 } // namespace ExaDG

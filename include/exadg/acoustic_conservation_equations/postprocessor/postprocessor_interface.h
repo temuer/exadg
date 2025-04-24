@@ -23,31 +23,35 @@
 #define EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_POSTPROCESSOR_POSTPROCESSOR_INTERFACE_H_
 
 #include <deal.II/lac/la_parallel_block_vector.h>
+
 #include <exadg/utilities/numbers.h>
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<typename Number>
-class PostProcessorInterface
-{
-protected:
-  using BlockVectorType = dealii::LinearAlgebra::distributed::BlockVector<Number>;
+  namespace Acoustics
+  {
+    template <typename Number>
+    class PostProcessorInterface
+    {
+    protected:
+      using BlockVectorType =
+        dealii::LinearAlgebra::distributed::BlockVector<Number>;
 
-public:
-  virtual ~PostProcessorInterface() = default;
+    public:
+      virtual ~PostProcessorInterface() = default;
 
-  /*
-   * This function has to be called to apply the postprocessing tools.
-   */
-  virtual void
-  do_postprocessing(BlockVectorType const & solution,
-                    double const            time             = 0.0,
-                    types::time_step const  time_step_number = numbers::steady_timestep) = 0;
-};
+      /*
+       * This function has to be called to apply the postprocessing tools.
+       */
+      virtual void
+      do_postprocessing(
+        BlockVectorType const &solution,
+        double const           time             = 0.0,
+        types::time_step const time_step_number = numbers::steady_timestep) = 0;
+    };
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_POSTPROCESSOR_POSTPROCESSOR_INTERFACE_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_POSTPROCESSOR_POSTPROCESSOR_INTERFACE_H_ \
+        */

@@ -24,90 +24,98 @@
 
 namespace ExaDG
 {
-struct MGDoFHandlerIdentifier
-{
-  MGDoFHandlerIdentifier(unsigned int degree, bool is_dg) : degree(degree), is_dg(is_dg)
+  struct MGDoFHandlerIdentifier
   {
-  }
+    MGDoFHandlerIdentifier(unsigned int degree, bool is_dg)
+      : degree(degree)
+      , is_dg(is_dg)
+    {}
 
-  bool
-  operator<(MGDoFHandlerIdentifier const & other) const
+    bool
+    operator<(MGDoFHandlerIdentifier const &other) const
+    {
+      return not((degree >= other.degree) and (is_dg >= other.is_dg));
+    }
+
+    bool
+    operator==(MGDoFHandlerIdentifier const &other) const
+    {
+      return (degree == other.degree) and (is_dg == other.is_dg);
+    }
+
+    unsigned int degree;
+    bool         is_dg;
+  };
+
+  struct MGLevelInfo
   {
-    return not((degree >= other.degree) and (is_dg >= other.is_dg));
-  }
+    MGLevelInfo(unsigned int h_level,
+                unsigned int dealii_tria_level,
+                unsigned int degree,
+                bool         is_dg)
+      : _h_level(h_level)
+      , _dealii_tria_level(dealii_tria_level)
+      , _dof_handler_id(degree, is_dg)
+    {}
 
-  bool
-  operator==(MGDoFHandlerIdentifier const & other) const
-  {
-    return (degree == other.degree) and (is_dg == other.is_dg);
-  }
+    MGLevelInfo(unsigned int           h_level,
+                unsigned int           dealii_tria_level,
+                MGDoFHandlerIdentifier dof_handler_id)
+      : _h_level(h_level)
+      , _dealii_tria_level(dealii_tria_level)
+      , _dof_handler_id(dof_handler_id)
+    {}
 
-  unsigned int degree;
-  bool         is_dg;
-};
+    unsigned int
+    h_level() const
+    {
+      return _h_level;
+    }
 
-struct MGLevelInfo
-{
-  MGLevelInfo(unsigned int h_level, unsigned int dealii_tria_level, unsigned int degree, bool is_dg)
-    : _h_level(h_level), _dealii_tria_level(dealii_tria_level), _dof_handler_id(degree, is_dg)
-  {
-  }
+    unsigned int
+    dealii_tria_level() const
+    {
+      return _dealii_tria_level;
+    }
 
-  MGLevelInfo(unsigned int           h_level,
-              unsigned int           dealii_tria_level,
-              MGDoFHandlerIdentifier dof_handler_id)
-    : _h_level(h_level), _dealii_tria_level(dealii_tria_level), _dof_handler_id(dof_handler_id)
-  {
-  }
+    unsigned int
+    degree() const
+    {
+      return _dof_handler_id.degree;
+    }
 
-  unsigned int
-  h_level() const
-  {
-    return _h_level;
-  }
+    bool
+    is_dg() const
+    {
+      return _dof_handler_id.is_dg;
+    }
 
-  unsigned int
-  dealii_tria_level() const
-  {
-    return _dealii_tria_level;
-  }
+    MGDoFHandlerIdentifier
+    dof_handler_id() const
+    {
+      return _dof_handler_id;
+    }
 
-  unsigned int
-  degree() const
-  {
-    return _dof_handler_id.degree;
-  }
+  private:
+    /**
+     * Counter for h-level running from 0 (coarse) to n_h_levels (fine)
+     */
+    unsigned int _h_level;
 
-  bool
-  is_dg() const
-  {
-    return _dof_handler_id.is_dg;
-  }
-
-  MGDoFHandlerIdentifier
-  dof_handler_id() const
-  {
-    return _dof_handler_id;
-  }
-
-private:
-  /**
-   * Counter for h-level running from 0 (coarse) to n_h_levels (fine)
-   */
-  unsigned int _h_level;
-
-  /**
-   * Triangulation level in dealii nomenclature, which is -1 in case we have a separate
-   * Triangulation object for each multigrid h-level (MG h-level = active level of Triangulation
-   * object corresponding to coarser MG h-level).
-   */
-  unsigned int _dealii_tria_level;
+    /**
+     * Triangulation level in dealii nomenclature, which is -1 in case we have a
+     * separate Triangulation object for each multigrid h-level (MG h-level =
+     * active level of Triangulation object corresponding to coarser MG
+     * h-level).
+     */
+    unsigned int _dealii_tria_level;
 
 
-  MGDoFHandlerIdentifier _dof_handler_id;
-};
+    MGDoFHandlerIdentifier _dof_handler_id;
+  };
 
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_SOLVERS_AND_PRECONDITIONERS_MULTIGRID_LEVELS_HYBRID_MULTIGRID_H_ */
+#endif /* INCLUDE_EXADG_SOLVERS_AND_PRECONDITIONERS_MULTIGRID_LEVELS_HYBRID_MULTIGRID_H_ \
+        */

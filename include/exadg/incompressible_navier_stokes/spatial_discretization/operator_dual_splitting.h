@@ -28,187 +28,203 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim, typename Number = double>
-class OperatorDualSplitting : public OperatorProjectionMethods<dim, Number>
-{
-private:
-  typedef SpatialOperatorBase<dim, Number>       Base;
-  typedef OperatorProjectionMethods<dim, Number> ProjectionBase;
-  typedef OperatorDualSplitting<dim, Number>     This;
-
-  typedef typename Base::VectorType VectorType;
-
-  typedef typename Base::scalar scalar;
-  typedef typename Base::vector vector;
-  typedef typename Base::tensor tensor;
-
-  typedef typename Base::Range Range;
-
-  typedef typename Base::FaceIntegratorU FaceIntegratorU;
-  typedef typename Base::FaceIntegratorP FaceIntegratorP;
-
-public:
-  /*
-   * Constructor.
-   */
-  OperatorDualSplitting(std::shared_ptr<Grid<dim> const>                      grid,
-                        std::shared_ptr<dealii::Mapping<dim> const>           mapping,
-                        std::shared_ptr<MultigridMappings<dim, Number>> const multigrid_mappings,
-                        std::shared_ptr<BoundaryDescriptor<dim> const>        boundary_descriptor,
-                        std::shared_ptr<FieldFunctions<dim> const>            field_functions,
-                        Parameters const &                                    parameters,
-                        std::string const &                                   field,
-                        MPI_Comm const &                                      mpi_comm);
-
-  /*
-   * Destructor.
-   */
-  virtual ~OperatorDualSplitting();
-
-  /*
-   * Pressure Poisson equation.
-   */
-
-  // rhs pressure: velocity divergence
-  void
-  apply_velocity_divergence_term(VectorType & dst, VectorType const & src) const;
-
-  void
-  rhs_velocity_divergence_term_dirichlet_bc_from_dof_vector(VectorType &       dst,
-                                                            VectorType const & velocity) const;
-
-  // rhs pressure Poisson equation: velocity divergence term: body force term
-  void
-  rhs_ppe_div_term_body_forces_add(VectorType & dst, double const & time) const;
-
-  // rhs pressure Poisson equation: velocity divergence term: convective term
-  void
-  rhs_ppe_div_term_convective_term_add(VectorType & dst, VectorType const & src) const;
-
-  // rhs pressure Poisson equation: Neumann BC body force term
-  void
-  rhs_ppe_nbc_body_force_term_add(VectorType & dst, double const & time) const;
-
-  // rhs pressure Poisson equation: Neumann BC numerical time derivative term
-  void
-  rhs_ppe_nbc_numerical_time_derivative_add(VectorType & dst, VectorType const & src) const;
-
-  // rhs pressure Poisson equation: Neumann BC convective term
-  void
-  rhs_ppe_nbc_convective_add(VectorType & dst, VectorType const & src) const;
-
-  // rhs pressure Poisson equation: Neumann BC viscous term
-  void
-  rhs_ppe_nbc_viscous_add(VectorType & dst, VectorType const & src) const;
-
-  void
-  rhs_ppe_laplace_add(VectorType & dst, double const & time) const;
-
-  unsigned int
-  solve_pressure(VectorType & dst, VectorType const & src, bool const update_preconditioner) const;
-
-  /*
-   * Viscous step.
-   */
-
-  void
-  apply_helmholtz_operator(VectorType & dst, VectorType const & src) const;
-
-
-  /*
-   * Fill a DoF vector with velocity Dirichlet values on Dirichlet boundaries.
-   *
-   * Note that this function only works as long as one uses a nodal dealii::FE_DGQ element with
-   * Gauss-Lobatto points. Otherwise, the quadrature formula used in this function does not match
-   * the nodes of the element, and the values injected by this function into the DoF vector are not
-   * the degrees of freedom of the underlying finite element space.
-   */
-  void
-  interpolate_velocity_dirichlet_bc(VectorType & dst, double const & time) const;
-
-private:
-  /*
-   * rhs pressure Poisson equation
-   */
-
-  void
-  cell_loop_empty(dealii::MatrixFree<dim, Number> const &,
-                  VectorType &,
-                  VectorType const &,
-                  Range const &) const
+  namespace IncNS
   {
-  }
+    template <int dim, typename Number = double>
+    class OperatorDualSplitting : public OperatorProjectionMethods<dim, Number>
+    {
+    private:
+      typedef SpatialOperatorBase<dim, Number>       Base;
+      typedef OperatorProjectionMethods<dim, Number> ProjectionBase;
+      typedef OperatorDualSplitting<dim, Number>     This;
 
-  void
-  face_loop_empty(dealii::MatrixFree<dim, Number> const &,
-                  VectorType &,
-                  VectorType const &,
-                  Range const &) const
-  {
-  }
+      typedef typename Base::VectorType VectorType;
 
-  // rhs PPE: velocity divergence term
+      typedef typename Base::scalar scalar;
+      typedef typename Base::vector vector;
+      typedef typename Base::tensor tensor;
 
-  // convective term
-  void
-  local_rhs_ppe_div_term_convective_term_boundary_face(
-    dealii::MatrixFree<dim, Number> const & matrix_free,
-    VectorType &                            dst,
-    VectorType const &                      src,
-    Range const &                           face_range) const;
+      typedef typename Base::Range Range;
 
-  // body force term
-  void
-  local_rhs_ppe_div_term_body_forces_boundary_face(
-    dealii::MatrixFree<dim, Number> const & matrix_free,
-    VectorType &                            dst,
-    VectorType const &                      src,
-    Range const &                           face_range) const;
+      typedef typename Base::FaceIntegratorU FaceIntegratorU;
+      typedef typename Base::FaceIntegratorP FaceIntegratorP;
 
-  // Neumann boundary condition term
+    public:
+      /*
+       * Constructor.
+       */
+      OperatorDualSplitting(
+        std::shared_ptr<Grid<dim> const>            grid,
+        std::shared_ptr<dealii::Mapping<dim> const> mapping,
+        std::shared_ptr<MultigridMappings<dim, Number>> const
+                                                       multigrid_mappings,
+        std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor,
+        std::shared_ptr<FieldFunctions<dim> const>     field_functions,
+        Parameters const                              &parameters,
+        std::string const                             &field,
+        MPI_Comm const                                &mpi_comm);
 
-  // dg_u/dt with numerical time derivative
-  void
-  local_rhs_ppe_nbc_numerical_time_derivative_add_boundary_face(
-    dealii::MatrixFree<dim, Number> const & matrix_free,
-    VectorType &                            dst,
-    VectorType const &                      src,
-    Range const &                           face_range) const;
+      /*
+       * Destructor.
+       */
+      virtual ~OperatorDualSplitting();
 
-  // body force term
-  void
-  local_rhs_ppe_nbc_body_force_term_add_boundary_face(
-    dealii::MatrixFree<dim, Number> const & matrix_free,
-    VectorType &                            dst,
-    VectorType const &                      src,
-    Range const &                           face_range) const;
+      /*
+       * Pressure Poisson equation.
+       */
 
-  // convective term
-  void
-  local_rhs_ppe_nbc_convective_add_boundary_face(
-    dealii::MatrixFree<dim, Number> const & matrix_free,
-    VectorType &                            dst,
-    VectorType const &                      src,
-    Range const &                           face_range) const;
+      // rhs pressure: velocity divergence
+      void
+      apply_velocity_divergence_term(VectorType       &dst,
+                                     VectorType const &src) const;
 
-  // viscous term
-  void
-  local_rhs_ppe_nbc_viscous_add_boundary_face(dealii::MatrixFree<dim, Number> const & matrix_free,
-                                              VectorType &                            dst,
-                                              VectorType const &                      src,
-                                              Range const & face_range) const;
+      void
+      rhs_velocity_divergence_term_dirichlet_bc_from_dof_vector(
+        VectorType       &dst,
+        VectorType const &velocity) const;
 
-  void
-  local_interpolate_velocity_dirichlet_bc_boundary_face(
-    dealii::MatrixFree<dim, Number> const & matrix_free,
-    VectorType &                            dst,
-    VectorType const &                      src,
-    Range const &                           face_range) const;
-};
+      // rhs pressure Poisson equation: velocity divergence term: body force
+      // term
+      void
+      rhs_ppe_div_term_body_forces_add(VectorType   &dst,
+                                       double const &time) const;
 
-} // namespace IncNS
+      // rhs pressure Poisson equation: velocity divergence term: convective
+      // term
+      void
+      rhs_ppe_div_term_convective_term_add(VectorType       &dst,
+                                           VectorType const &src) const;
+
+      // rhs pressure Poisson equation: Neumann BC body force term
+      void
+      rhs_ppe_nbc_body_force_term_add(VectorType   &dst,
+                                      double const &time) const;
+
+      // rhs pressure Poisson equation: Neumann BC numerical time derivative
+      // term
+      void
+      rhs_ppe_nbc_numerical_time_derivative_add(VectorType       &dst,
+                                                VectorType const &src) const;
+
+      // rhs pressure Poisson equation: Neumann BC convective term
+      void
+      rhs_ppe_nbc_convective_add(VectorType &dst, VectorType const &src) const;
+
+      // rhs pressure Poisson equation: Neumann BC viscous term
+      void
+      rhs_ppe_nbc_viscous_add(VectorType &dst, VectorType const &src) const;
+
+      void
+      rhs_ppe_laplace_add(VectorType &dst, double const &time) const;
+
+      unsigned int
+      solve_pressure(VectorType       &dst,
+                     VectorType const &src,
+                     bool const        update_preconditioner) const;
+
+      /*
+       * Viscous step.
+       */
+
+      void
+      apply_helmholtz_operator(VectorType &dst, VectorType const &src) const;
+
+
+      /*
+       * Fill a DoF vector with velocity Dirichlet values on Dirichlet
+       * boundaries.
+       *
+       * Note that this function only works as long as one uses a nodal
+       * dealii::FE_DGQ element with Gauss-Lobatto points. Otherwise, the
+       * quadrature formula used in this function does not match the nodes of
+       * the element, and the values injected by this function into the DoF
+       * vector are not the degrees of freedom of the underlying finite element
+       * space.
+       */
+      void
+      interpolate_velocity_dirichlet_bc(VectorType   &dst,
+                                        double const &time) const;
+
+    private:
+      /*
+       * rhs pressure Poisson equation
+       */
+
+      void
+      cell_loop_empty(dealii::MatrixFree<dim, Number> const &,
+                      VectorType &,
+                      VectorType const &,
+                      Range const &) const
+      {}
+
+      void
+      face_loop_empty(dealii::MatrixFree<dim, Number> const &,
+                      VectorType &,
+                      VectorType const &,
+                      Range const &) const
+      {}
+
+      // rhs PPE: velocity divergence term
+
+      // convective term
+      void
+      local_rhs_ppe_div_term_convective_term_boundary_face(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType                            &dst,
+        VectorType const                      &src,
+        Range const                           &face_range) const;
+
+      // body force term
+      void
+      local_rhs_ppe_div_term_body_forces_boundary_face(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType                            &dst,
+        VectorType const                      &src,
+        Range const                           &face_range) const;
+
+      // Neumann boundary condition term
+
+      // dg_u/dt with numerical time derivative
+      void
+      local_rhs_ppe_nbc_numerical_time_derivative_add_boundary_face(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType                            &dst,
+        VectorType const                      &src,
+        Range const                           &face_range) const;
+
+      // body force term
+      void
+      local_rhs_ppe_nbc_body_force_term_add_boundary_face(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType                            &dst,
+        VectorType const                      &src,
+        Range const                           &face_range) const;
+
+      // convective term
+      void
+      local_rhs_ppe_nbc_convective_add_boundary_face(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType                            &dst,
+        VectorType const                      &src,
+        Range const                           &face_range) const;
+
+      // viscous term
+      void
+      local_rhs_ppe_nbc_viscous_add_boundary_face(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType                            &dst,
+        VectorType const                      &src,
+        Range const                           &face_range) const;
+
+      void
+      local_interpolate_velocity_dirichlet_bc_boundary_face(
+        dealii::MatrixFree<dim, Number> const &matrix_free,
+        VectorType                            &dst,
+        VectorType const                      &src,
+        Range const                           &face_range) const;
+    };
+
+  } // namespace IncNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_SPATIAL_DISCRETIZATION_OPERATOR_DUAL_SPLITTING_H_ \

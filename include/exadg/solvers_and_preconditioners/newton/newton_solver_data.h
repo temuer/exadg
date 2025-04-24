@@ -30,43 +30,50 @@
 
 namespace ExaDG
 {
-namespace Newton
-{
-struct SolverData
-{
-  SolverData() : max_iter(100), abs_tol(1.e-12), rel_tol(1.e-12)
+  namespace Newton
   {
-  }
+    struct SolverData
+    {
+      SolverData()
+        : max_iter(100)
+        , abs_tol(1.e-12)
+        , rel_tol(1.e-12)
+      {}
 
-  SolverData(unsigned int const max_iter_, double const abs_tol_, double const rel_tol_)
-    : max_iter(max_iter_), abs_tol(abs_tol_), rel_tol(rel_tol_)
-  {
-  }
+      SolverData(unsigned int const max_iter_,
+                 double const       abs_tol_,
+                 double const       rel_tol_)
+        : max_iter(max_iter_)
+        , abs_tol(abs_tol_)
+        , rel_tol(rel_tol_)
+      {}
 
-  void
-  print(dealii::ConditionalOStream const & pcout) const
-  {
-    print_parameter(pcout, "Maximum number of iterations", max_iter);
-    print_parameter(pcout, "Absolute solver tolerance", abs_tol);
-    print_parameter(pcout, "Relative solver tolerance", rel_tol);
-  }
+      void
+      print(dealii::ConditionalOStream const &pcout) const
+      {
+        print_parameter(pcout, "Maximum number of iterations", max_iter);
+        print_parameter(pcout, "Absolute solver tolerance", abs_tol);
+        print_parameter(pcout, "Relative solver tolerance", rel_tol);
+      }
 
-  unsigned int max_iter;
-  double       abs_tol;
-  double       rel_tol;
-};
+      unsigned int max_iter;
+      double       abs_tol;
+      double       rel_tol;
+    };
 
-struct UpdateData
-{
-  UpdateData() : do_update(true), update_every_newton_iter(1), update_once_converged(false)
-  {
-  }
+    struct UpdateData
+    {
+      UpdateData()
+        : do_update(true)
+        , update_every_newton_iter(1)
+        , update_once_converged(false)
+      {}
 
-  bool         do_update;
-  unsigned int update_every_newton_iter;
-  bool         update_once_converged;
-};
-} // namespace Newton
+      bool         do_update;
+      unsigned int update_every_newton_iter;
+      bool         update_once_converged;
+    };
+  } // namespace Newton
 } // namespace ExaDG
 
 #endif /* INCLUDE_SOLVERS_AND_PRECONDITIONERS_NEWTON_SOLVER_DATA_H_ */

@@ -37,49 +37,54 @@
 
 namespace ExaDG
 {
-void
-create_input_file(std::string const & input_file)
-{
-  dealii::ParameterHandler prm;
+  void
+  create_input_file(std::string const &input_file)
+  {
+    dealii::ParameterHandler prm;
 
-  GeneralParameters general;
-  general.add_parameters(prm);
+    GeneralParameters general;
+    general.add_parameters(prm);
 
-  // we have to assume a default dimension and default Number type
-  // for the automatic generation of a default input file
-  unsigned int const Dim = 2;
-  typedef double     Number;
-  FTI::get_application<Dim, Number>(input_file, MPI_COMM_WORLD)->add_parameters(prm);
+    // we have to assume a default dimension and default Number type
+    // for the automatic generation of a default input file
+    unsigned int const Dim = 2;
+    typedef double     Number;
+    FTI::get_application<Dim, Number>(input_file, MPI_COMM_WORLD)
+      ->add_parameters(prm);
 
-  prm.print_parameters(input_file,
-                       dealii::ParameterHandler::Short |
-                         dealii::ParameterHandler::KeepDeclarationOrder);
-}
+    prm.print_parameters(input_file,
+                         dealii::ParameterHandler::Short |
+                           dealii::ParameterHandler::KeepDeclarationOrder);
+  }
 
-template<int dim, typename Number>
-void
-run(std::string const & input_file, MPI_Comm const & mpi_comm, bool const is_test)
-{
-  dealii::Timer timer;
-  timer.restart();
+  template <int dim, typename Number>
+  void
+  run(std::string const &input_file,
+      MPI_Comm const    &mpi_comm,
+      bool const         is_test)
+  {
+    dealii::Timer timer;
+    timer.restart();
 
-  std::shared_ptr<FTI::ApplicationBase<dim, Number>> application =
-    FTI::get_application<dim, Number>(input_file, mpi_comm);
+    std::shared_ptr<FTI::ApplicationBase<dim, Number>> application =
+      FTI::get_application<dim, Number>(input_file, mpi_comm);
 
-  std::shared_ptr<FTI::Driver<dim, Number>> driver =
-    std::make_shared<FTI::Driver<dim, Number>>(mpi_comm, application, is_test);
+    std::shared_ptr<FTI::Driver<dim, Number>> driver =
+      std::make_shared<FTI::Driver<dim, Number>>(mpi_comm,
+                                                 application,
+                                                 is_test);
 
-  driver->setup();
+    driver->setup();
 
-  driver->solve();
+    driver->solve();
 
-  if(not(is_test))
-    driver->print_performance_results(timer.wall_time());
-}
+    if (not(is_test))
+      driver->print_performance_results(timer.wall_time());
+  }
 } // namespace ExaDG
 
 int
-main(int argc, char ** argv)
+main(int argc, char **argv)
 {
   dealii::Utilities::MPI::MPI_InitFinalize mpi(argc, argv, 1);
 
@@ -87,55 +92,56 @@ main(int argc, char ** argv)
 
   std::string input_file;
 
-  if(argc == 1)
-  {
-    if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+  if (argc == 1)
     {
-      // clang-format off
+      if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+        {
+          // clang-format off
       std::cout << "To run the program, use:      ./solver input_file" << std::endl
                 << "To setup the input file, use: ./solver input_file --help" << std::endl;
-      // clang-format on
-    }
-
-    return 0;
-  }
-  else if(argc >= 2)
-  {
-    input_file = std::string(argv[1]);
-
-    if(argc == 3 and std::string(argv[2]) == "--help")
-    {
-      if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
-        ExaDG::create_input_file(input_file);
+          // clang-format on
+        }
 
       return 0;
     }
-  }
+  else if (argc >= 2)
+    {
+      input_file = std::string(argv[1]);
+
+      if (argc == 3 and std::string(argv[2]) == "--help")
+        {
+          if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+            ExaDG::create_input_file(input_file);
+
+          return 0;
+        }
+    }
 
   ExaDG::GeneralParameters general(input_file);
 
   // run the simulation
-  if(general.dim == 2 and general.precision == "float")
-  {
-    ExaDG::run<2, float>(input_file, mpi_comm, general.is_test);
-  }
-  else if(general.dim == 2 and general.precision == "double")
-  {
-    ExaDG::run<2, double>(input_file, mpi_comm, general.is_test);
-  }
-  else if(general.dim == 3 and general.precision == "float")
-  {
-    ExaDG::run<3, float>(input_file, mpi_comm, general.is_test);
-  }
-  else if(general.dim == 3 and general.precision == "double")
-  {
-    ExaDG::run<3, double>(input_file, mpi_comm, general.is_test);
-  }
+  if (general.dim == 2 and general.precision == "float")
+    {
+      ExaDG::run<2, float>(input_file, mpi_comm, general.is_test);
+    }
+  else if (general.dim == 2 and general.precision == "double")
+    {
+      ExaDG::run<2, double>(input_file, mpi_comm, general.is_test);
+    }
+  else if (general.dim == 3 and general.precision == "float")
+    {
+      ExaDG::run<3, float>(input_file, mpi_comm, general.is_test);
+    }
+  else if (general.dim == 3 and general.precision == "double")
+    {
+      ExaDG::run<3, double>(input_file, mpi_comm, general.is_test);
+    }
   else
-  {
-    AssertThrow(false,
-                dealii::ExcMessage("Only dim = 2|3 and precision=float|double implemented."));
-  }
+    {
+      AssertThrow(false,
+                  dealii::ExcMessage(
+                    "Only dim = 2|3 and precision=float|double implemented."));
+    }
 
   return 0;
 }

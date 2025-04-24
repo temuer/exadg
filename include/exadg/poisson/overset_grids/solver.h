@@ -35,46 +35,50 @@
 
 namespace ExaDG
 {
-void
-create_input_file(std::string const & input_file)
-{
-  dealii::ParameterHandler prm;
+  void
+  create_input_file(std::string const &input_file)
+  {
+    dealii::ParameterHandler prm;
 
-  GeneralParameters general;
-  general.add_parameters(prm);
+    GeneralParameters general;
+    general.add_parameters(prm);
 
-  // we have to assume a default dimension and default Number type
-  // for the automatic generation of a default input file
-  unsigned int const Dim = 2;
-  typedef double     Number;
-  Poisson::OversetGrids::get_application_overset_grids<Dim, 1, Number>(input_file, MPI_COMM_WORLD)
-    ->add_parameters(prm);
+    // we have to assume a default dimension and default Number type
+    // for the automatic generation of a default input file
+    unsigned int const Dim = 2;
+    typedef double     Number;
+    Poisson::OversetGrids::get_application_overset_grids<Dim, 1, Number>(
+      input_file, MPI_COMM_WORLD)
+      ->add_parameters(prm);
 
-  prm.print_parameters(input_file,
-                       dealii::ParameterHandler::Short |
-                         dealii::ParameterHandler::KeepDeclarationOrder);
-}
+    prm.print_parameters(input_file,
+                         dealii::ParameterHandler::Short |
+                           dealii::ParameterHandler::KeepDeclarationOrder);
+  }
 
-template<int dim, int n_components, typename Number>
-void
-run(std::string const & input_file, MPI_Comm const & mpi_comm)
-{
-  std::shared_ptr<Poisson::OversetGrids::ApplicationBase<dim, n_components, Number>> application =
-    Poisson::OversetGrids::get_application_overset_grids<dim, n_components, Number>(input_file,
-                                                                                    mpi_comm);
+  template <int dim, int n_components, typename Number>
+  void
+  run(std::string const &input_file, MPI_Comm const &mpi_comm)
+  {
+    std::shared_ptr<
+      Poisson::OversetGrids::ApplicationBase<dim, n_components, Number>>
+      application = Poisson::OversetGrids::
+        get_application_overset_grids<dim, n_components, Number>(input_file,
+                                                                 mpi_comm);
 
-  std::shared_ptr<Poisson::OversetGrids::Driver<dim, n_components, Number>> driver =
-    std::make_shared<Poisson::OversetGrids::Driver<dim, n_components, Number>>(mpi_comm,
-                                                                               application);
+    std::shared_ptr<Poisson::OversetGrids::Driver<dim, n_components, Number>>
+      driver = std::make_shared<
+        Poisson::OversetGrids::Driver<dim, n_components, Number>>(mpi_comm,
+                                                                  application);
 
-  driver->setup();
+    driver->setup();
 
-  driver->solve();
-}
+    driver->solve();
+  }
 } // namespace ExaDG
 
 int
-main(int argc, char ** argv)
+main(int argc, char **argv)
 {
   dealii::Utilities::MPI::MPI_InitFinalize mpi(argc, argv, 1);
 
@@ -82,42 +86,45 @@ main(int argc, char ** argv)
 
   std::string input_file;
 
-  if(argc == 1)
-  {
-    if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+  if (argc == 1)
     {
-      std::cout << "To run the program, use:      ./solver input_file" << std::endl
-                << "To setup the input file, use: ./solver input_file --help" << std::endl;
-    }
-
-    return 0;
-  }
-  else if(argc >= 2)
-  {
-    input_file = std::string(argv[1]);
-
-    if(argc == 3 and std::string(argv[2]) == "--help")
-    {
-      if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
-        ExaDG::create_input_file(input_file);
+      if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+        {
+          std::cout
+            << "To run the program, use:      ./solver input_file" << std::endl
+            << "To setup the input file, use: ./solver input_file --help"
+            << std::endl;
+        }
 
       return 0;
     }
-  }
+  else if (argc >= 2)
+    {
+      input_file = std::string(argv[1]);
+
+      if (argc == 3 and std::string(argv[2]) == "--help")
+        {
+          if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+            ExaDG::create_input_file(input_file);
+
+          return 0;
+        }
+    }
 
   ExaDG::GeneralParameters general(input_file);
 
-  if(general.dim == 2 and general.precision == "float")
+  if (general.dim == 2 and general.precision == "float")
     ExaDG::run<2, 1, float>(input_file, mpi_comm);
-  else if(general.dim == 2 and general.precision == "double")
+  else if (general.dim == 2 and general.precision == "double")
     ExaDG::run<2, 1, double>(input_file, mpi_comm);
-  else if(general.dim == 3 and general.precision == "float")
+  else if (general.dim == 3 and general.precision == "float")
     ExaDG::run<3, 1, float>(input_file, mpi_comm);
-  else if(general.dim == 3 and general.precision == "double")
+  else if (general.dim == 3 and general.precision == "double")
     ExaDG::run<3, 1, double>(input_file, mpi_comm);
   else
     AssertThrow(false,
-                dealii::ExcMessage("Only dim = 2|3 and precision = float|double implemented."));
+                dealii::ExcMessage(
+                  "Only dim = 2|3 and precision = float|double implemented."));
 
   return 0;
 }

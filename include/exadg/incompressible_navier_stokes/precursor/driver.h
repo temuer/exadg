@@ -38,148 +38,158 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-namespace Precursor
-{
-template<int dim, typename Number>
-class Solver
-{
-public:
-  void
-  setup(std::shared_ptr<Domain<dim, Number>> & domain,
-        std::vector<std::string> const &       subsection_names_parameters,
-        std::string const &                    field,
-        MPI_Comm const &                       mpi_comm,
-        bool const                             is_test)
+  namespace IncNS
   {
-    // setup application
-    domain->setup(grid, mapping, multigrid_mappings, subsection_names_parameters);
+    namespace Precursor
+    {
+      template <int dim, typename Number>
+      class Solver
+      {
+      public:
+        void
+        setup(std::shared_ptr<Domain<dim, Number>> &domain,
+              std::vector<std::string> const       &subsection_names_parameters,
+              std::string const                    &field,
+              MPI_Comm const                       &mpi_comm,
+              bool const                            is_test)
+        {
+          // setup application
+          domain->setup(grid,
+                        mapping,
+                        multigrid_mappings,
+                        subsection_names_parameters);
 
-    // ALE is not used for this solver
-    std::shared_ptr<HelpersALE<dim, Number>> helpers_ale_dummy;
+          // ALE is not used for this solver
+          std::shared_ptr<HelpersALE<dim, Number>> helpers_ale_dummy;
 
-    // initialize pde_operator
-    pde_operator = create_operator<dim, Number>(grid,
-                                                mapping,
-                                                multigrid_mappings,
-                                                domain->get_boundary_descriptor(),
-                                                domain->get_field_functions(),
+          // initialize pde_operator
+          pde_operator =
+            create_operator<dim, Number>(grid,
+                                         mapping,
+                                         multigrid_mappings,
+                                         domain->get_boundary_descriptor(),
+                                         domain->get_field_functions(),
+                                         domain->get_parameters(),
+                                         field,
+                                         mpi_comm);
+
+          // initialize matrix_free
+          matrix_free_data = std::make_shared<MatrixFreeData<dim, Number>>();
+          matrix_free_data->append(pde_operator);
+
+          matrix_free = std::make_shared<dealii::MatrixFree<dim, Number>>();
+          if (domain->get_parameters().use_cell_based_face_loops)
+            Categorization::do_cell_based_loops(*grid->triangulation,
+                                                matrix_free_data->data);
+          matrix_free->reinit(*mapping,
+                              matrix_free_data->get_dof_handler_vector(),
+                              matrix_free_data->get_constraint_vector(),
+                              matrix_free_data->get_quadrature_vector(),
+                              matrix_free_data->data);
+
+          // setup Navier-Stokes operator
+          pde_operator->setup(matrix_free, matrix_free_data);
+
+          // setup postprocessor
+          postprocessor = domain->create_postprocessor();
+          postprocessor->setup(*pde_operator);
+
+          // Setup time integrator
+          time_integrator =
+            create_time_integrator<dim, Number>(pde_operator,
+                                                helpers_ale_dummy,
+                                                postprocessor,
                                                 domain->get_parameters(),
-                                                field,
-                                                mpi_comm);
+                                                mpi_comm,
+                                                is_test);
 
-    // initialize matrix_free
-    matrix_free_data = std::make_shared<MatrixFreeData<dim, Number>>();
-    matrix_free_data->append(pde_operator);
+          time_integrator->setup(domain->get_parameters().restarted_simulation);
+        }
 
-    matrix_free = std::make_shared<dealii::MatrixFree<dim, Number>>();
-    if(domain->get_parameters().use_cell_based_face_loops)
-      Categorization::do_cell_based_loops(*grid->triangulation, matrix_free_data->data);
-    matrix_free->reinit(*mapping,
-                        matrix_free_data->get_dof_handler_vector(),
-                        matrix_free_data->get_constraint_vector(),
-                        matrix_free_data->get_quadrature_vector(),
-                        matrix_free_data->data);
+        /*
+         * Grid and mapping
+         */
+        std::shared_ptr<Grid<dim>>            grid;
+        std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-    // setup Navier-Stokes operator
-    pde_operator->setup(matrix_free, matrix_free_data);
+        std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-    // setup postprocessor
-    postprocessor = domain->create_postprocessor();
-    postprocessor->setup(*pde_operator);
+        /*
+         * Spatial discretization
+         */
+        std::shared_ptr<SpatialOperatorBase<dim, Number>> pde_operator;
 
-    // Setup time integrator
-    time_integrator = create_time_integrator<dim, Number>(
-      pde_operator, helpers_ale_dummy, postprocessor, domain->get_parameters(), mpi_comm, is_test);
+        /*
+         * Postprocessor
+         */
+        typedef PostProcessorBase<dim, Number> Postprocessor;
 
-    time_integrator->setup(domain->get_parameters().restarted_simulation);
-  }
+        std::shared_ptr<Postprocessor> postprocessor;
 
-  /*
-   * Grid and mapping
-   */
-  std::shared_ptr<Grid<dim>>            grid;
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+        /*
+         * Temporal discretization
+         */
+        std::shared_ptr<TimeIntBDF<dim, Number>> time_integrator;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      private:
+        /*
+         * MatrixFree
+         */
+        std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
+        std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
+      };
 
-  /*
-   * Spatial discretization
-   */
-  std::shared_ptr<SpatialOperatorBase<dim, Number>> pde_operator;
+      template <int dim, typename Number>
+      class Driver
+      {
+      public:
+        Driver(MPI_Comm const                               &mpi_comm,
+               std::shared_ptr<ApplicationBase<dim, Number>> application,
+               bool const                                    is_test);
 
-  /*
-   * Postprocessor
-   */
-  typedef PostProcessorBase<dim, Number> Postprocessor;
+        void
+        setup();
 
-  std::shared_ptr<Postprocessor> postprocessor;
+        void
+        solve() const;
 
-  /*
-   * Temporal discretization
-   */
-  std::shared_ptr<TimeIntBDF<dim, Number>> time_integrator;
+        void
+        print_performance_results(double const total_time) const;
 
-private:
-  /*
-   * MatrixFree
-   */
-  std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
-  std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
-};
+      private:
+        void
+        set_start_time() const;
 
-template<int dim, typename Number>
-class Driver
-{
-public:
-  Driver(MPI_Comm const &                              mpi_comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test);
+        void
+        synchronize_time_step_size() const;
 
-  void
-  setup();
+        void
+        consistency_checks() const;
 
-  void
-  solve() const;
+        // MPI communicator
+        MPI_Comm const mpi_comm;
 
-  void
-  print_performance_results(double const total_time) const;
+        // output to std::cout
+        dealii::ConditionalOStream pcout;
 
-private:
-  void
-  set_start_time() const;
+        // do not print wall times if is_test
+        bool const is_test;
 
-  void
-  synchronize_time_step_size() const;
+        // application
+        std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  void
-  consistency_checks() const;
+        Solver<dim, Number> solver_main, solver_precursor;
 
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+        bool use_adaptive_time_stepping;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+        /*
+         * Computation time (wall clock time).
+         */
+        mutable TimerTree timer_tree;
+      };
 
-  // do not print wall times if is_test
-  bool const is_test;
-
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
-
-  Solver<dim, Number> solver_main, solver_precursor;
-
-  bool use_adaptive_time_stepping;
-
-  /*
-   * Computation time (wall clock time).
-   */
-  mutable TimerTree timer_tree;
-};
-
-} // namespace Precursor
-} // namespace IncNS
+    } // namespace Precursor
+  }   // namespace IncNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_DRIVER_PRECURSOR_H_ */

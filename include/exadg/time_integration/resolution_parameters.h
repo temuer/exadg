@@ -28,41 +28,40 @@
 
 namespace ExaDG
 {
-struct TemporalResolutionParameters
-{
-  TemporalResolutionParameters()
+  struct TemporalResolutionParameters
   {
-  }
+    TemporalResolutionParameters()
+    {}
 
-  TemporalResolutionParameters(std::string const & input_file)
-  {
-    dealii::ParameterHandler prm;
-    add_parameters(prm);
-    prm.parse_input(input_file, "", true, true);
-  }
-
-  void
-  add_parameters(dealii::ParameterHandler & prm)
-  {
-    prm.enter_subsection("TemporalResolution");
+    TemporalResolutionParameters(std::string const &input_file)
     {
-      prm.add_parameter("RefineTimeMin",
-                        refine_time_min,
-                        "Minimal number of time refinements.",
-                        dealii::Patterns::Integer(0, 20),
-                        true);
-      prm.add_parameter("RefineTimeMax",
-                        refine_time_max,
-                        "Maximal number of time refinements.",
-                        dealii::Patterns::Integer(0, 20),
-                        true);
+      dealii::ParameterHandler prm;
+      add_parameters(prm);
+      prm.parse_input(input_file, "", true, true);
     }
-    prm.leave_subsection();
-  }
 
-  unsigned int refine_time_min = 0;
-  unsigned int refine_time_max = 0;
-};
+    void
+    add_parameters(dealii::ParameterHandler &prm)
+    {
+      prm.enter_subsection("TemporalResolution");
+      {
+        prm.add_parameter("RefineTimeMin",
+                          refine_time_min,
+                          "Minimal number of time refinements.",
+                          dealii::Patterns::Integer(0, 20),
+                          true);
+        prm.add_parameter("RefineTimeMax",
+                          refine_time_max,
+                          "Maximal number of time refinements.",
+                          dealii::Patterns::Integer(0, 20),
+                          true);
+      }
+      prm.leave_subsection();
+    }
+
+    unsigned int refine_time_min = 0;
+    unsigned int refine_time_max = 0;
+  };
 
 } // namespace ExaDG
 

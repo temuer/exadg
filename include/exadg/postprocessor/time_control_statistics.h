@@ -27,36 +27,37 @@
 
 namespace ExaDG
 {
-struct TimeControlDataStatistics
-{
-  TimeControlDataStatistics();
+  struct TimeControlDataStatistics
+  {
+    TimeControlDataStatistics();
 
-  void
-  print(dealii::ConditionalOStream & pcout, bool const unsteady) const;
+    void
+    print(dealii::ConditionalOStream &pcout, bool const unsteady) const;
 
-  types::time_step write_preliminary_results_every_nth_time_step;
+    types::time_step write_preliminary_results_every_nth_time_step;
 
-  TimeControlData time_control_data;
-};
+    TimeControlData time_control_data;
+  };
 
 
-class TimeControlStatistics
-{
-public:
-  TimeControlStatistics();
+  class TimeControlStatistics
+  {
+  public:
+    TimeControlStatistics();
 
-  void
-  setup(TimeControlDataStatistics const & time_control_data_statistics_in);
+    void
+    setup(TimeControlDataStatistics const &time_control_data_statistics_in);
 
-  bool
-  write_preliminary_results(double const time, types::time_step const time_step_number) const;
+    bool
+    write_preliminary_results(double const           time,
+                              types::time_step const time_step_number) const;
 
-  TimeControl time_control;
+    TimeControl time_control;
 
-private:
-  TimeControlDataStatistics time_control_data_statistics;
-  mutable bool              final_output_written;
-};
+  private:
+    TimeControlDataStatistics time_control_data_statistics;
+    mutable bool              final_output_written;
+  };
 
 
 } // namespace ExaDG

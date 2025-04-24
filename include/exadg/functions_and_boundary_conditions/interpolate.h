@@ -28,82 +28,91 @@
 
 namespace ExaDG
 {
-namespace Utilities
-{
-template<int dim,
-         int spacedim,
-         typename Number,
-         template<typename>
-         typename VectorType,
-         typename FunctionNumber>
-void
-interpolate(dealii::DoFHandler<dim, spacedim> const &          dof_handler,
-            dealii::Function<spacedim, FunctionNumber> const & function,
-            VectorType<Number> &                               vec)
-{
-  if constexpr(std::is_same_v<Number, FunctionNumber>)
+  namespace Utilities
   {
-    dealii::VectorTools::interpolate(dof_handler, function, vec);
-  }
-  else
-  {
-    VectorType<FunctionNumber> vec_fn;
-    vec_fn.reinit(vec);
-    dealii::VectorTools::interpolate(dof_handler, function, vec_fn);
-    vec.copy_locally_owned_data_from(vec_fn);
-  }
-}
+    template <int dim,
+              int spacedim,
+              typename Number,
+              template <typename>
+              typename VectorType,
+              typename FunctionNumber>
+    void
+    interpolate(dealii::DoFHandler<dim, spacedim> const          &dof_handler,
+                dealii::Function<spacedim, FunctionNumber> const &function,
+                VectorType<Number>                               &vec)
+    {
+      if constexpr (std::is_same_v<Number, FunctionNumber>)
+        {
+          dealii::VectorTools::interpolate(dof_handler, function, vec);
+        }
+      else
+        {
+          VectorType<FunctionNumber> vec_fn;
+          vec_fn.reinit(vec);
+          dealii::VectorTools::interpolate(dof_handler, function, vec_fn);
+          vec.copy_locally_owned_data_from(vec_fn);
+        }
+    }
 
-template<int dim, int spacedim, typename VectorType, typename FunctionNumber>
-void
-interpolate(dealii::DoFHandler<dim, spacedim> const &    dof_handler,
-            dealii::Function<spacedim, FunctionNumber> & function,
-            VectorType &                                 vec,
-            double const                                 time)
-{
-  function.set_time(time);
-  interpolate(dof_handler, function, vec);
-}
+    template <int dim,
+              int spacedim,
+              typename VectorType,
+              typename FunctionNumber>
+    void
+    interpolate(dealii::DoFHandler<dim, spacedim> const    &dof_handler,
+                dealii::Function<spacedim, FunctionNumber> &function,
+                VectorType                                 &vec,
+                double const                                time)
+    {
+      function.set_time(time);
+      interpolate(dof_handler, function, vec);
+    }
 
-template<int dim,
-         int spacedim,
-         typename Number,
-         template<typename>
-         typename VectorType,
-         typename FunctionNumber>
-void
-interpolate(dealii::Mapping<dim, spacedim> const &             mapping,
-            dealii::DoFHandler<dim, spacedim> const &          dof_handler,
-            dealii::Function<spacedim, FunctionNumber> const & function,
-            VectorType<Number> &                               vec)
-{
-  if constexpr(std::is_same_v<Number, FunctionNumber>)
-  {
-    dealii::VectorTools::interpolate(mapping, dof_handler, function, vec);
-  }
-  else
-  {
-    VectorType<FunctionNumber> vec_fn;
-    vec_fn.reinit(vec);
-    dealii::VectorTools::interpolate(mapping, dof_handler, function, vec_fn);
-    vec.copy_locally_owned_data_from(vec_fn);
-  }
-}
+    template <int dim,
+              int spacedim,
+              typename Number,
+              template <typename>
+              typename VectorType,
+              typename FunctionNumber>
+    void
+    interpolate(dealii::Mapping<dim, spacedim> const             &mapping,
+                dealii::DoFHandler<dim, spacedim> const          &dof_handler,
+                dealii::Function<spacedim, FunctionNumber> const &function,
+                VectorType<Number>                               &vec)
+    {
+      if constexpr (std::is_same_v<Number, FunctionNumber>)
+        {
+          dealii::VectorTools::interpolate(mapping, dof_handler, function, vec);
+        }
+      else
+        {
+          VectorType<FunctionNumber> vec_fn;
+          vec_fn.reinit(vec);
+          dealii::VectorTools::interpolate(mapping,
+                                           dof_handler,
+                                           function,
+                                           vec_fn);
+          vec.copy_locally_owned_data_from(vec_fn);
+        }
+    }
 
-template<int dim, int spacedim, typename VectorType, typename FunctionNumber>
-void
-interpolate(dealii::Mapping<dim, spacedim> const &       mapping,
-            dealii::DoFHandler<dim, spacedim> const &    dof_handler,
-            dealii::Function<spacedim, FunctionNumber> & function,
-            VectorType &                                 vec,
-            double const                                 time)
-{
-  function.set_time(time);
-  interpolate(mapping, dof_handler, function, vec);
-}
+    template <int dim,
+              int spacedim,
+              typename VectorType,
+              typename FunctionNumber>
+    void
+    interpolate(dealii::Mapping<dim, spacedim> const       &mapping,
+                dealii::DoFHandler<dim, spacedim> const    &dof_handler,
+                dealii::Function<spacedim, FunctionNumber> &function,
+                VectorType                                 &vec,
+                double const                                time)
+    {
+      function.set_time(time);
+      interpolate(mapping, dof_handler, function, vec);
+    }
 
 
-} // namespace Utilities
+  } // namespace Utilities
 } // namespace ExaDG
 
 

@@ -27,18 +27,19 @@
 
 namespace ExaDG
 {
-/**
- * Creates directories if not already existing. An MPI barrier ensures that
- * directories have been created for all processes when completing this function.
- */
-inline void
-create_directories(std::string const & directory, MPI_Comm const & mpi_comm)
-{
-  if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
-    std::filesystem::create_directories(directory);
+  /**
+   * Creates directories if not already existing. An MPI barrier ensures that
+   * directories have been created for all processes when completing this
+   * function.
+   */
+  inline void
+  create_directories(std::string const &directory, MPI_Comm const &mpi_comm)
+  {
+    if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+      std::filesystem::create_directories(directory);
 
-  MPI_Barrier(mpi_comm);
-}
+    MPI_Barrier(mpi_comm);
+  }
 
 } // namespace ExaDG
 

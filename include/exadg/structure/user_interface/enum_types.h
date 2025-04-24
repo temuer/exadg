@@ -27,105 +27,106 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-/**************************************************************************************/
-/*                                                                                    */
-/*                                 MATHEMATICAL MODEL                                 */
-/*                                                                                    */
-/**************************************************************************************/
+  namespace Structure
+  {
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                                 MATHEMATICAL MODEL */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-/*
- *  ProblemType describes whether a steady or an unsteady problem has to be solved
- */
-enum class ProblemType
-{
-  Undefined,
-  Steady,
-  QuasiStatic,
-  Unsteady
-};
+    /*
+     *  ProblemType describes whether a steady or an unsteady problem has to be
+     * solved
+     */
+    enum class ProblemType
+    {
+      Undefined,
+      Steady,
+      QuasiStatic,
+      Unsteady
+    };
 
-enum class Type2D
-{
-  Undefined,
-  PlaneStress,
-  PlaneStrain
-};
+    enum class Type2D
+    {
+      Undefined,
+      PlaneStress,
+      PlaneStrain
+    };
 
-enum class MaterialType
-{
-  Undefined,
-  StVenantKirchhoff
-};
+    enum class MaterialType
+    {
+      Undefined,
+      StVenantKirchhoff
+    };
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                                 PHYSICAL QUANTITIES                                */
-/*                                                                                    */
-/**************************************************************************************/
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                                 PHYSICAL QUANTITIES */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-// there are currently no enums for this section
-
-
-
-/**************************************************************************************/
-/*                                                                                    */
-/*                             TEMPORAL DISCRETIZATION                                */
-/*                                                                                    */
-/**************************************************************************************/
-
-// there are currently no enums for this section
+    // there are currently no enums for this section
 
 
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                               SPATIAL DISCRETIZATION                               */
-/*                                                                                    */
-/**************************************************************************************/
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                             TEMPORAL DISCRETIZATION */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-// there are currently no enums for this section
+    // there are currently no enums for this section
 
 
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                                       SOLVER                                       */
-/*                                                                                    */
-/**************************************************************************************/
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                               SPATIAL DISCRETIZATION */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-/*
- *   Solver for linear system of equations
- */
-enum class Solver
-{
-  Undefined,
-  CG,
-  FGMRES
-};
+    // there are currently no enums for this section
 
-/*
- *  Preconditioner type for solution of linear system of equations
- */
-enum class Preconditioner
-{
-  None,
-  PointJacobi,
-  AdditiveSchwarz,
-  Multigrid,
-  AMG
-};
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                               OUTPUT AND POSTPROCESSING                            */
-/*                                                                                    */
-/**************************************************************************************/
 
-// there are currently no enums for this section
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                                       SOLVER */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-} // namespace Structure
+    /*
+     *   Solver for linear system of equations
+     */
+    enum class Solver
+    {
+      Undefined,
+      CG,
+      FGMRES
+    };
+
+    /*
+     *  Preconditioner type for solution of linear system of equations
+     */
+    enum class Preconditioner
+    {
+      None,
+      PointJacobi,
+      AdditiveSchwarz,
+      Multigrid,
+      AMG
+    };
+
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                               OUTPUT AND POSTPROCESSING */
+    /*                                                                                    */
+    /**************************************************************************************/
+
+    // there are currently no enums for this section
+
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

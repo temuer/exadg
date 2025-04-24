@@ -22,68 +22,73 @@
 #ifndef INCLUDE_EXADG_UTILITIES_ENUM_UTILITIES_H_
 #define INCLUDE_EXADG_UTILITIES_ENUM_UTILITIES_H_
 
-#include <vector>
+#include <deal.II/base/exceptions.h>
 
 #include <boost/algorithm/string/join.hpp>
+
 #include <magic_enum/magic_enum.hpp>
 
-#include <deal.II/base/exceptions.h>
+#include <vector>
 
 namespace ExaDG
 {
-/**
- * Collection of enum utilities.
- */
-namespace Utilities
-{
-/// Checks if given type is an enum or enum class.
-template<typename Type>
-constexpr bool
-is_enum()
-{
-  return (std::is_enum_v<Type> or magic_enum::is_scoped_enum_v<Type>);
-}
+  /**
+   * Collection of enum utilities.
+   */
+  namespace Utilities
+  {
+    /// Checks if given type is an enum or enum class.
+    template <typename Type>
+    constexpr bool
+    is_enum()
+    {
+      return (std::is_enum_v<Type> or magic_enum::is_scoped_enum_v<Type>);
+    }
 
-/// Returns the first value of EnumType. This is well-defined as compared to EnumType().
-template<typename EnumType>
-EnumType
-default_constructor()
-{
-  return magic_enum::enum_values<EnumType>()[0];
-}
+    /// Returns the first value of EnumType. This is well-defined as compared to
+    /// EnumType().
+    template <typename EnumType>
+    EnumType
+    default_constructor()
+    {
+      return magic_enum::enum_values<EnumType>()[0];
+    }
 
-/// Returns the names of the enums joined with "|".
-template<typename EnumType>
-std::string
-serialized_string()
-{
-  auto const enum_strings = magic_enum::enum_names<EnumType>();
+    /// Returns the names of the enums joined with "|".
+    template <typename EnumType>
+    std::string
+    serialized_string()
+    {
+      auto const enum_strings = magic_enum::enum_names<EnumType>();
 
-  std::vector<std::string> const enums_strings_vec(enum_strings.begin(), enum_strings.end());
-  return boost::algorithm::join(enums_strings_vec, "|");
-}
+      std::vector<std::string> const enums_strings_vec(enum_strings.begin(),
+                                                       enum_strings.end());
+      return boost::algorithm::join(enums_strings_vec, "|");
+    }
 
-/// Converts and enum to a string, returning the string.
-template<typename EnumType>
-std::string
-enum_to_string(EnumType const enum_type)
-{
-  return (std::string)magic_enum::enum_name(enum_type);
-}
+    /// Converts and enum to a string, returning the string.
+    template <typename EnumType>
+    std::string
+    enum_to_string(EnumType const enum_type)
+    {
+      return (std::string)magic_enum::enum_name(enum_type);
+    }
 
-/// Converts a string to an enum, which is provided as first function argument.
-template<typename EnumType>
-void
-string_to_enum(EnumType & enum_type, std::string const & enum_name)
-{
-  auto casted_enum = magic_enum::enum_cast<EnumType>(enum_name);
-  if(casted_enum.has_value())
-    enum_type = casted_enum.value();
-  else
-    AssertThrow(false, dealii::ExcMessage("Could not convert string to enum."));
-}
+    /// Converts a string to an enum, which is provided as first function
+    /// argument.
+    template <typename EnumType>
+    void
+    string_to_enum(EnumType &enum_type, std::string const &enum_name)
+    {
+      auto casted_enum = magic_enum::enum_cast<EnumType>(enum_name);
+      if (casted_enum.has_value())
+        enum_type = casted_enum.value();
+      else
+        AssertThrow(false,
+                    dealii::ExcMessage("Could not convert string to enum."));
+    }
 
-} // namespace Utilities
+  } // namespace Utilities
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_UTILITIES_ENUM_UTILITIES_H_ */

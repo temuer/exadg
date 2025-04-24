@@ -24,7 +24,9 @@
 
 // deal.II
 #include <deal.II/fe/mapping.h>
+
 #include <deal.II/matrix_free/matrix_free.h>
+
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/mg_transfer_global_coarsening.h>
 
@@ -34,31 +36,39 @@
 
 namespace ExaDG
 {
-template<int dim, typename Number, typename VectorType>
-class MultigridTransfer : public MultigridTransferBase<VectorType>
-{
-public:
-  void
-  reinit(dealii::MGLevelObject<std::shared_ptr<dealii::MatrixFree<dim, Number>>> & mg_matrixfree,
-         unsigned int const               dof_handler_index,
-         std::vector<MGLevelInfo> const & global_levels);
+  template <int dim, typename Number, typename VectorType>
+  class MultigridTransfer : public MultigridTransferBase<VectorType>
+  {
+  public:
+    void
+    reinit(
+      dealii::MGLevelObject<std::shared_ptr<dealii::MatrixFree<dim, Number>>>
+                                     &mg_matrixfree,
+      unsigned int const              dof_handler_index,
+      std::vector<MGLevelInfo> const &global_levels);
 
-  void
-  interpolate(unsigned int const level, VectorType & dst, VectorType const & src) const final;
+    void
+    interpolate(unsigned int const level,
+                VectorType        &dst,
+                VectorType const  &src) const final;
 
-  void
-  restrict_and_add(unsigned int const level, VectorType & dst, VectorType const & src) const final;
+    void
+    restrict_and_add(unsigned int const level,
+                     VectorType        &dst,
+                     VectorType const  &src) const final;
 
-  void
-  prolongate_and_add(unsigned int const level,
-                     VectorType &       dst,
-                     VectorType const & src) const final;
+    void
+    prolongate_and_add(unsigned int const level,
+                       VectorType        &dst,
+                       VectorType const  &src) const final;
 
-private:
-  dealii::MGLevelObject<dealii::MGTwoLevelTransfer<dim, VectorType>> transfers;
+  private:
+    dealii::MGLevelObject<dealii::MGTwoLevelTransfer<dim, VectorType>>
+      transfers;
 
-  std::unique_ptr<dealii::MGTransferGlobalCoarsening<dim, VectorType>> mg_transfer;
-};
+    std::unique_ptr<dealii::MGTransferGlobalCoarsening<dim, VectorType>>
+      mg_transfer;
+  };
 } // namespace ExaDG
 
 #endif // INCLUDE_SOLVERS_AND_PRECONDITIONERS_MULTIGRID_MUTLIGRID_TRANSFER_H_

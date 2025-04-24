@@ -23,34 +23,36 @@
 #define INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_POSTPROCESSOR_INTERFACE_H_
 
 #include <deal.II/lac/la_parallel_vector.h>
+
 #include <exadg/utilities/numbers.h>
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<typename Number>
-class PostProcessorInterface
-{
-protected:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-public:
-  virtual ~PostProcessorInterface()
+  namespace IncNS
   {
-  }
+    template <typename Number>
+    class PostProcessorInterface
+    {
+    protected:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  /*
-   * This function has to be called to apply the postprocessing tools.
-   */
-  virtual void
-  do_postprocessing(VectorType const &     velocity,
-                    VectorType const &     pressure,
-                    double const           time             = 0.0,
-                    types::time_step const time_step_number = numbers::steady_timestep) = 0;
-};
+    public:
+      virtual ~PostProcessorInterface()
+      {}
 
-} // namespace IncNS
+      /*
+       * This function has to be called to apply the postprocessing tools.
+       */
+      virtual void
+      do_postprocessing(
+        VectorType const      &velocity,
+        VectorType const      &pressure,
+        double const           time             = 0.0,
+        types::time_step const time_step_number = numbers::steady_timestep) = 0;
+    };
+
+  } // namespace IncNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_POSTPROCESSOR_INTERFACE_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_POSTPROCESSOR_INTERFACE_H_ \
+        */

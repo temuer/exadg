@@ -25,31 +25,32 @@
 
 namespace ExaDG
 {
-template<int dim, typename Number>
-class MeanScalarCalculator
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  template <int dim, typename Number>
+  class MeanScalarCalculator
+  {
+  public:
+    typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  typedef FaceIntegrator<dim, 1, Number> FaceIntegratorScalar;
+    typedef FaceIntegrator<dim, 1, Number> FaceIntegratorScalar;
 
-  typedef dealii::VectorizedArray<Number> scalar;
+    typedef dealii::VectorizedArray<Number> scalar;
 
-  MeanScalarCalculator(dealii::MatrixFree<dim, Number> const & matrix_free_in,
-                       unsigned int                            dof_index_in,
-                       unsigned int                            quad_index_in,
-                       MPI_Comm const &                        mpi_comm_in);
+    MeanScalarCalculator(dealii::MatrixFree<dim, Number> const &matrix_free_in,
+                         unsigned int                           dof_index_in,
+                         unsigned int                           quad_index_in,
+                         MPI_Comm const                        &mpi_comm_in);
 
-  Number
-  calculate_mean_scalar(VectorType const &                             solution,
-                        std::map<dealii::types::boundary_id, Number> & mean_scalar);
+    Number
+    calculate_mean_scalar(
+      VectorType const                             &solution,
+      std::map<dealii::types::boundary_id, Number> &mean_scalar);
 
-private:
-  dealii::MatrixFree<dim, Number> const & matrix_free;
-  unsigned int                            dof_index, quad_index;
+  private:
+    dealii::MatrixFree<dim, Number> const &matrix_free;
+    unsigned int                           dof_index, quad_index;
 
-  MPI_Comm const mpi_comm;
-};
+    MPI_Comm const mpi_comm;
+  };
 
 } // namespace ExaDG
 

@@ -42,160 +42,170 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-template<int dim, int n_components, typename Number>
-class ApplicationBase
-{
-public:
-  static unsigned int const rank =
-    (n_components == 1) ? 0 : ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
-
-  typedef typename std::vector<
-    dealii::GridTools::PeriodicFacePair<typename dealii::Triangulation<dim>::cell_iterator>>
-    PeriodicFaces;
-
-  virtual void
-  add_parameters(dealii::ParameterHandler & prm)
+  namespace Poisson
   {
-    grid_parameters.add_parameters(prm);
-    output_parameters.add_parameters(prm);
-  }
-
-  ApplicationBase(std::string parameter_file, MPI_Comm const & comm)
-    : mpi_comm(comm),
-      pcout(std::cout, dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0),
-      parameter_file(parameter_file),
-      n_subdivisions_1d_hypercube(1)
-  {
-  }
-
-  virtual ~ApplicationBase()
-  {
-  }
-
-  void
-  set_parameters_throughput_study(unsigned int const degree,
-                                  unsigned int const refine_space,
-                                  unsigned int const n_subdivisions_1d_hypercube)
-  {
-    this->param.degree                = degree;
-    this->param.grid.n_refine_global  = refine_space;
-    this->n_subdivisions_1d_hypercube = n_subdivisions_1d_hypercube;
-  }
-
-  void
-  set_parameters_convergence_study(unsigned int const degree, unsigned int const refine_space)
-  {
-    this->param.degree               = degree;
-    this->param.grid.n_refine_global = refine_space;
-  }
-
-  void
-  setup(std::shared_ptr<Grid<dim>> &                      grid,
-        std::shared_ptr<dealii::Mapping<dim>> &           mapping,
-        std::shared_ptr<MultigridMappings<dim, Number>> & multigrid_mappings)
-  {
-    // parameters
-    parse_parameters();
-    set_parameters();
-    param.check();
-    param.print(pcout, "List of parameters:");
-
-    // grid
-    grid = std::make_shared<Grid<dim>>();
-    create_grid(*grid, mapping, multigrid_mappings);
-    print_grid_info(pcout, *grid);
-
-    if(compute_aspect_ratio)
+    template <int dim, int n_components, typename Number>
+    class ApplicationBase
     {
-      auto const reference_cells = grid->triangulation->get_reference_cells();
-      AssertThrow(reference_cells.size() == 1, dealii::ExcMessage("No mixed meshes allowed"));
+    public:
+      static unsigned int const rank =
+        (n_components == 1) ?
+          0 :
+          ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
 
-      auto const quad =
-        reference_cells[0].template get_gauss_type_quadrature<dim>(param.degree + 1);
+      typedef typename std::vector<dealii::GridTools::PeriodicFacePair<
+        typename dealii::Triangulation<dim>::cell_iterator>>
+        PeriodicFaces;
 
-      double const aspect_ratio =
-        dealii::GridTools::compute_maximum_aspect_ratio(*mapping, *grid->triangulation, quad);
-      pcout << std::endl << "Maximum aspect ratio = " << aspect_ratio << std::endl;
-    }
+      virtual void
+      add_parameters(dealii::ParameterHandler &prm)
+      {
+        grid_parameters.add_parameters(prm);
+        output_parameters.add_parameters(prm);
+      }
 
-    // boundary conditions
-    boundary_descriptor = std::make_shared<BoundaryDescriptor<rank, dim>>();
-    set_boundary_descriptor();
-    verify_boundary_conditions(*boundary_descriptor, *grid);
+      ApplicationBase(std::string parameter_file, MPI_Comm const &comm)
+        : mpi_comm(comm)
+        , pcout(std::cout,
+                dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+        , parameter_file(parameter_file)
+        , n_subdivisions_1d_hypercube(1)
+      {}
 
-    // field functions
-    field_functions = std::make_shared<FieldFunctions<dim>>();
-    set_field_functions();
-  }
+      virtual ~ApplicationBase()
+      {}
 
-  virtual std::shared_ptr<Poisson::PostProcessorBase<dim, n_components, Number>>
-  create_postprocessor() = 0;
+      void
+      set_parameters_throughput_study(
+        unsigned int const degree,
+        unsigned int const refine_space,
+        unsigned int const n_subdivisions_1d_hypercube)
+      {
+        this->param.degree                = degree;
+        this->param.grid.n_refine_global  = refine_space;
+        this->n_subdivisions_1d_hypercube = n_subdivisions_1d_hypercube;
+      }
 
-  Parameters const &
-  get_parameters() const
-  {
-    return param;
-  }
+      void
+      set_parameters_convergence_study(unsigned int const degree,
+                                       unsigned int const refine_space)
+      {
+        this->param.degree               = degree;
+        this->param.grid.n_refine_global = refine_space;
+      }
 
-  std::shared_ptr<BoundaryDescriptor<rank, dim> const>
-  get_boundary_descriptor() const
-  {
-    return boundary_descriptor;
-  }
+      void
+      setup(std::shared_ptr<Grid<dim>>                      &grid,
+            std::shared_ptr<dealii::Mapping<dim>>           &mapping,
+            std::shared_ptr<MultigridMappings<dim, Number>> &multigrid_mappings)
+      {
+        // parameters
+        parse_parameters();
+        set_parameters();
+        param.check();
+        param.print(pcout, "List of parameters:");
 
-  std::shared_ptr<FieldFunctions<dim> const>
-  get_field_functions() const
-  {
-    return field_functions;
-  }
+        // grid
+        grid = std::make_shared<Grid<dim>>();
+        create_grid(*grid, mapping, multigrid_mappings);
+        print_grid_info(pcout, *grid);
 
-protected:
-  virtual void
-  parse_parameters()
-  {
-    dealii::ParameterHandler prm;
-    this->add_parameters(prm);
-    prm.parse_input(parameter_file, "", true, true);
-  }
+        if (compute_aspect_ratio)
+          {
+            auto const reference_cells =
+              grid->triangulation->get_reference_cells();
+            AssertThrow(reference_cells.size() == 1,
+                        dealii::ExcMessage("No mixed meshes allowed"));
 
-  MPI_Comm const mpi_comm;
+            auto const quad =
+              reference_cells[0].template get_gauss_type_quadrature<dim>(
+                param.degree + 1);
 
-  dealii::ConditionalOStream pcout;
+            double const aspect_ratio =
+              dealii::GridTools::compute_maximum_aspect_ratio(
+                *mapping, *grid->triangulation, quad);
+            pcout << std::endl
+                  << "Maximum aspect ratio = " << aspect_ratio << std::endl;
+          }
 
-  Parameters param;
+        // boundary conditions
+        boundary_descriptor = std::make_shared<BoundaryDescriptor<rank, dim>>();
+        set_boundary_descriptor();
+        verify_boundary_conditions(*boundary_descriptor, *grid);
 
-  std::shared_ptr<BoundaryDescriptor<rank, dim>> boundary_descriptor;
-  std::shared_ptr<FieldFunctions<dim>>           field_functions;
+        // field functions
+        field_functions = std::make_shared<FieldFunctions<dim>>();
+        set_field_functions();
+      }
 
-  std::string parameter_file;
+      virtual std::shared_ptr<
+        Poisson::PostProcessorBase<dim, n_components, Number>>
+      create_postprocessor() = 0;
 
-  GridParameters grid_parameters;
+      Parameters const &
+      get_parameters() const
+      {
+        return param;
+      }
 
-  unsigned int n_subdivisions_1d_hypercube;
+      std::shared_ptr<BoundaryDescriptor<rank, dim> const>
+      get_boundary_descriptor() const
+      {
+        return boundary_descriptor;
+      }
 
-  OutputParameters output_parameters;
+      std::shared_ptr<FieldFunctions<dim> const>
+      get_field_functions() const
+      {
+        return field_functions;
+      }
 
-  bool compute_aspect_ratio = false;
+    protected:
+      virtual void
+      parse_parameters()
+      {
+        dealii::ParameterHandler prm;
+        this->add_parameters(prm);
+        prm.parse_input(parameter_file, "", true, true);
+      }
 
-private:
-  virtual void
-  set_parameters() = 0;
+      MPI_Comm const mpi_comm;
 
-  virtual void
-  create_grid(Grid<dim> &                                       grid,
-              std::shared_ptr<dealii::Mapping<dim>> &           mapping,
-              std::shared_ptr<MultigridMappings<dim, Number>> & multigrid_mappings) = 0;
+      dealii::ConditionalOStream pcout;
 
-  virtual void
-  set_boundary_descriptor() = 0;
+      Parameters param;
 
-  virtual void
-  set_field_functions() = 0;
-};
+      std::shared_ptr<BoundaryDescriptor<rank, dim>> boundary_descriptor;
+      std::shared_ptr<FieldFunctions<dim>>           field_functions;
 
-} // namespace Poisson
+      std::string parameter_file;
+
+      GridParameters grid_parameters;
+
+      unsigned int n_subdivisions_1d_hypercube;
+
+      OutputParameters output_parameters;
+
+      bool compute_aspect_ratio = false;
+
+    private:
+      virtual void
+      set_parameters() = 0;
+
+      virtual void
+      create_grid(Grid<dim>                             &grid,
+                  std::shared_ptr<dealii::Mapping<dim>> &mapping,
+                  std::shared_ptr<MultigridMappings<dim, Number>>
+                    &multigrid_mappings) = 0;
+
+      virtual void
+      set_boundary_descriptor() = 0;
+
+      virtual void
+      set_field_functions() = 0;
+    };
+
+  } // namespace Poisson
 } // namespace ExaDG
 
 

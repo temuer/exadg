@@ -31,35 +31,37 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim, typename Number>
-class OutputGenerator
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  namespace Structure
+  {
+    template <int dim, typename Number>
+    class OutputGenerator
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  OutputGenerator(MPI_Comm const & comm);
+      OutputGenerator(MPI_Comm const &comm);
 
-  void
-  setup(dealii::DoFHandler<dim> const & dof_handler,
-        dealii::Mapping<dim> const &    mapping,
-        OutputDataBase const &          output_data);
+      void
+      setup(dealii::DoFHandler<dim> const &dof_handler,
+            dealii::Mapping<dim> const    &mapping,
+            OutputDataBase const          &output_data);
 
-  void
-  evaluate(VectorType const & solution, double const time, bool const unsteady);
+      void
+      evaluate(VectorType const &solution,
+               double const      time,
+               bool const        unsteady);
 
-  TimeControl time_control;
+      TimeControl time_control;
 
-private:
-  MPI_Comm const mpi_comm;
+    private:
+      MPI_Comm const mpi_comm;
 
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
-  dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
-  OutputDataBase                                      output_data;
-};
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
+      dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
+      OutputDataBase                                      output_data;
+    };
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

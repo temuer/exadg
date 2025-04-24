@@ -26,47 +26,52 @@
 #include <deal.II/grid/tria.h>
 
 /**
- * Returns a vector of marked vertices indicating vertices on the boundary of a triangulation that
- * have been marked according to a given set of boundary_ids.
+ * Returns a vector of marked vertices indicating vertices on the boundary of a
+ * triangulation that have been marked according to a given set of boundary_ids.
  */
-template<int dim>
+template <int dim>
 std::vector<bool>
-get_marked_vertices_via_boundary_ids(dealii::Triangulation<dim> const &           triangulation,
-                                     std::set<dealii::types::boundary_id> const & boundary_ids)
+get_marked_vertices_via_boundary_ids(
+  dealii::Triangulation<dim> const           &triangulation,
+  std::set<dealii::types::boundary_id> const &boundary_ids)
 {
-  // mark vertices at interface in order to make search of active cells around point more
-  // efficient
+  // mark vertices at interface in order to make search of active cells around
+  // point more efficient
   std::vector<bool> marked_vertices(triangulation.n_vertices(), false);
 
-  for(auto const & cell : triangulation.active_cell_iterators())
-  {
-    if(not(cell->is_artificial()) and cell->at_boundary())
+  for (auto const &cell : triangulation.active_cell_iterators())
     {
-      for(auto const & f : cell->face_indices())
-      {
-        if(cell->face(f)->at_boundary())
+      if (not(cell->is_artificial()) and cell->at_boundary())
         {
-          if(boundary_ids.find(cell->face(f)->boundary_id()) != boundary_ids.end())
-          {
-            for(auto const & v : cell->face(f)->vertex_indices())
+          for (auto const &f : cell->face_indices())
             {
-              marked_vertices[cell->face(f)->vertex_index(v)] = true;
+              if (cell->face(f)->at_boundary())
+                {
+                  if (boundary_ids.find(cell->face(f)->boundary_id()) !=
+                      boundary_ids.end())
+                    {
+                      for (auto const &v : cell->face(f)->vertex_indices())
+                        {
+                          marked_vertices[cell->face(f)->vertex_index(v)] =
+                            true;
+                        }
+                    }
+                }
             }
-          }
         }
-      }
     }
-  }
 
-  // To improve robustness, make sure that not all entries of marked_vertices are false.
-  // If no useful information about marked vertices can be provided, an empty vector should
-  // be used.
-  if(std::all_of(marked_vertices.begin(), marked_vertices.end(), [](bool vertex_is_marked) {
-       return vertex_is_marked == false;
-     }))
-  {
-    marked_vertices.clear();
-  }
+  // To improve robustness, make sure that not all entries of marked_vertices
+  // are false. If no useful information about marked vertices can be provided,
+  // an empty vector should be used.
+  if (std::all_of(marked_vertices.begin(),
+                  marked_vertices.end(),
+                  [](bool vertex_is_marked) {
+                    return vertex_is_marked == false;
+                  }))
+    {
+      marked_vertices.clear();
+    }
 
   return marked_vertices;
 }

@@ -19,9 +19,9 @@
  *  ______________________________________________________________________
  */
 
-#include <iostream>
-
 #include <exadg/time_integration/am_constants.h>
+
+#include <iostream>
 
 // Check AM time integration constants in case of adaptive timestepping
 
@@ -34,17 +34,17 @@ test(unsigned int const order)
   std::vector<double>       time_steps{0.1, 0.2, 0.3, 0.4, 0.5};
 
   std::cout << "AMTimeIntegratorConstants of oder " << order << std::endl;
-  for(unsigned int current_order = 1; current_order <= order; ++current_order)
-  {
-    std::cout << "Current order " << current_order << std::endl;
-    constants.update(current_order, true, time_steps);
+  for (unsigned int current_order = 1; current_order <= order; ++current_order)
+    {
+      std::cout << "Current order " << current_order << std::endl;
+      constants.update(current_order, true, time_steps);
 
-    double sum = constants.get_gamma0();
-    for(unsigned int i = 0; i < order - 1; ++i)
-      sum += constants.get_alpha(i);
+      double sum = constants.get_gamma0();
+      for (unsigned int i = 0; i < order - 1; ++i)
+        sum += constants.get_alpha(i);
 
-    std::cout << "Sum: " << sum << std::endl;
-  }
+      std::cout << "Sum: " << sum << std::endl;
+    }
 }
 
 

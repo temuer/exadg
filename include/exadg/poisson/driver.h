@@ -35,75 +35,76 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-enum class OperatorType
-{
-  Evaluate,
-  Apply
-};
+  namespace Poisson
+  {
+    enum class OperatorType
+    {
+      Evaluate,
+      Apply
+    };
 
-template<int dim, typename Number>
-class Driver
-{
-public:
-  Driver(MPI_Comm const &                                 mpi_comm,
-         std::shared_ptr<ApplicationBase<dim, 1, Number>> application,
-         bool const                                       is_test,
-         bool const                                       is_throughput_study);
+    template <int dim, typename Number>
+    class Driver
+    {
+    public:
+      Driver(MPI_Comm const                                  &mpi_comm,
+             std::shared_ptr<ApplicationBase<dim, 1, Number>> application,
+             bool const                                       is_test,
+             bool const is_throughput_study);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve();
+      void
+      solve();
 
-  SolverResult
-  print_performance_results(double const total_time) const;
+      SolverResult
+      print_performance_results(double const total_time) const;
 
-  /*
-   * Throughput study
-   */
-  std::tuple<unsigned int, dealii::types::global_dof_index, double>
-  apply_operator(OperatorType const & operator_type,
-                 unsigned int const   n_repetitions_inner,
-                 unsigned int const   n_repetitions_outer) const;
+      /*
+       * Throughput study
+       */
+      std::tuple<unsigned int, dealii::types::global_dof_index, double>
+      apply_operator(OperatorType const &operator_type,
+                     unsigned int const  n_repetitions_inner,
+                     unsigned int const  n_repetitions_outer) const;
 
-private:
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+    private:
+      // MPI communicator
+      MPI_Comm const mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      // output to std::cout
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // do not set up certain data structures (solver, postprocessor) in case of throughput study
-  bool const is_throughput_study;
+      // do not set up certain data structures (solver, postprocessor) in case
+      // of throughput study
+      bool const is_throughput_study;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, 1, Number>> application;
+      // application
+      std::shared_ptr<ApplicationBase<dim, 1, Number>> application;
 
-  // Grid and mapping
-  std::shared_ptr<Grid<dim>> grid;
+      // Grid and mapping
+      std::shared_ptr<Grid<dim>> grid;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-  std::shared_ptr<Operator<dim, 1, Number>>          pde_operator;
-  std::shared_ptr<PostProcessorBase<dim, 1, Number>> postprocessor;
+      std::shared_ptr<Operator<dim, 1, Number>>          pde_operator;
+      std::shared_ptr<PostProcessorBase<dim, 1, Number>> postprocessor;
 
-  // number of iterations
-  mutable unsigned int iterations;
+      // number of iterations
+      mutable unsigned int iterations;
 
-  // Computation time (wall clock time)
-  mutable TimerTree timer_tree;
-  mutable double    solve_time;
-};
+      // Computation time (wall clock time)
+      mutable TimerTree timer_tree;
+      mutable double    solve_time;
+    };
 
-} // namespace Poisson
+  } // namespace Poisson
 } // namespace ExaDG
 
 

@@ -24,8 +24,11 @@
 
 // deal.II
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/fe/mapping_q.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
+
 #include <deal.II/matrix_free/matrix_free.h>
 
 // ExaDG
@@ -33,45 +36,44 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-template<typename Number>
-class PostProcessorInterface
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  virtual ~PostProcessorInterface()
+  namespace CompNS
   {
-  }
+    template <typename Number>
+    class PostProcessorInterface
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  virtual void
-  do_postprocessing(VectorType const &     solution,
-                    double const           time,
-                    types::time_step const time_step_number) = 0;
-};
+      virtual ~PostProcessorInterface()
+      {}
 
-// forward declaration
-template<int dim, typename Number>
-class Operator;
+      virtual void
+      do_postprocessing(VectorType const      &solution,
+                        double const           time,
+                        types::time_step const time_step_number) = 0;
+    };
 
-template<int dim, typename Number>
-class PostProcessorBase : public PostProcessorInterface<Number>
-{
-private:
-  typedef typename PostProcessorInterface<Number>::VectorType VectorType;
+    // forward declaration
+    template <int dim, typename Number>
+    class Operator;
 
-public:
-  virtual ~PostProcessorBase()
-  {
-  }
+    template <int dim, typename Number>
+    class PostProcessorBase : public PostProcessorInterface<Number>
+    {
+    private:
+      typedef typename PostProcessorInterface<Number>::VectorType VectorType;
 
-  virtual void
-  setup(Operator<dim, Number> const & pde_operator) = 0;
-};
+    public:
+      virtual ~PostProcessorBase()
+      {}
 
-} // namespace CompNS
+      virtual void
+      setup(Operator<dim, Number> const &pde_operator) = 0;
+    };
+
+  } // namespace CompNS
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ */
+#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ \
+        */

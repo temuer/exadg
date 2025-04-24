@@ -33,101 +33,106 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-enum class OperatorType
-{
-  AcousticOperator,         // gradient operator for scalar pressure and divergence operator for
-                            // vectorial velocity
-  ScaledInverseMassOperator // scaled inverse mass operator: vectorial quantity (velocity) and
-                            // scalar quantity (pressure). The pressure is scaled by
-                            // speed_of_sound^2 in the evaluation of the operator
-};
+  namespace Acoustics
+  {
+    enum class OperatorType
+    {
+      AcousticOperator, // gradient operator for scalar pressure and divergence
+                        // operator for vectorial velocity
+      ScaledInverseMassOperator // scaled inverse mass operator: vectorial
+                                // quantity (velocity) and scalar quantity
+                                // (pressure). The pressure is scaled by
+                                // speed_of_sound^2 in the evaluation of the
+                                // operator
+    };
 
-inline unsigned int
-get_dofs_per_element(unsigned int const       dim,
-                     unsigned int const       degree,
-                     ExaDG::ElementType const element_type)
-{
-  unsigned int const pressure_dofs_per_element =
-    ExaDG::get_dofs_per_element(element_type, true /* is_dg */, 1 /* n_components */, degree, dim);
+    inline unsigned int
+    get_dofs_per_element(unsigned int const       dim,
+                         unsigned int const       degree,
+                         ExaDG::ElementType const element_type)
+    {
+      unsigned int const pressure_dofs_per_element =
+        ExaDG::get_dofs_per_element(
+          element_type, true /* is_dg */, 1 /* n_components */, degree, dim);
 
-  unsigned int const velocity_dofs_per_element = ExaDG::get_dofs_per_element(
-    element_type, true /* is_dg */, dim /* n_components */, degree, dim);
+      unsigned int const velocity_dofs_per_element =
+        ExaDG::get_dofs_per_element(
+          element_type, true /* is_dg */, dim /* n_components */, degree, dim);
 
-  return velocity_dofs_per_element + pressure_dofs_per_element;
-}
+      return velocity_dofs_per_element + pressure_dofs_per_element;
+    }
 
-template<int dim, typename Number>
-class Driver
-{
-public:
-  Driver(MPI_Comm const &                              comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test,
-         bool const                                    is_throughput_study);
+    template <int dim, typename Number>
+    class Driver
+    {
+    public:
+      Driver(MPI_Comm const                               &comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test,
+             bool const                                    is_throughput_study);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve() const;
+      void
+      solve() const;
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-  /*
-   * Throughput study
-   */
-  std::tuple<unsigned int, dealii::types::global_dof_index, double>
-  apply_operator(OperatorType const & operator_type,
-                 unsigned int const   n_repetitions_inner,
-                 unsigned int const   n_repetitions_outer) const;
+      /*
+       * Throughput study
+       */
+      std::tuple<unsigned int, dealii::types::global_dof_index, double>
+      apply_operator(OperatorType const &operator_type,
+                     unsigned int const  n_repetitions_inner,
+                     unsigned int const  n_repetitions_outer) const;
 
-private:
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+    private:
+      // MPI communicator
+      MPI_Comm const mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      // output to std::cout
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // do not set up certain data structures (solver, postprocessor) in case of throughput study
-  bool const is_throughput_study;
+      // do not set up certain data structures (solver, postprocessor) in case
+      // of throughput study
+      bool const is_throughput_study;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      // application
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  std::shared_ptr<Grid<dim>> grid;
+      std::shared_ptr<Grid<dim>> grid;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  /*
-   * Spatial discretization
-   */
-  std::shared_ptr<SpatialOperator<dim, Number>> pde_operator;
+      /*
+       * Spatial discretization
+       */
+      std::shared_ptr<SpatialOperator<dim, Number>> pde_operator;
 
-  /*
-   * Postprocessor
-   */
-  std::shared_ptr<PostProcessorBase<dim, Number>> postprocessor;
+      /*
+       * Postprocessor
+       */
+      std::shared_ptr<PostProcessorBase<dim, Number>> postprocessor;
 
-  /*
-   * Temporal discretization
-   */
+      /*
+       * Temporal discretization
+       */
 
-  // unsteady solver
-  std::shared_ptr<TimeIntAdamsBashforthMoulton<Number>> time_integrator;
+      // unsteady solver
+      std::shared_ptr<TimeIntAdamsBashforthMoulton<Number>> time_integrator;
 
-  /*
-   * Computation time (wall clock time).
-   */
-  mutable TimerTree timer_tree;
-};
+      /*
+       * Computation time (wall clock time).
+       */
+      mutable TimerTree timer_tree;
+    };
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
 #endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_DRIVER_H_ */

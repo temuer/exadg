@@ -28,74 +28,78 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-/*
- * Multigrid preconditioner for momentum operator of the incompressible Navier-Stokes equations.
- */
-template<int dim, typename Number>
-class MultigridPreconditioner : public MultigridPreconditionerBase<dim, Number>
-{
-private:
-  typedef MultigridPreconditionerBase<dim, Number> Base;
+  namespace IncNS
+  {
+    /*
+     * Multigrid preconditioner for momentum operator of the incompressible
+     * Navier-Stokes equations.
+     */
+    template <int dim, typename Number>
+    class MultigridPreconditioner
+      : public MultigridPreconditionerBase<dim, Number>
+    {
+    private:
+      typedef MultigridPreconditionerBase<dim, Number> Base;
 
-public:
-  typedef typename Base::MultigridNumber MultigridNumber;
+    public:
+      typedef typename Base::MultigridNumber MultigridNumber;
 
-private:
-  typedef MomentumOperator<dim, Number>                          PDEOperator;
-  typedef MomentumOperator<dim, MultigridNumber>                 PDEOperatorMG;
-  typedef MultigridOperatorBase<dim, MultigridNumber>            MGOperatorBase;
-  typedef MultigridOperator<dim, MultigridNumber, PDEOperatorMG> MGOperator;
+    private:
+      typedef MomentumOperator<dim, Number>               PDEOperator;
+      typedef MomentumOperator<dim, MultigridNumber>      PDEOperatorMG;
+      typedef MultigridOperatorBase<dim, MultigridNumber> MGOperatorBase;
+      typedef MultigridOperator<dim, MultigridNumber, PDEOperatorMG> MGOperator;
 
-  typedef typename Base::Map_DBC               Map_DBC;
-  typedef typename Base::Map_DBC_ComponentMask Map_DBC_ComponentMask;
-  typedef typename Base::PeriodicFacePairs     PeriodicFacePairs;
-  typedef typename Base::VectorType            VectorType;
-  typedef typename Base::VectorTypeMG          VectorTypeMG;
+      typedef typename Base::Map_DBC               Map_DBC;
+      typedef typename Base::Map_DBC_ComponentMask Map_DBC_ComponentMask;
+      typedef typename Base::PeriodicFacePairs     PeriodicFacePairs;
+      typedef typename Base::VectorType            VectorType;
+      typedef typename Base::VectorTypeMG          VectorTypeMG;
 
-public:
-  MultigridPreconditioner(MPI_Comm const & comm);
+    public:
+      MultigridPreconditioner(MPI_Comm const &comm);
 
-  void
-  initialize(MultigridData const &                                 mg_data,
-             std::shared_ptr<Grid<dim> const>                      grid,
-             std::shared_ptr<MultigridMappings<dim, Number>> const multigrid_mappings,
-             dealii::FiniteElement<dim> const &                    fe,
-             PDEOperator const &                                   pde_operator,
-             MultigridOperatorType const &                         mg_operator_type,
-             bool const                                            mesh_is_moving,
-             Map_DBC const &                                       dirichlet_bc,
-             Map_DBC_ComponentMask const &                         dirichlet_bc_component_mask);
+      void
+      initialize(MultigridData const             &mg_data,
+                 std::shared_ptr<Grid<dim> const> grid,
+                 std::shared_ptr<MultigridMappings<dim, Number>> const
+                                                   multigrid_mappings,
+                 dealii::FiniteElement<dim> const &fe,
+                 PDEOperator const                &pde_operator,
+                 MultigridOperatorType const      &mg_operator_type,
+                 bool const                        mesh_is_moving,
+                 Map_DBC const                    &dirichlet_bc,
+                 Map_DBC_ComponentMask const      &dirichlet_bc_component_mask);
 
-  /*
-   * This function updates the multigrid preconditioner.
-   */
-  void
-  update() final;
+      /*
+       * This function updates the multigrid preconditioner.
+       */
+      void
+      update() final;
 
-private:
-  void
-  fill_matrix_free_data(MatrixFreeData<dim, MultigridNumber> & matrix_free_data,
-                        unsigned int const                     level,
-                        unsigned int const                     dealii_tria_level) final;
+    private:
+      void
+      fill_matrix_free_data(
+        MatrixFreeData<dim, MultigridNumber> &matrix_free_data,
+        unsigned int const                    level,
+        unsigned int const                    dealii_tria_level) final;
 
-  std::shared_ptr<MGOperatorBase>
-  initialize_operator(unsigned int const level) final;
+      std::shared_ptr<MGOperatorBase>
+      initialize_operator(unsigned int const level) final;
 
-  std::shared_ptr<PDEOperatorMG>
-  get_operator(unsigned int level);
+      std::shared_ptr<PDEOperatorMG>
+      get_operator(unsigned int level);
 
-  MomentumOperatorData<dim> data;
+      MomentumOperatorData<dim> data;
 
-  PDEOperator const * pde_operator;
+      PDEOperator const *pde_operator;
 
-  MultigridOperatorType mg_operator_type;
+      MultigridOperatorType mg_operator_type;
 
-  bool mesh_is_moving;
-};
+      bool mesh_is_moving;
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_PRECONDITIONERS_MULTIGRID_PRECONDITIONER_MOMENTUM_H_ \

@@ -24,44 +24,48 @@
 
 namespace ExaDG
 {
-/*
- *  limit the maximum increase/decrease of the time step size
- */
-inline void
-limit_time_step_change(double & new_time_step, double const & last_time_step, double const & fac)
-{
-  if(new_time_step >= fac * last_time_step)
+  /*
+   *  limit the maximum increase/decrease of the time step size
+   */
+  inline void
+  limit_time_step_change(double       &new_time_step,
+                         double const &last_time_step,
+                         double const &fac)
   {
-    new_time_step = fac * last_time_step;
+    if (new_time_step >= fac * last_time_step)
+      {
+        new_time_step = fac * last_time_step;
+      }
+    else if (new_time_step <= last_time_step / fac)
+      {
+        new_time_step = last_time_step / fac;
+      }
   }
-  else if(new_time_step <= last_time_step / fac)
+
+  /*
+   * Decrease time_step in order to exactly hit end_time.
+   */
+  inline double
+  adjust_time_step_to_hit_end_time(double const start_time,
+                                   double const end_time,
+                                   double const time_step)
   {
-    new_time_step = last_time_step / fac;
+    return (end_time - start_time) /
+           (1 + int((end_time - start_time) / time_step));
   }
-}
 
-/*
- * Decrease time_step in order to exactly hit end_time.
- */
-inline double
-adjust_time_step_to_hit_end_time(double const start_time,
-                                 double const end_time,
-                                 double const time_step)
-{
-  return (end_time - start_time) / (1 + int((end_time - start_time) / time_step));
-}
+  /*
+   * This function calculates the time step size for a given time step size and
+   * a specified number of refinements, where the time step size is reduced by a
+   * factor of 2 for each refinement level.
+   */
+  inline double
+  calculate_const_time_step(double const dt, unsigned int const n_refine_time)
+  {
+    double const time_step = dt / std::pow(2., n_refine_time);
 
-/*
- * This function calculates the time step size for a given time step size and a specified number of
- * refinements, where the time step size is reduced by a factor of 2 for each refinement level.
- */
-inline double
-calculate_const_time_step(double const dt, unsigned int const n_refine_time)
-{
-  double const time_step = dt / std::pow(2., n_refine_time);
-
-  return time_step;
-}
+    return time_step;
+  }
 
 } // namespace ExaDG
 

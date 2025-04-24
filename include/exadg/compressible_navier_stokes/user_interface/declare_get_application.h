@@ -26,14 +26,15 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-template<int dim, typename Number>
-std::shared_ptr<ApplicationBase<dim, Number>>
-get_application(std::string input_file, MPI_Comm const & comm);
+  namespace CompNS
+  {
+    template <int dim, typename Number>
+    std::shared_ptr<ApplicationBase<dim, Number>>
+    get_application(std::string input_file, MPI_Comm const &comm);
 
-} // namespace CompNS
+  } // namespace CompNS
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ */
+#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ \
+        */

@@ -26,85 +26,90 @@
 
 namespace ExaDG
 {
-class TimeIntegratorConstantsBase
-{
-public:
-  TimeIntegratorConstantsBase(unsigned int const order, bool const start_with_low_order)
-    : order(order), start_with_low_order(start_with_low_order)
+  class TimeIntegratorConstantsBase
   {
-  }
+  public:
+    TimeIntegratorConstantsBase(unsigned int const order,
+                                bool const         start_with_low_order)
+      : order(order)
+      , start_with_low_order(start_with_low_order)
+    {}
 
-  virtual ~TimeIntegratorConstantsBase()
-  {
-  }
+    virtual ~TimeIntegratorConstantsBase()
+    {}
 
-  /*
-   *  This function updates the time integrator constants. The argument time_steps is only used in
-   * case of adaptive time stepping.
-   */
-  void
-  update(unsigned int const          current_order,
-         bool const                  adaptive_time_stepping,
-         std::vector<double> const & time_steps)
-  {
-    // when starting the time integrator with a low order method, ensure that
-    // the time integrator constants are set properly
-    unsigned int const update_order =
-      (current_order <= order and start_with_low_order == true) ? current_order : order;
+    /*
+     *  This function updates the time integrator constants. The argument
+     * time_steps is only used in case of adaptive time stepping.
+     */
+    void
+    update(unsigned int const         current_order,
+           bool const                 adaptive_time_stepping,
+           std::vector<double> const &time_steps)
+    {
+      // when starting the time integrator with a low order method, ensure that
+      // the time integrator constants are set properly
+      unsigned int const update_order =
+        (current_order <= order and start_with_low_order == true) ?
+          current_order :
+          order;
 
-    if(adaptive_time_stepping)
-      set_adaptive_time_step(update_order, time_steps);
-    else
-      set_constant_time_step(update_order);
-  }
+      if (adaptive_time_stepping)
+        set_adaptive_time_step(update_order, time_steps);
+      else
+        set_constant_time_step(update_order);
+    }
 
-  unsigned int
-  get_order() const
-  {
-    return order;
-  }
+    unsigned int
+    get_order() const
+    {
+      return order;
+    }
 
-  /*
-   *  This function prints the time integrator constants
-   */
-  virtual void
-  print(dealii::ConditionalOStream & pcout) const = 0;
+    /*
+     *  This function prints the time integrator constants
+     */
+    virtual void
+    print(dealii::ConditionalOStream &pcout) const = 0;
 
-protected:
-  /**
-   * Can be used to zero out components of the vector which should not be used.
-   * This is needed if start_with_low_order = true. We ensure only relevant vectors
-   * are used during summation over constant[i]*vector[i] by setting unused constants=0.
-   */
-  void
-  disable_high_order_constants(unsigned int const current_order, std::vector<double> & constants)
-  {
-    for(unsigned int i = current_order; i < constants.size(); ++i)
-      constants[i] = 0.0;
-  }
+  protected:
+    /**
+     * Can be used to zero out components of the vector which should not be
+     * used. This is needed if start_with_low_order = true. We ensure only
+     * relevant vectors are used during summation over constant[i]*vector[i] by
+     * setting unused constants=0.
+     */
+    void
+    disable_high_order_constants(unsigned int const   current_order,
+                                 std::vector<double> &constants)
+    {
+      for (unsigned int i = current_order; i < constants.size(); ++i)
+        constants[i] = 0.0;
+    }
 
 
-  // order of time integrator
-  unsigned int const order;
+    // order of time integrator
+    unsigned int const order;
 
-  // use a low order time integration scheme to start the time integrator?
-  bool const start_with_low_order;
+    // use a low order time integration scheme to start the time integrator?
+    bool const start_with_low_order;
 
-private:
-  /*
-   *  This function calculates the time integrator constants in case of constant time step sizes.
-   */
-  virtual void
-  set_constant_time_step(unsigned int const current_order) = 0;
+  private:
+    /*
+     *  This function calculates the time integrator constants in case of
+     * constant time step sizes.
+     */
+    virtual void
+    set_constant_time_step(unsigned int const current_order) = 0;
 
-  /*
-   *  This function calculates time integrator constants in case of varying time step sizes
-   * (adaptive time stepping).
-   */
-  virtual void
-  set_adaptive_time_step(unsigned int const          current_order,
-                         std::vector<double> const & time_steps) = 0;
-};
+    /*
+     *  This function calculates time integrator constants in case of varying
+     * time step sizes (adaptive time stepping).
+     */
+    virtual void
+    set_adaptive_time_step(unsigned int const         current_order,
+                           std::vector<double> const &time_steps) = 0;
+  };
 } // namespace ExaDG
 
 

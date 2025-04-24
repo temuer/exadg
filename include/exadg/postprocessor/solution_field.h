@@ -23,112 +23,115 @@
 #define INCLUDE_EXADG_POSTPROCESSOR_SOLUTION_FIELD_H_
 
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 namespace ExaDG
 {
-enum class SolutionFieldType
-{
-  scalar,
-  vector,
-  cellwise
-};
-
-template<int dim, typename Number>
-class SolutionField : public dealii::Subscriptor
-{
-public:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
-
-  SolutionField()
-    : initialize_vector([](VectorType &) {}),
-      recompute_solution_field([](VectorType &, VectorType const &) {}),
-      type(SolutionFieldType::scalar),
-      name("solution"),
-      dof_handler(nullptr),
-      is_available(false)
+  enum class SolutionFieldType
   {
-  }
+    scalar,
+    vector,
+    cellwise
+  };
 
-  /**
-   * This function initializes the DoF vector, the main data object of this class.
-   * This is done by using the lambda initialize_vector.
-   */
-  void
-  reinit()
+  template <int dim, typename Number>
+  class SolutionField : public dealii::Subscriptor
   {
-    initialize_vector(solution_vector);
-  }
+  public:
+    using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  /**
-   * This function invalidates the solution vector.
-   */
-  void
-  invalidate()
-  {
-    is_available = false;
-  }
+    SolutionField()
+      : initialize_vector([](VectorType &) {})
+      , recompute_solution_field([](VectorType &, VectorType const &) {})
+      , type(SolutionFieldType::scalar)
+      , name("solution")
+      , dof_handler(nullptr)
+      , is_available(false)
+    {}
 
-  void
-  evaluate(VectorType const & src)
-  {
-    if(not is_available)
+    /**
+     * This function initializes the DoF vector, the main data object of this
+     * class. This is done by using the lambda initialize_vector.
+     */
+    void
+    reinit()
     {
-      recompute_solution_field(solution_vector, src);
-      is_available = true;
+      initialize_vector(solution_vector);
     }
-  }
 
-  VectorType const &
-  get() const
-  {
-    AssertThrow(is_available,
-                dealii::ExcMessage("You are trying to access a Vector that is invalid."));
+    /**
+     * This function invalidates the solution vector.
+     */
+    void
+    invalidate()
+    {
+      is_available = false;
+    }
 
-    return solution_vector;
-  }
+    void
+    evaluate(VectorType const &src)
+    {
+      if (not is_available)
+        {
+          recompute_solution_field(solution_vector, src);
+          is_available = true;
+        }
+    }
 
-  VectorType const &
-  evaluate_get(VectorType const & src)
-  {
-    evaluate(src);
+    VectorType const &
+    get() const
+    {
+      AssertThrow(is_available,
+                  dealii::ExcMessage(
+                    "You are trying to access a Vector that is invalid."));
 
-    return get();
-  }
+      return solution_vector;
+    }
 
-  std::string const &
-  get_name() const
-  {
-    return name;
-  }
+    VectorType const &
+    evaluate_get(VectorType const &src)
+    {
+      evaluate(src);
 
-  dealii::DoFHandler<dim> const &
-  get_dof_handler() const
-  {
-    return *dof_handler;
-  }
+      return get();
+    }
 
-  SolutionFieldType
-  get_type() const
-  {
-    return type;
-  }
+    std::string const &
+    get_name() const
+    {
+      return name;
+    }
 
-  // TODO: these element variables should not be public but instead be passed to the reinit function
-  std::function<void(VectorType &)> initialize_vector;
+    dealii::DoFHandler<dim> const &
+    get_dof_handler() const
+    {
+      return *dof_handler;
+    }
 
-  std::function<void(VectorType &, VectorType const &)> recompute_solution_field;
+    SolutionFieldType
+    get_type() const
+    {
+      return type;
+    }
 
-  SolutionFieldType type;
+    // TODO: these element variables should not be public but instead be passed
+    // to the reinit function
+    std::function<void(VectorType &)> initialize_vector;
 
-  std::string name;
+    std::function<void(VectorType &, VectorType const &)>
+      recompute_solution_field;
 
-  dealii::DoFHandler<dim> const * dof_handler;
+    SolutionFieldType type;
 
-private:
-  bool       is_available;
-  VectorType solution_vector;
-};
+    std::string name;
+
+    dealii::DoFHandler<dim> const *dof_handler;
+
+  private:
+    bool       is_available;
+    VectorType solution_vector;
+  };
 
 } // namespace ExaDG
 

@@ -26,30 +26,32 @@
 
 namespace ExaDG
 {
-namespace types
-{
-using time_step = unsigned int;
-}
+  namespace types
+  {
+    using time_step = unsigned int;
+  }
 
-namespace numbers
-{
-types::time_step const invalid_timestep = std::numeric_limits<unsigned int>::max();
-types::time_step const steady_timestep  = std::numeric_limits<unsigned int>::max() - 1;
-} // namespace numbers
+  namespace numbers
+  {
+    types::time_step const invalid_timestep =
+      std::numeric_limits<unsigned int>::max();
+    types::time_step const steady_timestep =
+      std::numeric_limits<unsigned int>::max() - 1;
+  } // namespace numbers
 
-namespace Utilities
-{
-inline bool
-is_unsteady_timestep(types::time_step const timestep)
-{
-  return (timestep != numbers::steady_timestep);
-}
-inline bool
-is_valid_timestep(types::time_step const timestep)
-{
-  return (timestep != numbers::invalid_timestep);
-}
-} // namespace Utilities
+  namespace Utilities
+  {
+    inline bool
+    is_unsteady_timestep(types::time_step const timestep)
+    {
+      return (timestep != numbers::steady_timestep);
+    }
+    inline bool
+    is_valid_timestep(types::time_step const timestep)
+    {
+      return (timestep != numbers::invalid_timestep);
+    }
+  } // namespace Utilities
 } // namespace ExaDG
 
 #endif /*INCLUDE_EXADG_UTILITIES_NUMBERS_H_*/

@@ -24,63 +24,63 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-/**************************************************************************************/
-/*                                                                                    */
-/*                              SPATIAL DISCRETIZATION                                */
-/*                                                                                    */
-/**************************************************************************************/
+  namespace Poisson
+  {
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                              SPATIAL DISCRETIZATION */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-/*
- *  Spatial discretization method
- */
-enum class SpatialDiscretization
-{
-  Undefined,
-  DG,
-  CG
-};
+    /*
+     *  Spatial discretization method
+     */
+    enum class SpatialDiscretization
+    {
+      Undefined,
+      DG,
+      CG
+    };
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                                       SOLVER                                       */
-/*                                                                                    */
-/**************************************************************************************/
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                                       SOLVER */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-/*
- *   Solver for linear system of equations
- */
-enum class LinearSolver
-{
-  Undefined,
-  CG,
-  FGMRES
-};
+    /*
+     *   Solver for linear system of equations
+     */
+    enum class LinearSolver
+    {
+      Undefined,
+      CG,
+      FGMRES
+    };
 
-/*
- *  Preconditioner type for solution of linear system of equations
- */
-enum class Preconditioner
-{
-  Undefined,
-  None,
-  PointJacobi,
-  BlockJacobi,
-  AdditiveSchwarz,
-  AMG,
-  Multigrid
-};
+    /*
+     *  Preconditioner type for solution of linear system of equations
+     */
+    enum class Preconditioner
+    {
+      Undefined,
+      None,
+      PointJacobi,
+      BlockJacobi,
+      AdditiveSchwarz,
+      AMG,
+      Multigrid
+    };
 
-/**************************************************************************************/
-/*                                                                                    */
-/*                               OUTPUT AND POSTPROCESSING                            */
-/*                                                                                    */
-/**************************************************************************************/
+    /**************************************************************************************/
+    /*                                                                                    */
+    /*                               OUTPUT AND POSTPROCESSING */
+    /*                                                                                    */
+    /**************************************************************************************/
 
-// currently no enum parameters here
+    // currently no enum parameters here
 
-} // namespace Poisson
+  } // namespace Poisson
 } // namespace ExaDG
 
 

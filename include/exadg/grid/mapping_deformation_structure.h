@@ -32,192 +32,211 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-/**
- * Class for moving grid problems based on a pseudo-solid grid motion technique.
- *
- * TODO: extend this class to simplicial elements.
- */
-template<int dim, typename Number>
-class DeformedMapping : public DeformedMappingBase<dim, Number>
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  /**
-   * Constructor.
-   */
-  DeformedMapping(
-    std::shared_ptr<Grid<dim> const>                      grid,
-    std::shared_ptr<dealii::Mapping<dim> const>           mapping_undeformed,
-    std::shared_ptr<MultigridMappings<dim, Number>> const multigrid_mappings_undeformed,
-    std::shared_ptr<BoundaryDescriptor<dim> const>        boundary_descriptor,
-    std::shared_ptr<FieldFunctions<dim> const>            field_functions,
-    std::shared_ptr<MaterialDescriptor const>             material_descriptor,
-    Parameters const &                                    param,
-    std::string const &                                   field,
-    MPI_Comm const &                                      mpi_comm)
-    : DeformedMappingBase<dim, Number>(mapping_undeformed, param.degree, *grid->triangulation),
-      param(param),
-      pcout(std::cout, dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0),
-      iterations({0, {0, 0}})
+  namespace Structure
   {
-    // initialize PDE operator
-    pde_operator = std::make_shared<Operator<dim, Number>>(grid,
-                                                           mapping_undeformed,
-                                                           multigrid_mappings_undeformed,
-                                                           boundary_descriptor,
-                                                           field_functions,
-                                                           material_descriptor,
-                                                           param,
-                                                           field,
-                                                           mpi_comm);
-
-    // setup PDE operator and solver
-    pde_operator->setup();
-
-    // finally, initialize dof vector
-    pde_operator->initialize_dof_vector(displacement);
-  }
-
-  std::shared_ptr<Operator<dim, Number> const>
-  get_pde_operator() const
-  {
-    return pde_operator;
-  }
-
-  dealii::MatrixFree<dim, Number> const &
-  get_matrix_free() const
-  {
-    return *pde_operator->get_matrix_free();
-  }
-
-  /**
-   * Updates the mapping, i.e., moves the grid by solving a pseudo-solid problem.
-   */
-  void
-  update(double const     time,
-         bool const       print_solver_info,
-         types::time_step time_step_number) override
-  {
-    dealii::Timer timer;
-    timer.restart();
-
-    if(param.large_deformation) // nonlinear problem
+    /**
+     * Class for moving grid problems based on a pseudo-solid grid motion
+     * technique.
+     *
+     * TODO: extend this class to simplicial elements.
+     */
+    template <int dim, typename Number>
+    class DeformedMapping : public DeformedMappingBase<dim, Number>
     {
-      VectorType const_vector;
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-      bool const update_preconditioner =
-        this->param.update_preconditioner &&
-        time_step_number % this->param.update_preconditioner_every_time_steps == 0;
-
-      auto const iter = pde_operator->solve_nonlinear(displacement,
-                                                      const_vector,
-                                                      0.0 /* no acceleration term */,
-                                                      0.0 /* no damping term */,
-                                                      time,
-                                                      update_preconditioner);
-
-      iterations.first += 1;
-      std::get<0>(iterations.second) += std::get<0>(iter);
-      std::get<1>(iterations.second) += std::get<1>(iter);
-
-      if(print_solver_info)
+      /**
+       * Constructor.
+       */
+      DeformedMapping(
+        std::shared_ptr<Grid<dim> const>            grid,
+        std::shared_ptr<dealii::Mapping<dim> const> mapping_undeformed,
+        std::shared_ptr<MultigridMappings<dim, Number>> const
+          multigrid_mappings_undeformed,
+        std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor,
+        std::shared_ptr<FieldFunctions<dim> const>     field_functions,
+        std::shared_ptr<MaterialDescriptor const>      material_descriptor,
+        Parameters const                              &param,
+        std::string const                             &field,
+        MPI_Comm const                                &mpi_comm)
+        : DeformedMappingBase<dim, Number>(mapping_undeformed,
+                                           param.degree,
+                                           *grid->triangulation)
+        , param(param)
+        , pcout(std::cout,
+                dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+        , iterations({0, {0, 0}})
       {
-        this->pcout << std::endl << "Solve moving mesh problem (nonlinear elasticity):";
-        print_solver_info_nonlinear(pcout, std::get<0>(iter), std::get<1>(iter), timer.wall_time());
+        // initialize PDE operator
+        pde_operator =
+          std::make_shared<Operator<dim, Number>>(grid,
+                                                  mapping_undeformed,
+                                                  multigrid_mappings_undeformed,
+                                                  boundary_descriptor,
+                                                  field_functions,
+                                                  material_descriptor,
+                                                  param,
+                                                  field,
+                                                  mpi_comm);
+
+        // setup PDE operator and solver
+        pde_operator->setup();
+
+        // finally, initialize dof vector
+        pde_operator->initialize_dof_vector(displacement);
       }
-    }
-    else // linear problem
-    {
-      // calculate right-hand side vector
-      VectorType rhs;
-      pde_operator->initialize_dof_vector(rhs);
-      pde_operator->rhs(rhs, time);
 
-      auto const iter = pde_operator->solve_linear(displacement,
-                                                   rhs,
-                                                   0.0 /* no acceleration term */,
-                                                   0.0 /* no damping term */,
-                                                   time,
-                                                   false /* do not update preconditioner */);
-
-      iterations.first += 1;
-      std::get<1>(iterations.second) += iter;
-
-      if(print_solver_info)
+      std::shared_ptr<Operator<dim, Number> const>
+      get_pde_operator() const
       {
-        this->pcout << std::endl << "Solve moving mesh problem (linear elasticity):";
-        print_solver_info_linear(pcout, iter, timer.wall_time());
+        return pde_operator;
       }
-    }
 
-    this->initialize_mapping_from_dof_vector(this->mapping_undeformed,
-                                             displacement,
-                                             pde_operator->get_dof_handler());
-  }
+      dealii::MatrixFree<dim, Number> const &
+      get_matrix_free() const
+      {
+        return *pde_operator->get_matrix_free();
+      }
 
-  /**
-   * Prints information on iteration counts.
-   */
-  void
-  print_iterations() const override
-  {
-    std::vector<std::string> names;
-    std::vector<double>      iterations_avg;
+      /**
+       * Updates the mapping, i.e., moves the grid by solving a pseudo-solid
+       * problem.
+       */
+      void
+      update(double const     time,
+             bool const       print_solver_info,
+             types::time_step time_step_number) override
+      {
+        dealii::Timer timer;
+        timer.restart();
 
-    if(param.large_deformation)
-    {
-      names = {"Nonlinear iterations",
-               "Linear iterations (accumulated)",
-               "Linear iterations (per nonlinear it.)"};
+        if (param.large_deformation) // nonlinear problem
+          {
+            VectorType const_vector;
 
-      iterations_avg.resize(3);
-      iterations_avg[0] =
-        (double)std::get<0>(iterations.second) / std::max(1., (double)iterations.first);
-      iterations_avg[1] =
-        (double)std::get<1>(iterations.second) / std::max(1., (double)iterations.first);
-      if(iterations_avg[0] > std::numeric_limits<double>::min())
-        iterations_avg[2] = iterations_avg[1] / iterations_avg[0];
-      else
-        iterations_avg[2] = iterations_avg[1];
-    }
-    else // linear
-    {
-      names = {"Linear iterations"};
-      iterations_avg.resize(1);
-      iterations_avg[0] =
-        (double)std::get<1>(iterations.second) / std::max(1., (double)iterations.first);
-    }
+            bool const update_preconditioner =
+              this->param.update_preconditioner &&
+              time_step_number %
+                  this->param.update_preconditioner_every_time_steps ==
+                0;
 
-    print_list_of_iterations(pcout, names, iterations_avg);
-  }
+            auto const iter =
+              pde_operator->solve_nonlinear(displacement,
+                                            const_vector,
+                                            0.0 /* no acceleration term */,
+                                            0.0 /* no damping term */,
+                                            time,
+                                            update_preconditioner);
 
-private:
-  // matrix-free
-  std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
-  std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
+            iterations.first += 1;
+            std::get<0>(iterations.second) += std::get<0>(iter);
+            std::get<1>(iterations.second) += std::get<1>(iter);
 
-  // PDE operator
-  std::shared_ptr<Operator<dim, Number>> pde_operator;
+            if (print_solver_info)
+              {
+                this->pcout
+                  << std::endl
+                  << "Solve moving mesh problem (nonlinear elasticity):";
+                print_solver_info_nonlinear(pcout,
+                                            std::get<0>(iter),
+                                            std::get<1>(iter),
+                                            timer.wall_time());
+              }
+          }
+        else // linear problem
+          {
+            // calculate right-hand side vector
+            VectorType rhs;
+            pde_operator->initialize_dof_vector(rhs);
+            pde_operator->rhs(rhs, time);
 
-  Parameters const & param;
+            auto const iter = pde_operator->solve_linear(
+              displacement,
+              rhs,
+              0.0 /* no acceleration term */,
+              0.0 /* no damping term */,
+              time,
+              false /* do not update preconditioner */);
 
-  // store solution of previous time step / iteration so that a good initial
-  // guess is available in the next step, easing convergence or reducing computational
-  // costs by allowing larger tolerances
-  VectorType displacement;
+            iterations.first += 1;
+            std::get<1>(iterations.second) += iter;
 
-  dealii::ConditionalOStream pcout;
+            if (print_solver_info)
+              {
+                this->pcout << std::endl
+                            << "Solve moving mesh problem (linear elasticity):";
+                print_solver_info_linear(pcout, iter, timer.wall_time());
+              }
+          }
 
-  std::pair<
-    unsigned int /* calls */,
-    std::tuple<unsigned long long, unsigned long long> /* iteration counts {Newton, linear}*/>
-    iterations;
-};
+        this->initialize_mapping_from_dof_vector(
+          this->mapping_undeformed,
+          displacement,
+          pde_operator->get_dof_handler());
+      }
 
-} // namespace Structure
+      /**
+       * Prints information on iteration counts.
+       */
+      void
+      print_iterations() const override
+      {
+        std::vector<std::string> names;
+        std::vector<double>      iterations_avg;
+
+        if (param.large_deformation)
+          {
+            names = {"Nonlinear iterations",
+                     "Linear iterations (accumulated)",
+                     "Linear iterations (per nonlinear it.)"};
+
+            iterations_avg.resize(3);
+            iterations_avg[0] = (double)std::get<0>(iterations.second) /
+                                std::max(1., (double)iterations.first);
+            iterations_avg[1] = (double)std::get<1>(iterations.second) /
+                                std::max(1., (double)iterations.first);
+            if (iterations_avg[0] > std::numeric_limits<double>::min())
+              iterations_avg[2] = iterations_avg[1] / iterations_avg[0];
+            else
+              iterations_avg[2] = iterations_avg[1];
+          }
+        else // linear
+          {
+            names = {"Linear iterations"};
+            iterations_avg.resize(1);
+            iterations_avg[0] = (double)std::get<1>(iterations.second) /
+                                std::max(1., (double)iterations.first);
+          }
+
+        print_list_of_iterations(pcout, names, iterations_avg);
+      }
+
+    private:
+      // matrix-free
+      std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
+      std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
+
+      // PDE operator
+      std::shared_ptr<Operator<dim, Number>> pde_operator;
+
+      Parameters const &param;
+
+      // store solution of previous time step / iteration so that a good initial
+      // guess is available in the next step, easing convergence or reducing
+      // computational costs by allowing larger tolerances
+      VectorType displacement;
+
+      dealii::ConditionalOStream pcout;
+
+      std::pair<
+        unsigned int /* calls */,
+        std::tuple<unsigned long long,
+                   unsigned long long> /* iteration counts {Newton, linear}*/>
+        iterations;
+    };
+
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_GRID_MAPPING_DEFORMATION_STRUCTURE_H_ */

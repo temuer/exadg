@@ -26,16 +26,17 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-template<int dim>
-struct AnalyticalSolution
-{
-  std::shared_ptr<dealii::Function<dim>> solution;
-};
+  namespace CompNS
+  {
+    template <int dim>
+    struct AnalyticalSolution
+    {
+      std::shared_ptr<dealii::Function<dim>> solution;
+    };
 
-} // namespace CompNS
+  } // namespace CompNS
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_ANALYTICAL_SOLUTION_H_ */
+#endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_USER_INTERFACE_ANALYTICAL_SOLUTION_H_ \
+        */

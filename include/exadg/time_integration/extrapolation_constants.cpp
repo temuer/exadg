@@ -30,139 +30,153 @@
 
 namespace ExaDG
 {
-ExtrapolationConstants::ExtrapolationConstants(unsigned int const order,
-                                               bool const         start_with_low_order)
-  : TimeIntegratorConstantsBase(order, start_with_low_order), beta(order)
-{
-  AssertThrow(order <= 4,
-              dealii::ExcMessage("Specified order of extrapolation scheme not implemented."));
-
-  // The default case is start_with_low_order = false.
-  set_constant_time_step(order);
-}
-
-double
-ExtrapolationConstants::get_beta(unsigned int const i) const
-{
-  AssertThrow(i < order,
-              dealii::ExcMessage("In order to access constants of extrapolation scheme, the index "
-                                 "has to be smaller than the order of the scheme."));
-
-  return beta[i];
-}
-
-void
-ExtrapolationConstants::set_constant_time_step(unsigned int const current_order)
-{
-  AssertThrow(
-    current_order <= order,
-    dealii::ExcMessage(
-      "There is a logical error when updating the constants of the extrapolation scheme."));
-
-  if(current_order == 1) // EX 1
+  ExtrapolationConstants::ExtrapolationConstants(
+    unsigned int const order,
+    bool const         start_with_low_order)
+    : TimeIntegratorConstantsBase(order, start_with_low_order)
+    , beta(order)
   {
-    beta[0] = 1.0;
-  }
-  else if(current_order == 2) // EX 2
-  {
-    beta[0] = 2.0;
-    beta[1] = -1.0;
-  }
-  else if(current_order == 3) // EX 3
-  {
-    beta[0] = 3.0;
-    beta[1] = -3.0;
-    beta[2] = 1.0;
-  }
-  else if(current_order == 4) // EX 4
-  {
-    beta[0] = 4.;
-    beta[1] = -6.;
-    beta[2] = 4.;
-    beta[3] = -1.;
+    AssertThrow(order <= 4,
+                dealii::ExcMessage(
+                  "Specified order of extrapolation scheme not implemented."));
+
+    // The default case is start_with_low_order = false.
+    set_constant_time_step(order);
   }
 
-  /*
-   * Fill the rest of the vectors with zeros since current_order might be
-   * smaller than order, e.g. when using start_with_low_order = true
-   */
-  for(unsigned int i = current_order; i < order; ++i)
+  double
+  ExtrapolationConstants::get_beta(unsigned int const i) const
   {
-    beta[i] = 0.0;
-  }
-}
+    AssertThrow(
+      i < order,
+      dealii::ExcMessage(
+        "In order to access constants of extrapolation scheme, the index "
+        "has to be smaller than the order of the scheme."));
 
-
-void
-ExtrapolationConstants::set_adaptive_time_step(unsigned int const          current_order,
-                                               std::vector<double> const & time_steps)
-{
-  AssertThrow(
-    current_order <= order,
-    dealii::ExcMessage(
-      "There is a logical error when updating the constants of the extrapolation scheme."));
-
-  AssertThrow(
-    order <= time_steps.size(),
-    dealii::ExcMessage(
-      "Length of vector containing time step sizes has to be equal to order of extrapolation scheme."));
-
-  if(current_order == 1) // EX 1
-  {
-    beta[0] = 1.0;
-  }
-  else if(current_order == 2) // EX 2
-  {
-    beta[0] = (time_steps[0] + time_steps[1]) / time_steps[1];
-    beta[1] = -time_steps[0] / time_steps[1];
-  }
-  else if(current_order == 3) // EX 3
-  {
-    beta[0] = +(time_steps[0] + time_steps[1]) * (time_steps[0] + time_steps[1] + time_steps[2]) /
-              (time_steps[1] * (time_steps[1] + time_steps[2]));
-    beta[1] = -time_steps[0] * (time_steps[0] + time_steps[1] + time_steps[2]) /
-              (time_steps[1] * time_steps[2]);
-    beta[2] = +time_steps[0] * (time_steps[0] + time_steps[1]) /
-              ((time_steps[1] + time_steps[2]) * time_steps[2]);
-  }
-  else if(current_order == 4) // EX 4
-  {
-    beta[0] = (time_steps[0] + time_steps[1]) * (time_steps[0] + time_steps[1] + time_steps[2]) *
-              (time_steps[0] + time_steps[1] + time_steps[2] + time_steps[3]) /
-              (time_steps[1] * (time_steps[1] + time_steps[2]) *
-               (time_steps[1] + time_steps[2] + time_steps[3]));
-
-    beta[1] = -time_steps[0] * (time_steps[0] + time_steps[1] + time_steps[2]) *
-              (time_steps[0] + time_steps[1] + time_steps[2] + time_steps[3]) /
-              (time_steps[1] * time_steps[2] * (time_steps[2] + time_steps[3]));
-
-    beta[2] = time_steps[0] * (time_steps[0] + time_steps[1]) *
-              (time_steps[0] + time_steps[1] + time_steps[2] + time_steps[3]) /
-              ((time_steps[1] + time_steps[2]) * time_steps[2] * time_steps[3]);
-
-    beta[3] = -time_steps[0] * (time_steps[0] + time_steps[1]) *
-              (time_steps[0] + time_steps[1] + time_steps[2]) /
-              ((time_steps[1] + time_steps[2] + time_steps[3]) * (time_steps[2] + time_steps[3]) *
-               time_steps[3]);
+    return beta[i];
   }
 
-  /*
-   * Fill the rest of the vectors with zeros since current_order might be
-   * smaller than order, e.g. when using start_with_low_order = true,
-   * if current_order == 0, all coefficients are set to zero, i.e., no extrapolation
-   */
-  for(unsigned int i = current_order; i < order; ++i)
+  void
+  ExtrapolationConstants::set_constant_time_step(
+    unsigned int const current_order)
   {
-    beta[i] = 0.0;
-  }
-}
+    AssertThrow(
+      current_order <= order,
+      dealii::ExcMessage(
+        "There is a logical error when updating the constants of the extrapolation scheme."));
 
-void
-ExtrapolationConstants::print(dealii::ConditionalOStream & pcout) const
-{
-  for(unsigned int i = 0; i < order; ++i)
-    pcout << "Beta[" << i << "]  = " << beta[i] << std::endl;
-}
+    if (current_order == 1) // EX 1
+      {
+        beta[0] = 1.0;
+      }
+    else if (current_order == 2) // EX 2
+      {
+        beta[0] = 2.0;
+        beta[1] = -1.0;
+      }
+    else if (current_order == 3) // EX 3
+      {
+        beta[0] = 3.0;
+        beta[1] = -3.0;
+        beta[2] = 1.0;
+      }
+    else if (current_order == 4) // EX 4
+      {
+        beta[0] = 4.;
+        beta[1] = -6.;
+        beta[2] = 4.;
+        beta[3] = -1.;
+      }
+
+    /*
+     * Fill the rest of the vectors with zeros since current_order might be
+     * smaller than order, e.g. when using start_with_low_order = true
+     */
+    for (unsigned int i = current_order; i < order; ++i)
+      {
+        beta[i] = 0.0;
+      }
+  }
+
+
+  void
+  ExtrapolationConstants::set_adaptive_time_step(
+    unsigned int const         current_order,
+    std::vector<double> const &time_steps)
+  {
+    AssertThrow(
+      current_order <= order,
+      dealii::ExcMessage(
+        "There is a logical error when updating the constants of the extrapolation scheme."));
+
+    AssertThrow(
+      order <= time_steps.size(),
+      dealii::ExcMessage(
+        "Length of vector containing time step sizes has to be equal to order of extrapolation scheme."));
+
+    if (current_order == 1) // EX 1
+      {
+        beta[0] = 1.0;
+      }
+    else if (current_order == 2) // EX 2
+      {
+        beta[0] = (time_steps[0] + time_steps[1]) / time_steps[1];
+        beta[1] = -time_steps[0] / time_steps[1];
+      }
+    else if (current_order == 3) // EX 3
+      {
+        beta[0] = +(time_steps[0] + time_steps[1]) *
+                  (time_steps[0] + time_steps[1] + time_steps[2]) /
+                  (time_steps[1] * (time_steps[1] + time_steps[2]));
+        beta[1] = -time_steps[0] *
+                  (time_steps[0] + time_steps[1] + time_steps[2]) /
+                  (time_steps[1] * time_steps[2]);
+        beta[2] = +time_steps[0] * (time_steps[0] + time_steps[1]) /
+                  ((time_steps[1] + time_steps[2]) * time_steps[2]);
+      }
+    else if (current_order == 4) // EX 4
+      {
+        beta[0] =
+          (time_steps[0] + time_steps[1]) *
+          (time_steps[0] + time_steps[1] + time_steps[2]) *
+          (time_steps[0] + time_steps[1] + time_steps[2] + time_steps[3]) /
+          (time_steps[1] * (time_steps[1] + time_steps[2]) *
+           (time_steps[1] + time_steps[2] + time_steps[3]));
+
+        beta[1] =
+          -time_steps[0] * (time_steps[0] + time_steps[1] + time_steps[2]) *
+          (time_steps[0] + time_steps[1] + time_steps[2] + time_steps[3]) /
+          (time_steps[1] * time_steps[2] * (time_steps[2] + time_steps[3]));
+
+        beta[2] =
+          time_steps[0] * (time_steps[0] + time_steps[1]) *
+          (time_steps[0] + time_steps[1] + time_steps[2] + time_steps[3]) /
+          ((time_steps[1] + time_steps[2]) * time_steps[2] * time_steps[3]);
+
+        beta[3] = -time_steps[0] * (time_steps[0] + time_steps[1]) *
+                  (time_steps[0] + time_steps[1] + time_steps[2]) /
+                  ((time_steps[1] + time_steps[2] + time_steps[3]) *
+                   (time_steps[2] + time_steps[3]) * time_steps[3]);
+      }
+
+    /*
+     * Fill the rest of the vectors with zeros since current_order might be
+     * smaller than order, e.g. when using start_with_low_order = true,
+     * if current_order == 0, all coefficients are set to zero, i.e., no
+     * extrapolation
+     */
+    for (unsigned int i = current_order; i < order; ++i)
+      {
+        beta[i] = 0.0;
+      }
+  }
+
+  void
+  ExtrapolationConstants::print(dealii::ConditionalOStream &pcout) const
+  {
+    for (unsigned int i = 0; i < order; ++i)
+      pcout << "Beta[" << i << "]  = " << beta[i] << std::endl;
+  }
 
 } // namespace ExaDG
 

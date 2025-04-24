@@ -27,138 +27,143 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim, typename Number>
-DriverSteady<dim, Number>::DriverSteady(std::shared_ptr<Interface::Operator<Number>> operator_,
-                                        std::shared_ptr<PostProcessorBase<Number>>   postprocessor_,
-                                        Parameters const &                           param_,
-                                        MPI_Comm const &                             mpi_comm_,
-                                        bool const                                   is_test_)
-  : pde_operator(operator_),
-    postprocessor(postprocessor_),
-    param(param_),
-    mpi_comm(mpi_comm_),
-    is_test(is_test_),
-    pcout(std::cout, dealii::Utilities::MPI::this_mpi_process(mpi_comm_) == 0),
-    timer_tree(new TimerTree())
-{
-}
-
-template<int dim, typename Number>
-void
-DriverSteady<dim, Number>::setup()
-{
-  // initialize global solution vectors (allocation)
-  initialize_vectors();
-
-  // initialize solution by interpolation of initial data
-  initialize_solution();
-}
-
-template<int dim, typename Number>
-void
-DriverSteady<dim, Number>::solve()
-{
-  dealii::Timer timer;
-  timer.restart();
-
-  postprocessing();
-
-  do_solve();
-
-  postprocessing();
-
-  timer_tree->insert({"DriverSteady"}, timer.wall_time());
-}
-
-template<int dim, typename Number>
-std::shared_ptr<TimerTree>
-DriverSteady<dim, Number>::get_timings() const
-{
-  return timer_tree;
-}
-
-template<int dim, typename Number>
-void
-DriverSteady<dim, Number>::initialize_vectors()
-{
-  pde_operator->initialize_dof_vector(solution);
-  pde_operator->initialize_dof_vector(rhs_vector);
-}
-
-template<int dim, typename Number>
-void
-DriverSteady<dim, Number>::initialize_solution()
-{
-  double time = 0.0;
-  pde_operator->prescribe_initial_displacement(solution, time);
-}
-
-template<int dim, typename Number>
-void
-DriverSteady<dim, Number>::do_solve()
-{
-  dealii::Timer timer;
-  timer.restart();
-
-  pcout << std::endl << "Solving steady state problem ..." << std::endl;
-
-  if(param.large_deformation) // nonlinear problem
+  namespace Structure
   {
-    VectorType const const_vector_dummy; // will not be used
-    auto const       iter = pde_operator->solve_nonlinear(solution,
-                                                    const_vector_dummy,
-                                                    0.0 /* no acceleration term */,
-                                                    0.0 /* no damping term */,
-                                                    0.0 /* time */,
-                                                    param.update_preconditioner);
+    template <int dim, typename Number>
+    DriverSteady<dim, Number>::DriverSteady(
+      std::shared_ptr<Interface::Operator<Number>> operator_,
+      std::shared_ptr<PostProcessorBase<Number>>   postprocessor_,
+      Parameters const                            &param_,
+      MPI_Comm const                              &mpi_comm_,
+      bool const                                   is_test_)
+      : pde_operator(operator_)
+      , postprocessor(postprocessor_)
+      , param(param_)
+      , mpi_comm(mpi_comm_)
+      , is_test(is_test_)
+      , pcout(std::cout,
+              dealii::Utilities::MPI::this_mpi_process(mpi_comm_) == 0)
+      , timer_tree(new TimerTree())
+    {}
 
-    unsigned int const N_iter_nonlinear = std::get<0>(iter);
-    unsigned int const N_iter_linear    = std::get<1>(iter);
+    template <int dim, typename Number>
+    void
+    DriverSteady<dim, Number>::setup()
+    {
+      // initialize global solution vectors (allocation)
+      initialize_vectors();
 
-    if(not(is_test))
-      print_solver_info_nonlinear(pcout, N_iter_nonlinear, N_iter_linear, timer.wall_time());
-  }
-  else // linear problem
-  {
-    // calculate right-hand side vector
-    pde_operator->rhs(rhs_vector, 0.0 /* time */);
+      // initialize solution by interpolation of initial data
+      initialize_solution();
+    }
 
-    unsigned int const N_iter_linear =
-      pde_operator->solve_linear(solution,
-                                 rhs_vector,
-                                 0.0 /* no acceleration term */,
-                                 0.0 /* no damping term */,
-                                 0.0 /* time */,
-                                 false /* update preconditioner */);
+    template <int dim, typename Number>
+    void
+    DriverSteady<dim, Number>::solve()
+    {
+      dealii::Timer timer;
+      timer.restart();
 
-    if(not(is_test))
-      print_solver_info_linear(pcout, N_iter_linear, timer.wall_time());
-  }
+      postprocessing();
 
-  pcout << std::endl << "... done!" << std::endl;
+      do_solve();
 
-  timer_tree->insert({"DriverSteady", "Solve"}, timer.wall_time());
-}
+      postprocessing();
 
-template<int dim, typename Number>
-void
-DriverSteady<dim, Number>::postprocessing() const
-{
-  dealii::Timer timer;
-  timer.restart();
+      timer_tree->insert({"DriverSteady"}, timer.wall_time());
+    }
 
-  postprocessor->do_postprocessing(solution);
+    template <int dim, typename Number>
+    std::shared_ptr<TimerTree>
+    DriverSteady<dim, Number>::get_timings() const
+    {
+      return timer_tree;
+    }
 
-  timer_tree->insert({"DriverSteady", "Postprocessing"}, timer.wall_time());
-}
+    template <int dim, typename Number>
+    void
+    DriverSteady<dim, Number>::initialize_vectors()
+    {
+      pde_operator->initialize_dof_vector(solution);
+      pde_operator->initialize_dof_vector(rhs_vector);
+    }
 
-template class DriverSteady<2, float>;
-template class DriverSteady<2, double>;
+    template <int dim, typename Number>
+    void
+    DriverSteady<dim, Number>::initialize_solution()
+    {
+      double time = 0.0;
+      pde_operator->prescribe_initial_displacement(solution, time);
+    }
 
-template class DriverSteady<3, float>;
-template class DriverSteady<3, double>;
+    template <int dim, typename Number>
+    void
+    DriverSteady<dim, Number>::do_solve()
+    {
+      dealii::Timer timer;
+      timer.restart();
 
-} // namespace Structure
+      pcout << std::endl << "Solving steady state problem ..." << std::endl;
+
+      if (param.large_deformation) // nonlinear problem
+        {
+          VectorType const const_vector_dummy; // will not be used
+          auto const       iter =
+            pde_operator->solve_nonlinear(solution,
+                                          const_vector_dummy,
+                                          0.0 /* no acceleration term */,
+                                          0.0 /* no damping term */,
+                                          0.0 /* time */,
+                                          param.update_preconditioner);
+
+          unsigned int const N_iter_nonlinear = std::get<0>(iter);
+          unsigned int const N_iter_linear    = std::get<1>(iter);
+
+          if (not(is_test))
+            print_solver_info_nonlinear(pcout,
+                                        N_iter_nonlinear,
+                                        N_iter_linear,
+                                        timer.wall_time());
+        }
+      else // linear problem
+        {
+          // calculate right-hand side vector
+          pde_operator->rhs(rhs_vector, 0.0 /* time */);
+
+          unsigned int const N_iter_linear =
+            pde_operator->solve_linear(solution,
+                                       rhs_vector,
+                                       0.0 /* no acceleration term */,
+                                       0.0 /* no damping term */,
+                                       0.0 /* time */,
+                                       false /* update preconditioner */);
+
+          if (not(is_test))
+            print_solver_info_linear(pcout, N_iter_linear, timer.wall_time());
+        }
+
+      pcout << std::endl << "... done!" << std::endl;
+
+      timer_tree->insert({"DriverSteady", "Solve"}, timer.wall_time());
+    }
+
+    template <int dim, typename Number>
+    void
+    DriverSteady<dim, Number>::postprocessing() const
+    {
+      dealii::Timer timer;
+      timer.restart();
+
+      postprocessor->do_postprocessing(solution);
+
+      timer_tree->insert({"DriverSteady", "Postprocessing"}, timer.wall_time());
+    }
+
+    template class DriverSteady<2, float>;
+    template class DriverSteady<2, double>;
+
+    template class DriverSteady<3, float>;
+    template class DriverSteady<3, double>;
+
+  } // namespace Structure
 } // namespace ExaDG

@@ -28,48 +28,47 @@
 
 namespace ExaDG
 {
-template<int dim, typename Number>
-class MassKernel
-{
-public:
-  MassKernel()
+  template <int dim, typename Number>
+  class MassKernel
   {
-  }
+  public:
+    MassKernel()
+    {}
 
-  IntegratorFlags
-  get_integrator_flags() const
-  {
-    IntegratorFlags flags;
+    IntegratorFlags
+    get_integrator_flags() const
+    {
+      IntegratorFlags flags;
 
-    flags.cell_evaluate  = dealii::EvaluationFlags::values;
-    flags.cell_integrate = dealii::EvaluationFlags::values;
+      flags.cell_evaluate  = dealii::EvaluationFlags::values;
+      flags.cell_integrate = dealii::EvaluationFlags::values;
 
-    return flags;
-  }
+      return flags;
+    }
 
-  static MappingFlags
-  get_mapping_flags()
-  {
-    MappingFlags flags;
+    static MappingFlags
+    get_mapping_flags()
+    {
+      MappingFlags flags;
 
-    flags.cells = dealii::update_JxW_values;
+      flags.cells = dealii::update_JxW_values;
 
-    // no face integrals
+      // no face integrals
 
-    return flags;
-  }
+      return flags;
+    }
 
-  /*
-   * Volume flux, i.e., the term occurring in the volume integral
-   */
-  template<typename T>
-  inline DEAL_II_ALWAYS_INLINE //
-    T
-    get_volume_flux(double scaling_factor, T const & value) const
-  {
-    return scaling_factor * value;
-  }
-};
+    /*
+     * Volume flux, i.e., the term occurring in the volume integral
+     */
+    template <typename T>
+    inline DEAL_II_ALWAYS_INLINE //
+      T
+      get_volume_flux(double scaling_factor, T const &value) const
+    {
+      return scaling_factor * value;
+    }
+  };
 
 } // namespace ExaDG
 

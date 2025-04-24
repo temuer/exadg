@@ -28,60 +28,62 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-struct OutputData : public OutputDataBase
-{
-  OutputData() : write_pressure(false), write_velocity(false)
+  namespace Acoustics
   {
-  }
+    struct OutputData : public OutputDataBase
+    {
+      OutputData()
+        : write_pressure(false)
+        , write_velocity(false)
+      {}
 
-  void
-  print(dealii::ConditionalOStream & pcout, bool unsteady)
-  {
-    OutputDataBase::print(pcout, unsteady);
+      void
+      print(dealii::ConditionalOStream &pcout, bool unsteady)
+      {
+        OutputDataBase::print(pcout, unsteady);
 
-    print_parameter(pcout, "Write pressure", write_pressure);
-    print_parameter(pcout, "Write velocity", write_velocity);
-  }
+        print_parameter(pcout, "Write pressure", write_pressure);
+        print_parameter(pcout, "Write velocity", write_velocity);
+      }
 
-  bool write_pressure;
-  bool write_velocity;
-};
+      bool write_pressure;
+      bool write_velocity;
+    };
 
-template<int dim, typename Number>
-class OutputGenerator
-{
-public:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+    template <int dim, typename Number>
+    class OutputGenerator
+    {
+    public:
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  OutputGenerator(MPI_Comm const & comm);
+      OutputGenerator(MPI_Comm const &comm);
 
-  void
-  setup(dealii::DoFHandler<dim> const & dof_handler_pressure,
-        dealii::DoFHandler<dim> const & dof_handler_velocity,
-        dealii::Mapping<dim> const &    mapping,
-        OutputData const &              output_data);
+      void
+      setup(dealii::DoFHandler<dim> const &dof_handler_pressure,
+            dealii::DoFHandler<dim> const &dof_handler_velocity,
+            dealii::Mapping<dim> const    &mapping,
+            OutputData const              &output_data);
 
-  void
-  evaluate(VectorType const & pressure,
-           VectorType const & velocity,
-           double const       time,
-           bool const         unsteady) const;
+      void
+      evaluate(VectorType const &pressure,
+               VectorType const &velocity,
+               double const      time,
+               bool const        unsteady) const;
 
-  TimeControl time_control;
+      TimeControl time_control;
 
-private:
-  MPI_Comm const mpi_comm;
+    private:
+      MPI_Comm const mpi_comm;
 
-  OutputData output_data;
+      OutputData output_data;
 
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_velocity;
-  dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
-};
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_velocity;
+      dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
+    };
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_POSTPROCESSOR_OUTPUT_GENERATOR_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_POSTPROCESSOR_OUTPUT_GENERATOR_H_ \
+        */

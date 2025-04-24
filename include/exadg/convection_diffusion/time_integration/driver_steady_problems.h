@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/base/timer.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -31,76 +32,77 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-// forward declaration
-class Parameters;
+  namespace ConvDiff
+  {
+    // forward declaration
+    class Parameters;
 
-template<typename Number>
-class PostProcessorInterface;
+    template <typename Number>
+    class PostProcessorInterface;
 
-namespace Interface
-{
-template<typename Number>
-class Operator;
-}
+    namespace Interface
+    {
+      template <typename Number>
+      class Operator;
+    }
 
-template<typename Number>
-class DriverSteadyProblems
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+    template <typename Number>
+    class DriverSteadyProblems
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  typedef Interface::Operator<Number> Operator;
+      typedef Interface::Operator<Number> Operator;
 
-  DriverSteadyProblems(std::shared_ptr<Operator>                       operator_,
-                       std::shared_ptr<PostProcessorInterface<Number>> postprocessor_,
-                       Parameters const &                              param_,
-                       MPI_Comm const &                                mpi_comm_,
-                       bool const                                      is_test_);
+      DriverSteadyProblems(
+        std::shared_ptr<Operator>                       operator_,
+        std::shared_ptr<PostProcessorInterface<Number>> postprocessor_,
+        Parameters const                               &param_,
+        MPI_Comm const                                 &mpi_comm_,
+        bool const                                      is_test_);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve();
+      void
+      solve();
 
-  std::shared_ptr<TimerTree>
-  get_timings() const;
+      std::shared_ptr<TimerTree>
+      get_timings() const;
 
-private:
-  void
-  initialize_vectors();
+    private:
+      void
+      initialize_vectors();
 
-  void
-  initialize_solution();
+      void
+      initialize_solution();
 
-  void
-  do_solve();
+      void
+      do_solve();
 
-  void
-  postprocessing() const;
+      void
+      postprocessing() const;
 
-  std::shared_ptr<Operator> pde_operator;
+      std::shared_ptr<Operator> pde_operator;
 
-  Parameters const & param;
+      Parameters const &param;
 
-  MPI_Comm const mpi_comm;
+      MPI_Comm const mpi_comm;
 
-  bool is_test;
+      bool is_test;
 
-  dealii::ConditionalOStream pcout;
+      dealii::ConditionalOStream pcout;
 
-  std::shared_ptr<TimerTree> timer_tree;
+      std::shared_ptr<TimerTree> timer_tree;
 
-  // vectors
-  VectorType solution;
-  VectorType rhs_vector;
+      // vectors
+      VectorType solution;
+      VectorType rhs_vector;
 
-  std::shared_ptr<PostProcessorInterface<Number>> postprocessor;
-};
+      std::shared_ptr<PostProcessorInterface<Number>> postprocessor;
+    };
 
-} // namespace ConvDiff
+  } // namespace ConvDiff
 } // namespace ExaDG
 
 #endif /* INCLUDE_CONVECTION_DIFFUSION_DRIVER_STEADY_PROBLEMS_H_ */

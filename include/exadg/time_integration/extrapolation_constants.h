@@ -33,30 +33,31 @@
 
 namespace ExaDG
 {
-class ExtrapolationConstants : public TimeIntegratorConstantsBase
-{
-public:
-  ExtrapolationConstants(unsigned int const order, bool const start_with_low_order);
+  class ExtrapolationConstants : public TimeIntegratorConstantsBase
+  {
+  public:
+    ExtrapolationConstants(unsigned int const order,
+                           bool const         start_with_low_order);
 
-  double
-  get_beta(unsigned int const i) const;
+    double
+    get_beta(unsigned int const i) const;
 
-  void
-  print(dealii::ConditionalOStream & pcout) const final;
+    void
+    print(dealii::ConditionalOStream &pcout) const final;
 
-private:
-  void
-  set_constant_time_step(unsigned int const current_order) final;
+  private:
+    void
+    set_constant_time_step(unsigned int const current_order) final;
 
-  void
-  set_adaptive_time_step(unsigned int const          current_order,
-                         std::vector<double> const & time_steps) final;
+    void
+    set_adaptive_time_step(unsigned int const         current_order,
+                           std::vector<double> const &time_steps) final;
 
-  /*
-   *  Constants of extrapolation scheme
-   */
-  std::vector<double> beta;
-};
+    /*
+     *  Constants of extrapolation scheme
+     */
+    std::vector<double> beta;
+  };
 
 } // namespace ExaDG
 

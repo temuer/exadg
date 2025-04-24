@@ -26,18 +26,18 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-struct MaterialData
-{
-  MaterialData(MaterialType const & type) : type(type)
+  namespace Structure
   {
-  }
+    struct MaterialData
+    {
+      MaterialData(MaterialType const &type)
+        : type(type)
+      {}
 
-  MaterialType type;
-};
+      MaterialType type;
+    };
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_STRUCTURE_MATERIAL_MATERIAL_DATA_H_ */

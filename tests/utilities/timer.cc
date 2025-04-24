@@ -35,8 +35,8 @@
 void
 test1()
 {
-  dealii::ConditionalOStream pcout(std::cout,
-                                   dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
+  dealii::ConditionalOStream pcout(
+    std::cout, dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
 
   // clang-format off
   pcout << std::endl << std::endl<< std::endl
@@ -52,40 +52,41 @@ test1()
 
   ExaDG::TimerTree tree;
 
-  for(unsigned int i = 0; i < 1000; ++i)
-  {
-    tree.insert({"General"}, 20.0);
+  for (unsigned int i = 0; i < 1000; ++i)
+    {
+      tree.insert({"General"}, 20.0);
 
-    tree.insert({"General", "Part 1"}, 2.0);
+      tree.insert({"General", "Part 1"}, 2.0);
 
-    tree.insert({"General", "Part 2"}, 3.0);
+      tree.insert({"General", "Part 2"}, 3.0);
 
-    tree.insert({"General", "Part 2", "Sub a"}, 0.75);
+      tree.insert({"General", "Part 2", "Sub a"}, 0.75);
 
-    tree.insert({"General", "Part 2", "Sub b"}, 0.9);
+      tree.insert({"General", "Part 2", "Sub b"}, 0.9);
 
-    tree.insert({"General", "Part 3"}, 4.0);
+      tree.insert({"General", "Part 3"}, 4.0);
 
-    tree.insert({"General", "Part 3", "Sub a"}, 0.5);
+      tree.insert({"General", "Part 3", "Sub a"}, 0.5);
 
-    tree.insert({"General", "Part 3", "Sub a", "sub-sub a"}, 0.04);
+      tree.insert({"General", "Part 3", "Sub a", "sub-sub a"}, 0.04);
 
-    tree.insert({"General", "Part 3", "Sub b"}, 0.98765);
+      tree.insert({"General", "Part 3", "Sub b"}, 0.98765);
 
-    tree.insert({"General"}, 2.0);
-  }
+      tree.insert({"General"}, 2.0);
+    }
 
 
   double wall_time = timer.wall_time();
 
-  if(false)
-  {
-    pcout << "Wall time for filling the tree = " << std::scientific << wall_time << std::endl
-          << std::endl;
-    pcout << "Wall time for filling one item of the tree = " << std::scientific << wall_time / 10000
-          << std::endl
-          << std::endl;
-  }
+  if (false)
+    {
+      pcout << "Wall time for filling the tree = " << std::scientific
+            << wall_time << std::endl
+            << std::endl;
+      pcout << "Wall time for filling one item of the tree = "
+            << std::scientific << wall_time / 10000 << std::endl
+            << std::endl;
+    }
 
   pcout << std::endl << "timings for level = 0:" << std::endl;
   tree.print_level(pcout, 0);
@@ -126,8 +127,8 @@ test1()
 void
 test2()
 {
-  dealii::ConditionalOStream pcout(std::cout,
-                                   dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
+  dealii::ConditionalOStream pcout(
+    std::cout, dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
 
   // clang-format off
   pcout << std::endl << std::endl<< std::endl
@@ -195,37 +196,41 @@ test2()
 }
 
 int
-main(int argc, char ** argv)
+main(int argc, char **argv)
 {
   try
-  {
-    dealii::Utilities::MPI::MPI_InitFinalize mpi(argc, argv, 1);
+    {
+      dealii::Utilities::MPI::MPI_InitFinalize mpi(argc, argv, 1);
 
-    test1();
+      test1();
 
-    test2();
-  }
-  catch(std::exception & exc)
-  {
-    std::cerr << std::endl
-              << std::endl
-              << "----------------------------------------------------" << std::endl;
-    std::cerr << "Exception on processing: " << std::endl
-              << exc.what() << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------" << std::endl;
-    return 1;
-  }
-  catch(...)
-  {
-    std::cerr << std::endl
-              << std::endl
-              << "----------------------------------------------------" << std::endl;
-    std::cerr << "Unknown exception!" << std::endl
-              << "Aborting!" << std::endl
-              << "----------------------------------------------------" << std::endl;
-    return 1;
-  }
+      test2();
+    }
+  catch (std::exception &exc)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Exception on processing: " << std::endl
+                << exc.what() << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      return 1;
+    }
+  catch (...)
+    {
+      std::cerr << std::endl
+                << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      std::cerr << "Unknown exception!" << std::endl
+                << "Aborting!" << std::endl
+                << "----------------------------------------------------"
+                << std::endl;
+      return 1;
+    }
 
   return 0;
 }

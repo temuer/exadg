@@ -26,23 +26,24 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim>
-struct AnalyticalSolution
-{
-  /*
-   *  pressure
-   */
-  std::shared_ptr<dealii::Function<dim>> pressure;
+  namespace Acoustics
+  {
+    template <int dim>
+    struct AnalyticalSolution
+    {
+      /*
+       *  pressure
+       */
+      std::shared_ptr<dealii::Function<dim>> pressure;
 
-  /*
-   *  velocity
-   */
-  std::shared_ptr<dealii::Function<dim>> velocity;
-};
+      /*
+       *  velocity
+       */
+      std::shared_ptr<dealii::Function<dim>> velocity;
+    };
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_ANALYTICAL_SOLUTION_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_ANALYTICAL_SOLUTION_H_ \
+        */

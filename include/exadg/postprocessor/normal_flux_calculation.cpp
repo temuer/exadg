@@ -28,154 +28,160 @@
 
 namespace ExaDG
 {
-template<int dim, typename Number>
-NormalFluxCalculator<dim, Number>::NormalFluxCalculator(
-  dealii::MatrixFree<dim, Number> const & matrix_free_in,
-  unsigned int const                      dof_index_in,
-  unsigned int const                      quad_index_in,
-  NormalFluxCalculatorData const &        data_in,
-  MPI_Comm const &                        mpi_comm_in)
-  : matrix_free(matrix_free_in),
-    dof_index(dof_index_in),
-    quad_index(quad_index_in),
-    data(data_in),
-    clear_files(true),
-    mpi_comm(mpi_comm_in)
-{
-  for(auto it : data.boundary_ids)
-    flux.insert(typename std::pair<dealii::types::boundary_id, double>(it, 0.0));
-
-  if(data.evaluate)
-    create_directories(data.directory, mpi_comm);
-}
-
-template<int dim, typename Number>
-void
-NormalFluxCalculator<dim, Number>::evaluate(VectorType const & solution,
-                                            double const       time,
-                                            bool const         unsteady)
-{
-  bool const has_ghost_elements = solution.has_ghost_elements();
-  if(not(has_ghost_elements))
-    solution.update_ghost_values();
-
-  // zero values since we sum into these variables
-  for(auto & iterator : flux)
+  template <int dim, typename Number>
+  NormalFluxCalculator<dim, Number>::NormalFluxCalculator(
+    dealii::MatrixFree<dim, Number> const &matrix_free_in,
+    unsigned int const                     dof_index_in,
+    unsigned int const                     quad_index_in,
+    NormalFluxCalculatorData const        &data_in,
+    MPI_Comm const                        &mpi_comm_in)
+    : matrix_free(matrix_free_in)
+    , dof_index(dof_index_in)
+    , quad_index(quad_index_in)
+    , data(data_in)
+    , clear_files(true)
+    , mpi_comm(mpi_comm_in)
   {
-    iterator.second = 0.0;
+    for (auto it : data.boundary_ids)
+      flux.insert(
+        typename std::pair<dealii::types::boundary_id, double>(it, 0.0));
+
+    if (data.evaluate)
+      create_directories(data.directory, mpi_comm);
   }
 
-  FaceIntegratorScalar integrator(matrix_free, true, dof_index, quad_index);
-
-  for(unsigned int face = matrix_free.n_inner_face_batches();
-      face < (matrix_free.n_inner_face_batches() + matrix_free.n_boundary_face_batches());
-      face++)
+  template <int dim, typename Number>
+  void
+  NormalFluxCalculator<dim, Number>::evaluate(VectorType const &solution,
+                                              double const      time,
+                                              bool const        unsteady)
   {
-    dealii::types::boundary_id boundary_id = matrix_free.get_boundary_id(face);
+    bool const has_ghost_elements = solution.has_ghost_elements();
+    if (not(has_ghost_elements))
+      solution.update_ghost_values();
 
-    auto it = flux.find(boundary_id);
-    if(it != flux.end())
-    {
-      integrator.reinit(face);
-      // TODO: note that this will not be correct in case of hanging nodes
-      integrator.read_dof_values_plain(solution);
-      integrator.evaluate(dealii::EvaluationFlags::gradients);
-
-      scalar flux_face = dealii::make_vectorized_array<Number>(0.0);
-
-      for(unsigned int q = 0; q < integrator.n_q_points; ++q)
+    // zero values since we sum into these variables
+    for (auto &iterator : flux)
       {
-        flux_face +=
-          integrator.JxW(q) * integrator.get_gradient(q) * integrator.get_normal_vector(q);
+        iterator.second = 0.0;
       }
 
-      // sum over all entries of dealii::VectorizedArray
-      for(unsigned int n = 0; n < matrix_free.n_active_entries_per_face_batch(face); ++n)
+    FaceIntegratorScalar integrator(matrix_free, true, dof_index, quad_index);
+
+    for (unsigned int face = matrix_free.n_inner_face_batches();
+         face < (matrix_free.n_inner_face_batches() +
+                 matrix_free.n_boundary_face_batches());
+         face++)
       {
-        flux.at(boundary_id) += flux_face[n];
+        dealii::types::boundary_id boundary_id =
+          matrix_free.get_boundary_id(face);
+
+        auto it = flux.find(boundary_id);
+        if (it != flux.end())
+          {
+            integrator.reinit(face);
+            // TODO: note that this will not be correct in case of hanging nodes
+            integrator.read_dof_values_plain(solution);
+            integrator.evaluate(dealii::EvaluationFlags::gradients);
+
+            scalar flux_face = dealii::make_vectorized_array<Number>(0.0);
+
+            for (unsigned int q = 0; q < integrator.n_q_points; ++q)
+              {
+                flux_face += integrator.JxW(q) * integrator.get_gradient(q) *
+                             integrator.get_normal_vector(q);
+              }
+
+            // sum over all entries of dealii::VectorizedArray
+            for (unsigned int n = 0;
+                 n < matrix_free.n_active_entries_per_face_batch(face);
+                 ++n)
+              {
+                flux.at(boundary_id) += flux_face[n];
+              }
+          }
       }
-    }
-  }
 
-  if(not(has_ghost_elements))
-    solution.zero_out_ghost_values();
+    if (not(has_ghost_elements))
+      solution.zero_out_ghost_values();
 
-  // map -> vector
-  std::vector<double> flux_vector(flux.size());
-  auto                iterator = flux.begin();
-  for(unsigned int counter = 0; counter < flux.size(); ++counter)
-  {
-    flux_vector[counter] = (iterator++)->second;
-  }
-
-  // sum over MPI processes
-  dealii::Utilities::MPI::sum(
-    dealii::ArrayView<double const>(&(*flux_vector.begin()), flux_vector.size()),
-    mpi_comm,
-    dealii::ArrayView<double>(&(*flux_vector.begin()), flux_vector.size()));
-
-  // vector -> map
-  iterator = flux.begin();
-  for(unsigned int counter = 0; counter < flux.size(); ++counter)
-  {
-    (iterator++)->second = flux_vector[counter];
-  }
-
-  // write results to file
-  if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
-  {
-    std::string filename = data.directory + data.filename;
-
-    unsigned int precision = 12;
-
-    std::ofstream f;
-    if(clear_files)
-    {
-      f.open(filename.c_str(), std::ios::trunc);
-
-      f << std::setw(precision + 8) << std::left << "Time t";
-
-      for(auto it : flux)
+    // map -> vector
+    std::vector<double> flux_vector(flux.size());
+    auto                iterator = flux.begin();
+    for (unsigned int counter = 0; counter < flux.size(); ++counter)
       {
-        // clang-format off
+        flux_vector[counter] = (iterator++)->second;
+      }
+
+    // sum over MPI processes
+    dealii::Utilities::MPI::sum(
+      dealii::ArrayView<double const>(&(*flux_vector.begin()),
+                                      flux_vector.size()),
+      mpi_comm,
+      dealii::ArrayView<double>(&(*flux_vector.begin()), flux_vector.size()));
+
+    // vector -> map
+    iterator = flux.begin();
+    for (unsigned int counter = 0; counter < flux.size(); ++counter)
+      {
+        (iterator++)->second = flux_vector[counter];
+      }
+
+    // write results to file
+    if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+      {
+        std::string filename = data.directory + data.filename;
+
+        unsigned int precision = 12;
+
+        std::ofstream f;
+        if (clear_files)
+          {
+            f.open(filename.c_str(), std::ios::trunc);
+
+            f << std::setw(precision + 8) << std::left << "Time t";
+
+            for (auto it : flux)
+              {
+                // clang-format off
         f << std::setw(precision + 8) << std::left
           << "Flux (bid = " + std::to_string(it.first) + ")";
-        // clang-format on
-      }
+                // clang-format on
+              }
 
-      f << std::endl;
+            f << std::endl;
 
-      if(unsteady)
-        clear_files = false;
-    }
-    else
-    {
-      f.open(filename.c_str(), std::ios::app);
-    }
+            if (unsteady)
+              clear_files = false;
+          }
+        else
+          {
+            f.open(filename.c_str(), std::ios::app);
+          }
 
-    // clang-format off
+        // clang-format off
     f << std::scientific << std::setprecision(precision)
       << std::setw(precision + 8) << std::left << time;
-    // clang-format on
+        // clang-format on
 
-    for(auto it : flux)
-    {
-      // clang-format off
+        for (auto it : flux)
+          {
+            // clang-format off
       f << std::scientific << std::setprecision(precision)
         << std::setw(precision + 8) << std::left << it.second;
-      // clang-format on
-    }
+            // clang-format on
+          }
 
-    f << std::endl;
+        f << std::endl;
 
-    f.close();
+        f.close();
+      }
   }
-}
 
-template class NormalFluxCalculator<2, float>;
-template class NormalFluxCalculator<2, double>;
+  template class NormalFluxCalculator<2, float>;
+  template class NormalFluxCalculator<2, double>;
 
-template class NormalFluxCalculator<3, float>;
-template class NormalFluxCalculator<3, double>;
+  template class NormalFluxCalculator<3, float>;
+  template class NormalFluxCalculator<3, double>;
 
 } // namespace ExaDG

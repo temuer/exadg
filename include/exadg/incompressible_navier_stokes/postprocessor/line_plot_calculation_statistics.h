@@ -27,7 +27,9 @@
 
 // deal.II
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/fe/mapping_q.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -36,122 +38,131 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-/*
- * This function calculates statistics along lines by averaging over time.
- *
- * Additionally, averaging in circumferential direction can be performed if desired.
- *
- * General assumptions:
- *
- *  - we assume straight lines and an equidistant distribution of the evaluation points along each
- *    line.
- *
- * Assumptions for averaging in circumferential direction:
- *
- *  - to define the plane in which we want to perform the averaging in circumferential direction,
- *    a normal vector has to be specified that has to be oriented normal to the straight line and
- *    normal to the averaging plane. To construct the sample points for averaging in circumferential
- *    direction, we assume that the first point of the line (line.begin) defines the center of the
- *    circle, and that the other points in circumferential direction can be constructed by rotating
- *    the vector from the center of the circle (line.begin) to the current point along the line
- *    around the normal vector.
- */
-
-template<int dim, typename Number>
-class LinePlotCalculatorStatistics
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  typedef typename std::vector<
-    std::pair<typename dealii::DoFHandler<dim>::active_cell_iterator, dealii::Point<dim>>>
-    TYPE;
-
-  LinePlotCalculatorStatistics(dealii::DoFHandler<dim> const & dof_handler_velocity_in,
-                               dealii::DoFHandler<dim> const & dof_handler_pressure_in,
-                               dealii::Mapping<dim> const &    mapping_in,
-                               MPI_Comm const &                mpi_comm_in);
-
-  void
-  setup(LinePlotDataStatistics<dim> const & data_in);
-
-  void
-  evaluate(VectorType const & velocity, VectorType const & pressure);
-
-  void
-  write_output() const;
-
-  TimeControlStatistics time_control_statistics;
-
-private:
-  void
-  print_headline(std::ofstream & f, unsigned int const number_of_samples) const
+  namespace IncNS
   {
-    f << "number of samples: N = " << number_of_samples << std::endl;
-  }
+    /*
+     * This function calculates statistics along lines by averaging over time.
+     *
+     * Additionally, averaging in circumferential direction can be performed if
+     * desired.
+     *
+     * General assumptions:
+     *
+     *  - we assume straight lines and an equidistant distribution of the
+     * evaluation points along each line.
+     *
+     * Assumptions for averaging in circumferential direction:
+     *
+     *  - to define the plane in which we want to perform the averaging in
+     * circumferential direction, a normal vector has to be specified that has
+     * to be oriented normal to the straight line and normal to the averaging
+     * plane. To construct the sample points for averaging in circumferential
+     *    direction, we assume that the first point of the line (line.begin)
+     * defines the center of the circle, and that the other points in
+     * circumferential direction can be constructed by rotating the vector from
+     * the center of the circle (line.begin) to the current point along the line
+     *    around the normal vector.
+     */
 
-  void
-  initialize_cell_data(VectorType const & velocity, VectorType const & pressure);
+    template <int dim, typename Number>
+    class LinePlotCalculatorStatistics
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  void
-  do_evaluate(VectorType const & velocity, VectorType const & pressure);
+      typedef typename std::vector<
+        std::pair<typename dealii::DoFHandler<dim>::active_cell_iterator,
+                  dealii::Point<dim>>>
+        TYPE;
 
-  void
-  do_evaluate_velocity(VectorType const & velocity,
-                       Line<dim> const &  line,
-                       unsigned int const line_iterator);
+      LinePlotCalculatorStatistics(
+        dealii::DoFHandler<dim> const &dof_handler_velocity_in,
+        dealii::DoFHandler<dim> const &dof_handler_pressure_in,
+        dealii::Mapping<dim> const    &mapping_in,
+        MPI_Comm const                &mpi_comm_in);
 
-  void
-  do_evaluate_pressure(VectorType const & pressure,
-                       Line<dim> const &  line,
-                       unsigned int const line_iterator);
+      void
+      setup(LinePlotDataStatistics<dim> const &data_in);
 
-  void
-  do_write_output() const;
+      void
+      evaluate(VectorType const &velocity, VectorType const &pressure);
 
-  mutable bool clear_files;
+      void
+      write_output() const;
 
-  dealii::DoFHandler<dim> const & dof_handler_velocity;
-  dealii::DoFHandler<dim> const & dof_handler_pressure;
-  dealii::Mapping<dim> const &    mapping;
-  MPI_Comm                        mpi_comm;
+      TimeControlStatistics time_control_statistics;
 
-  LinePlotDataStatistics<dim> data;
+    private:
+      void
+      print_headline(std::ofstream     &f,
+                     unsigned int const number_of_samples) const
+      {
+        f << "number of samples: N = " << number_of_samples << std::endl;
+      }
 
-  // Global points
-  std::vector<std::vector<dealii::Point<dim>>> global_points;
+      void
+      initialize_cell_data(VectorType const &velocity,
+                           VectorType const &pressure);
 
-  bool cell_data_has_been_initialized;
+      void
+      do_evaluate(VectorType const &velocity, VectorType const &pressure);
 
-  // For all lines: for all points along the line: for all relevant cells: dof index of first dof of
-  // current cell and all shape function values
-  std::vector<std::vector<
-    std::vector<std::pair<std::vector<dealii::types::global_dof_index>, std::vector<Number>>>>>
-    cells_global_velocity;
+      void
+      do_evaluate_velocity(VectorType const  &velocity,
+                           Line<dim> const   &line,
+                           unsigned int const line_iterator);
 
-  // For all lines: for all points along the line: for all relevant cells: dof index of first dof of
-  // current cell and all shape function values
-  std::vector<std::vector<
-    std::vector<std::pair<std::vector<dealii::types::global_dof_index>, std::vector<Number>>>>>
-    cells_global_pressure;
+      void
+      do_evaluate_pressure(VectorType const  &pressure,
+                           Line<dim> const   &line,
+                           unsigned int const line_iterator);
 
-  // number of samples for averaging in time
-  unsigned int number_of_samples;
+      void
+      do_write_output() const;
 
-  // Velocity quantities
-  // For all lines: for all points along the line
-  std::vector<std::vector<dealii::Tensor<1, dim, Number>>> velocity_global;
+      mutable bool clear_files;
 
-  // Pressure quantities
-  // For all lines: for all points along the line
-  std::vector<std::vector<Number>> pressure_global;
+      dealii::DoFHandler<dim> const &dof_handler_velocity;
+      dealii::DoFHandler<dim> const &dof_handler_pressure;
+      dealii::Mapping<dim> const    &mapping;
+      MPI_Comm                       mpi_comm;
 
-  bool write_final_output;
-};
+      LinePlotDataStatistics<dim> data;
 
-} // namespace IncNS
+      // Global points
+      std::vector<std::vector<dealii::Point<dim>>> global_points;
+
+      bool cell_data_has_been_initialized;
+
+      // For all lines: for all points along the line: for all relevant cells:
+      // dof index of first dof of current cell and all shape function values
+      std::vector<std::vector<
+        std::vector<std::pair<std::vector<dealii::types::global_dof_index>,
+                              std::vector<Number>>>>>
+        cells_global_velocity;
+
+      // For all lines: for all points along the line: for all relevant cells:
+      // dof index of first dof of current cell and all shape function values
+      std::vector<std::vector<
+        std::vector<std::pair<std::vector<dealii::types::global_dof_index>,
+                              std::vector<Number>>>>>
+        cells_global_pressure;
+
+      // number of samples for averaging in time
+      unsigned int number_of_samples;
+
+      // Velocity quantities
+      // For all lines: for all points along the line
+      std::vector<std::vector<dealii::Tensor<1, dim, Number>>> velocity_global;
+
+      // Pressure quantities
+      // For all lines: for all points along the line
+      std::vector<std::vector<Number>> pressure_global;
+
+      bool write_final_output;
+    };
+
+  } // namespace IncNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_POSTPROCESSOR_LINE_PLOT_CALCULATION_STATISTICS_H_ \

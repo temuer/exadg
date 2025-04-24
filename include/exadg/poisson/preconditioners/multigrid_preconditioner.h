@@ -28,69 +28,74 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-/*
- *  Multigrid preconditioner for Laplace operator.
- */
-template<int dim, typename Number, int n_components>
-class MultigridPreconditioner : public MultigridPreconditionerBase<dim, Number>
-{
-private:
-  typedef MultigridPreconditionerBase<dim, Number> Base;
+  namespace Poisson
+  {
+    /*
+     *  Multigrid preconditioner for Laplace operator.
+     */
+    template <int dim, typename Number, int n_components>
+    class MultigridPreconditioner
+      : public MultigridPreconditionerBase<dim, Number>
+    {
+    private:
+      typedef MultigridPreconditionerBase<dim, Number> Base;
 
-public:
-  typedef typename Base::MultigridNumber MultigridNumber;
+    public:
+      typedef typename Base::MultigridNumber MultigridNumber;
 
-private:
-  static unsigned int const rank =
-    (n_components == 1) ? 0 : ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
+    private:
+      static unsigned int const rank =
+        (n_components == 1) ?
+          0 :
+          ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
 
-  typedef typename Base::Map_DBC               Map_DBC;
-  typedef typename Base::Map_DBC_ComponentMask Map_DBC_ComponentMask;
-  typedef typename Base::PeriodicFacePairs     PeriodicFacePairs;
+      typedef typename Base::Map_DBC               Map_DBC;
+      typedef typename Base::Map_DBC_ComponentMask Map_DBC_ComponentMask;
+      typedef typename Base::PeriodicFacePairs     PeriodicFacePairs;
 
-  typedef LaplaceOperator<dim, MultigridNumber, n_components> Laplace;
+      typedef LaplaceOperator<dim, MultigridNumber, n_components> Laplace;
 
-  typedef MultigridOperatorBase<dim, MultigridNumber>      MGOperatorBase;
-  typedef MultigridOperator<dim, MultigridNumber, Laplace> MGOperator;
+      typedef MultigridOperatorBase<dim, MultigridNumber>      MGOperatorBase;
+      typedef MultigridOperator<dim, MultigridNumber, Laplace> MGOperator;
 
-public:
-  MultigridPreconditioner(MPI_Comm const & mpi_comm);
+    public:
+      MultigridPreconditioner(MPI_Comm const &mpi_comm);
 
-  void
-  initialize(MultigridData const &                                 mg_data,
-             std::shared_ptr<Grid<dim> const>                      grid,
-             std::shared_ptr<MultigridMappings<dim, Number>> const multigrid_mappings,
-             dealii::FiniteElement<dim> const &                    fe,
-             LaplaceOperatorData<rank, dim> const &                data,
-             bool const                                            mesh_is_moving,
-             Map_DBC const &                                       dirichlet_bc,
-             Map_DBC_ComponentMask const &                         dirichlet_bc_component_mask);
+      void
+      initialize(MultigridData const             &mg_data,
+                 std::shared_ptr<Grid<dim> const> grid,
+                 std::shared_ptr<MultigridMappings<dim, Number>> const
+                                                       multigrid_mappings,
+                 dealii::FiniteElement<dim> const     &fe,
+                 LaplaceOperatorData<rank, dim> const &data,
+                 bool const                            mesh_is_moving,
+                 Map_DBC const                        &dirichlet_bc,
+                 Map_DBC_ComponentMask const &dirichlet_bc_component_mask);
 
-  void
-  update() final;
+      void
+      update() final;
 
-private:
-  void
-  fill_matrix_free_data(MatrixFreeData<dim, MultigridNumber> & matrix_free_data,
-                        unsigned int const                     level,
-                        unsigned int const                     dealii_triangulation_level) final;
+    private:
+      void
+      fill_matrix_free_data(
+        MatrixFreeData<dim, MultigridNumber> &matrix_free_data,
+        unsigned int const                    level,
+        unsigned int const                    dealii_triangulation_level) final;
 
-  std::shared_ptr<MGOperatorBase>
-  initialize_operator(unsigned int const level) final;
+      std::shared_ptr<MGOperatorBase>
+      initialize_operator(unsigned int const level) final;
 
-  std::shared_ptr<Laplace>
-  get_operator(unsigned int level);
+      std::shared_ptr<Laplace>
+      get_operator(unsigned int level);
 
-  LaplaceOperatorData<rank, dim> data;
+      LaplaceOperatorData<rank, dim> data;
 
-  bool is_dg;
+      bool is_dg;
 
-  bool mesh_is_moving;
-};
+      bool mesh_is_moving;
+    };
 
-} // namespace Poisson
+  } // namespace Poisson
 } // namespace ExaDG
 
 #endif /* INCLUDE_POISSON_MULTIGRID_PRECONDITIONER_H_ */

@@ -28,48 +28,49 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim>
-struct PointwiseOutputData : public PointwiseOutputDataBase<dim>
-{
-  PointwiseOutputData();
+  namespace IncNS
+  {
+    template <int dim>
+    struct PointwiseOutputData : public PointwiseOutputDataBase<dim>
+    {
+      PointwiseOutputData();
 
-  void
-  print(dealii::ConditionalOStream & pcout) const;
+      void
+      print(dealii::ConditionalOStream &pcout) const;
 
-  bool write_velocity;
-  bool write_pressure;
-};
+      bool write_velocity;
+      bool write_pressure;
+    };
 
-template<int dim, typename Number>
-class PointwiseOutputGenerator : public PointwiseOutputGeneratorBase<dim, Number>
-{
-public:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+    template <int dim, typename Number>
+    class PointwiseOutputGenerator
+      : public PointwiseOutputGeneratorBase<dim, Number>
+    {
+    public:
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  PointwiseOutputGenerator(MPI_Comm const & comm);
+      PointwiseOutputGenerator(MPI_Comm const &comm);
 
-  void
-  setup(dealii::DoFHandler<dim> const &  dof_handler_velocity_in,
-        dealii::DoFHandler<dim> const &  dof_handler_pressure_in,
-        dealii::Mapping<dim> const &     mapping_in,
-        PointwiseOutputData<dim> const & pointwise_output_data_in);
+      void
+      setup(dealii::DoFHandler<dim> const  &dof_handler_velocity_in,
+            dealii::DoFHandler<dim> const  &dof_handler_pressure_in,
+            dealii::Mapping<dim> const     &mapping_in,
+            PointwiseOutputData<dim> const &pointwise_output_data_in);
 
-  void
-  evaluate(VectorType const & velocity,
-           VectorType const & pressure,
-           double const       time,
-           bool const         unsteady);
+      void
+      evaluate(VectorType const &velocity,
+               VectorType const &pressure,
+               double const      time,
+               bool const        unsteady);
 
-private:
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_velocity;
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
+    private:
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_velocity;
+      dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_pressure;
 
-  PointwiseOutputData<dim> pointwise_output_data;
-};
+      PointwiseOutputData<dim> pointwise_output_data;
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
 

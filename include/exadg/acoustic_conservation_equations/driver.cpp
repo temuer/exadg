@@ -31,169 +31,192 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim, typename Number>
-Driver<dim, Number>::Driver(MPI_Comm const &                              comm,
-                            std::shared_ptr<ApplicationBase<dim, Number>> app,
-                            bool const                                    is_test,
-                            bool const                                    is_throughput_study)
-  : mpi_comm(comm),
-    pcout(std::cout, dealii::Utilities::MPI::this_mpi_process(comm) == 0),
-    is_test(is_test),
-    is_throughput_study(is_throughput_study),
-    application(app)
-{
-  print_general_info<Number>(pcout, mpi_comm, is_test);
-}
-
-template<int dim, typename Number>
-void
-Driver<dim, Number>::setup()
-{
-  dealii::Timer timer;
-  timer.restart();
-
-  pcout << std::endl << "Setting up acoustic conservation equations solver:" << std::endl;
-
-  application->setup(grid, mapping);
-
-  pde_operator =
-    std::make_shared<SpatialOperator<dim, Number>>(grid,
-                                                   mapping,
-                                                   application->get_boundary_descriptor(),
-                                                   application->get_field_functions(),
-                                                   application->get_parameters(),
-                                                   "acoustic",
-                                                   mpi_comm);
-
-  // setup PDE operator
-  pde_operator->setup();
-
-  if(not is_throughput_study)
+  namespace Acoustics
   {
-    // setup postprocessor
-    postprocessor = application->create_postprocessor();
-    postprocessor->setup(*pde_operator);
+    template <int dim, typename Number>
+    Driver<dim, Number>::Driver(
+      MPI_Comm const                               &comm,
+      std::shared_ptr<ApplicationBase<dim, Number>> app,
+      bool const                                    is_test,
+      bool const                                    is_throughput_study)
+      : mpi_comm(comm)
+      , pcout(std::cout, dealii::Utilities::MPI::this_mpi_process(comm) == 0)
+      , is_test(is_test)
+      , is_throughput_study(is_throughput_study)
+      , application(app)
+    {
+      print_general_info<Number>(pcout, mpi_comm, is_test);
+    }
 
-    // create and setup time integrator
-    time_integrator = std::make_shared<TimeIntAdamsBashforthMoulton<Number>>(
-      pde_operator, application->get_parameters(), postprocessor, mpi_comm, is_test);
-    time_integrator->setup(application->get_parameters().restarted_simulation);
-  }
+    template <int dim, typename Number>
+    void
+    Driver<dim, Number>::setup()
+    {
+      dealii::Timer timer;
+      timer.restart();
 
-  timer_tree.insert({"Acoustic conservation equations", "Setup"}, timer.wall_time());
-}
+      pcout << std::endl
+            << "Setting up acoustic conservation equations solver:"
+            << std::endl;
 
-template<int dim, typename Number>
-void
-Driver<dim, Number>::solve() const
-{
-  time_integrator->timeloop();
-}
+      application->setup(grid, mapping);
 
-template<int dim, typename Number>
-void
-Driver<dim, Number>::print_performance_results(double const total_time) const
-{
-  pcout << std::endl << print_horizontal_line() << std::endl << std::endl;
+      pde_operator = std::make_shared<SpatialOperator<dim, Number>>(
+        grid,
+        mapping,
+        application->get_boundary_descriptor(),
+        application->get_field_functions(),
+        application->get_parameters(),
+        "acoustic",
+        mpi_comm);
 
-  pcout << "Performance results for acoustic conservation equations solver:" << std::endl;
+      // setup PDE operator
+      pde_operator->setup();
 
-  // Iterations
-  pcout << std::endl << "Average number of iterations:" << std::endl;
-  time_integrator->print_iterations();
+      if (not is_throughput_study)
+        {
+          // setup postprocessor
+          postprocessor = application->create_postprocessor();
+          postprocessor->setup(*pde_operator);
 
-  // Wall times
-  timer_tree.insert({"Acoustic conservation equations"}, total_time);
+          // create and setup time integrator
+          time_integrator =
+            std::make_shared<TimeIntAdamsBashforthMoulton<Number>>(
+              pde_operator,
+              application->get_parameters(),
+              postprocessor,
+              mpi_comm,
+              is_test);
+          time_integrator->setup(
+            application->get_parameters().restarted_simulation);
+        }
 
-  timer_tree.insert({"Acoustic conservation equations"}, time_integrator->get_timings());
+      timer_tree.insert({"Acoustic conservation equations", "Setup"},
+                        timer.wall_time());
+    }
 
-  pcout << std::endl << "Timings for level 1:" << std::endl;
-  timer_tree.print_level(pcout, 1);
+    template <int dim, typename Number>
+    void
+    Driver<dim, Number>::solve() const
+    {
+      time_integrator->timeloop();
+    }
 
-  pcout << std::endl << "Timings for level 2:" << std::endl;
-  timer_tree.print_level(pcout, 2);
+    template <int dim, typename Number>
+    void
+    Driver<dim, Number>::print_performance_results(
+      double const total_time) const
+    {
+      pcout << std::endl << print_horizontal_line() << std::endl << std::endl;
 
-  // Throughput in DoFs/s per time step per core
-  dealii::types::global_dof_index const DoFs = pde_operator->get_number_of_dofs();
-  unsigned int const N_mpi_processes         = dealii::Utilities::MPI::n_mpi_processes(mpi_comm);
+      pcout << "Performance results for acoustic conservation equations solver:"
+            << std::endl;
 
-  dealii::Utilities::MPI::MinMaxAvg overall_time_data =
-    dealii::Utilities::MPI::min_max_avg(total_time, mpi_comm);
-  double const overall_time_avg = overall_time_data.avg;
+      // Iterations
+      pcout << std::endl << "Average number of iterations:" << std::endl;
+      time_integrator->print_iterations();
 
-  unsigned int const N_time_steps = time_integrator->get_number_of_time_steps();
-  print_throughput_unsteady(pcout, DoFs, overall_time_avg, N_time_steps, N_mpi_processes);
+      // Wall times
+      timer_tree.insert({"Acoustic conservation equations"}, total_time);
 
-  // computational costs in CPUh
-  print_costs(pcout, overall_time_avg, N_mpi_processes);
+      timer_tree.insert({"Acoustic conservation equations"},
+                        time_integrator->get_timings());
 
-  pcout << print_horizontal_line() << std::endl << std::endl;
-}
+      pcout << std::endl << "Timings for level 1:" << std::endl;
+      timer_tree.print_level(pcout, 1);
 
-template<int dim, typename Number>
-std::tuple<unsigned int, dealii::types::global_dof_index, double>
-Driver<dim, Number>::apply_operator(OperatorType const & operator_type,
-                                    unsigned int const   n_repetitions_inner,
-                                    unsigned int const   n_repetitions_outer) const
-{
-  pcout << std::endl << "Computing matrix-vector product ..." << std::endl;
+      pcout << std::endl << "Timings for level 2:" << std::endl;
+      timer_tree.print_level(pcout, 2);
 
-  // Vectors needed for coupled solution approach
-  dealii::LinearAlgebra::distributed::BlockVector<Number> dst, src;
+      // Throughput in DoFs/s per time step per core
+      dealii::types::global_dof_index const DoFs =
+        pde_operator->get_number_of_dofs();
+      unsigned int const N_mpi_processes =
+        dealii::Utilities::MPI::n_mpi_processes(mpi_comm);
 
-  // initialize vectors
-  pde_operator->initialize_dof_vector(dst);
-  pde_operator->initialize_dof_vector(src);
-  src = 1.0;
+      dealii::Utilities::MPI::MinMaxAvg overall_time_data =
+        dealii::Utilities::MPI::min_max_avg(total_time, mpi_comm);
+      double const overall_time_avg = overall_time_data.avg;
 
-  // evaluate operator
-  const std::function<void(void)> operator_evaluation = [&](void) {
-    if(operator_type == OperatorType::AcousticOperator)
-      pde_operator->evaluate_acoustic_operator(dst, src, 0.0);
-    else if(operator_type == OperatorType::ScaledInverseMassOperator)
-      pde_operator->apply_scaled_inverse_mass_operator(dst, src);
-    else
-      AssertThrow(false, dealii::ExcMessage("Not implemented."));
-  };
+      unsigned int const N_time_steps =
+        time_integrator->get_number_of_time_steps();
+      print_throughput_unsteady(
+        pcout, DoFs, overall_time_avg, N_time_steps, N_mpi_processes);
 
-  // calculate throughput
+      // computational costs in CPUh
+      print_costs(pcout, overall_time_avg, N_mpi_processes);
 
-  // determine DoFs and degree
-  dealii::types::global_dof_index const dofs      = pde_operator->get_number_of_dofs();
-  unsigned int const                    fe_degree = application->get_parameters().degree_p;
+      pcout << print_horizontal_line() << std::endl << std::endl;
+    }
 
-  // do the measurements
-  double const wall_time = measure_operator_evaluation_time(
-    operator_evaluation, fe_degree, n_repetitions_inner, n_repetitions_outer, mpi_comm);
+    template <int dim, typename Number>
+    std::tuple<unsigned int, dealii::types::global_dof_index, double>
+    Driver<dim, Number>::apply_operator(
+      OperatorType const &operator_type,
+      unsigned int const  n_repetitions_inner,
+      unsigned int const  n_repetitions_outer) const
+    {
+      pcout << std::endl << "Computing matrix-vector product ..." << std::endl;
 
-  double const throughput = (double)dofs / wall_time;
+      // Vectors needed for coupled solution approach
+      dealii::LinearAlgebra::distributed::BlockVector<Number> dst, src;
 
-  unsigned int const N_mpi_processes = dealii::Utilities::MPI::n_mpi_processes(mpi_comm);
+      // initialize vectors
+      pde_operator->initialize_dof_vector(dst);
+      pde_operator->initialize_dof_vector(src);
+      src = 1.0;
 
-  if(not(is_test))
-  {
-    // clang-format off
+      // evaluate operator
+      const std::function<void(void)> operator_evaluation = [&](void) {
+        if (operator_type == OperatorType::AcousticOperator)
+          pde_operator->evaluate_acoustic_operator(dst, src, 0.0);
+        else if (operator_type == OperatorType::ScaledInverseMassOperator)
+          pde_operator->apply_scaled_inverse_mass_operator(dst, src);
+        else
+          AssertThrow(false, dealii::ExcMessage("Not implemented."));
+      };
+
+      // calculate throughput
+
+      // determine DoFs and degree
+      dealii::types::global_dof_index const dofs =
+        pde_operator->get_number_of_dofs();
+      unsigned int const fe_degree = application->get_parameters().degree_p;
+
+      // do the measurements
+      double const wall_time =
+        measure_operator_evaluation_time(operator_evaluation,
+                                         fe_degree,
+                                         n_repetitions_inner,
+                                         n_repetitions_outer,
+                                         mpi_comm);
+
+      double const throughput = (double)dofs / wall_time;
+
+      unsigned int const N_mpi_processes =
+        dealii::Utilities::MPI::n_mpi_processes(mpi_comm);
+
+      if (not(is_test))
+        {
+          // clang-format off
     pcout << std::endl
           << std::scientific << std::setprecision(4)
           << "DoFs/sec:        " << throughput << std::endl
           << "DoFs/(sec*core): " << throughput/(double)N_mpi_processes << std::endl;
-    // clang-format on
-  }
+          // clang-format on
+        }
 
-  pcout << std::endl << " ... done." << std::endl << std::endl;
+      pcout << std::endl << " ... done." << std::endl << std::endl;
 
-  return std::tuple<unsigned int, dealii::types::global_dof_index, double>(fe_degree,
-                                                                           dofs,
-                                                                           throughput);
-}
+      return std::tuple<unsigned int, dealii::types::global_dof_index, double>(
+        fe_degree, dofs, throughput);
+    }
 
-template class Driver<2, float>;
-template class Driver<3, float>;
+    template class Driver<2, float>;
+    template class Driver<3, float>;
 
-template class Driver<2, double>;
-template class Driver<3, double>;
+    template class Driver<2, double>;
+    template class Driver<3, double>;
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG

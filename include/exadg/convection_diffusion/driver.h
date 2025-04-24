@@ -24,8 +24,10 @@
 
 // deal.II
 #include <deal.II/base/revision.h>
+
 #include <deal.II/distributed/fully_distributed_tria.h>
 #include <deal.II/distributed/tria.h>
+
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/manifold_lib.h>
@@ -51,101 +53,102 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-enum class OperatorType
-{
-  MassOperator,
-  ConvectiveOperator,
-  DiffusiveOperator,
-  MassConvectionDiffusionOperator
-};
+  namespace ConvDiff
+  {
+    enum class OperatorType
+    {
+      MassOperator,
+      ConvectiveOperator,
+      DiffusiveOperator,
+      MassConvectionDiffusionOperator
+    };
 
-template<int dim, typename Number = double>
-class Driver
-{
-public:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+    template <int dim, typename Number = double>
+    class Driver
+    {
+    public:
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  Driver(MPI_Comm const &                              mpi_comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test,
-         bool const                                    is_throughput_study);
+      Driver(MPI_Comm const                               &mpi_comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test,
+             bool const                                    is_throughput_study);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve();
+      void
+      solve();
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-  /*
-   * Throughput study
-   */
-  std::tuple<unsigned int, dealii::types::global_dof_index, double>
-  apply_operator(OperatorType const & operator_type,
-                 unsigned int const   n_repetitions_inner,
-                 unsigned int const   n_repetitions_outer) const;
+      /*
+       * Throughput study
+       */
+      std::tuple<unsigned int, dealii::types::global_dof_index, double>
+      apply_operator(OperatorType const &operator_type,
+                     unsigned int const  n_repetitions_inner,
+                     unsigned int const  n_repetitions_outer) const;
 
-private:
-  void
-  ale_update() const;
+    private:
+      void
+      ale_update() const;
 
-  void
-  mark_cells_coarsening_and_refinement(dealii::Triangulation<dim> & tria,
-                                       VectorType const &           solution) const;
+      void
+      mark_cells_coarsening_and_refinement(dealii::Triangulation<dim> &tria,
+                                           VectorType const &solution) const;
 
-  void
-  setup_after_coarsening_and_refinement();
+      void
+      setup_after_coarsening_and_refinement();
 
-  void
-  do_adaptive_refinement();
+      void
+      do_adaptive_refinement();
 
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+      // MPI communicator
+      MPI_Comm const mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      // output to std::cout
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // do not set up certain data structures (solver, postprocessor) in case of throughput study
-  bool const is_throughput_study;
+      // do not set up certain data structures (solver, postprocessor) in case
+      // of throughput study
+      bool const is_throughput_study;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      // application
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  // Grid and mapping
-  std::shared_ptr<Grid<dim>> grid;
+      // Grid and mapping
+      std::shared_ptr<Grid<dim>> grid;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-  // ALE mapping
-  std::shared_ptr<DeformedMappingFunction<dim, Number>> ale_mapping;
+      // ALE mapping
+      std::shared_ptr<DeformedMappingFunction<dim, Number>> ale_mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
 
-  // ALE helper functions required by time integrator
-  std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
+      // ALE helper functions required by time integrator
+      std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
 
-  std::shared_ptr<Operator<dim, Number>> pde_operator;
+      std::shared_ptr<Operator<dim, Number>> pde_operator;
 
-  std::shared_ptr<PostProcessorBase<dim, Number>> postprocessor;
+      std::shared_ptr<PostProcessorBase<dim, Number>> postprocessor;
 
-  std::shared_ptr<TimeIntBase> time_integrator;
+      std::shared_ptr<TimeIntBase> time_integrator;
 
-  std::shared_ptr<DriverSteadyProblems<Number>> driver_steady;
+      std::shared_ptr<DriverSteadyProblems<Number>> driver_steady;
 
-  // Computation time (wall clock time)
-  mutable TimerTree timer_tree;
-};
+      // Computation time (wall clock time)
+      mutable TimerTree timer_tree;
+    };
 
-} // namespace ConvDiff
+  } // namespace ConvDiff
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_DRIVER_H_ */

@@ -27,33 +27,35 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim, typename Number>
-class SpatialOperatorBase;
+  namespace Acoustics
+  {
+    template <int dim, typename Number>
+    class SpatialOperatorBase;
 
-/*
- *  Base class for postprocessor of the acoustic conservation equations.
- */
-template<int dim, typename Number>
-class PostProcessorBase : public PostProcessorInterface<Number>
-{
-protected:
-  using VectorType = typename PostProcessorInterface<Number>::BlockVectorType;
+    /*
+     *  Base class for postprocessor of the acoustic conservation equations.
+     */
+    template <int dim, typename Number>
+    class PostProcessorBase : public PostProcessorInterface<Number>
+    {
+    protected:
+      using VectorType =
+        typename PostProcessorInterface<Number>::BlockVectorType;
 
-  using AcousticsOperator = SpatialOperator<dim, Number>;
+      using AcousticsOperator = SpatialOperator<dim, Number>;
 
-public:
-  virtual ~PostProcessorBase() = default;
-  /*
-   * Setup function.
-   */
-  virtual void
-  setup(AcousticsOperator const & pde_operator) = 0;
-};
+    public:
+      virtual ~PostProcessorBase() = default;
+      /*
+       * Setup function.
+       */
+      virtual void
+      setup(AcousticsOperator const &pde_operator) = 0;
+    };
 
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ \
+        */

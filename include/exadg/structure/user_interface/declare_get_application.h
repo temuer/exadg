@@ -26,13 +26,13 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim, typename Number>
-std::shared_ptr<ApplicationBase<dim, Number>>
-get_application(std::string input_file, MPI_Comm const & comm);
+  namespace Structure
+  {
+    template <int dim, typename Number>
+    std::shared_ptr<ApplicationBase<dim, Number>>
+    get_application(std::string input_file, MPI_Comm const &comm);
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 

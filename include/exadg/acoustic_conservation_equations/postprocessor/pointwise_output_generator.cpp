@@ -24,92 +24,99 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim>
-PointwiseOutputData<dim>::PointwiseOutputData() : write_pressure(false), write_velocity(false)
-{
-}
-
-template<int dim>
-void
-PointwiseOutputData<dim>::print(dealii::ConditionalOStream & pcout) const
-{
-  PointwiseOutputDataBase<dim>::print(pcout);
-
-  if(this->time_control_data.is_active && this->evaluation_points.size() > 0)
+  namespace Acoustics
   {
-    print_parameter(pcout, "Write pressure", write_pressure);
-    print_parameter(pcout, "Write velocity", write_velocity);
-  }
-}
+    template <int dim>
+    PointwiseOutputData<dim>::PointwiseOutputData()
+      : write_pressure(false)
+      , write_velocity(false)
+    {}
 
-template struct PointwiseOutputData<2>;
-template struct PointwiseOutputData<3>;
+    template <int dim>
+    void
+    PointwiseOutputData<dim>::print(dealii::ConditionalOStream &pcout) const
+    {
+      PointwiseOutputDataBase<dim>::print(pcout);
 
-template<int dim, typename Number>
-PointwiseOutputGenerator<dim, Number>::PointwiseOutputGenerator(MPI_Comm const & comm)
-  : PointwiseOutputGeneratorBase<dim, Number>(comm)
-{
-}
+      if (this->time_control_data.is_active &&
+          this->evaluation_points.size() > 0)
+        {
+          print_parameter(pcout, "Write pressure", write_pressure);
+          print_parameter(pcout, "Write velocity", write_velocity);
+        }
+    }
 
-template<int dim, typename Number>
-void
-PointwiseOutputGenerator<dim, Number>::setup(
-  dealii::DoFHandler<dim> const &  dof_handler_pressure_in,
-  dealii::DoFHandler<dim> const &  dof_handler_velocity_in,
-  dealii::Mapping<dim> const &     mapping_in,
-  PointwiseOutputData<dim> const & pointwise_output_data_in)
-{
-  this->setup_base(dof_handler_pressure_in.get_triangulation(),
-                   mapping_in,
-                   pointwise_output_data_in);
+    template struct PointwiseOutputData<2>;
+    template struct PointwiseOutputData<3>;
 
-  dof_handler_pressure = &dof_handler_pressure_in;
-  dof_handler_velocity = &dof_handler_velocity_in;
+    template <int dim, typename Number>
+    PointwiseOutputGenerator<dim, Number>::PointwiseOutputGenerator(
+      MPI_Comm const &comm)
+      : PointwiseOutputGeneratorBase<dim, Number>(comm)
+    {}
 
-  pointwise_output_data = pointwise_output_data_in;
+    template <int dim, typename Number>
+    void
+    PointwiseOutputGenerator<dim, Number>::setup(
+      dealii::DoFHandler<dim> const  &dof_handler_pressure_in,
+      dealii::DoFHandler<dim> const  &dof_handler_velocity_in,
+      dealii::Mapping<dim> const     &mapping_in,
+      PointwiseOutputData<dim> const &pointwise_output_data_in)
+    {
+      this->setup_base(dof_handler_pressure_in.get_triangulation(),
+                       mapping_in,
+                       pointwise_output_data_in);
 
-  if(pointwise_output_data_in.time_control_data.is_active and
-     pointwise_output_data_in.evaluation_points.size() > 0)
-  {
-    if(pointwise_output_data_in.write_pressure)
-      this->add_quantity("Pressure", 1);
-    if(pointwise_output_data_in.write_velocity)
-      this->add_quantity("Velocity", dim);
-  }
-}
+      dof_handler_pressure = &dof_handler_pressure_in;
+      dof_handler_velocity = &dof_handler_velocity_in;
 
-template<int dim, typename Number>
-void
-PointwiseOutputGenerator<dim, Number>::evaluate(VectorType const & pressure,
-                                                VectorType const & velocity,
-                                                double const       time,
-                                                bool const         unsteady)
-{
-  this->do_evaluate(
-    [&]() {
-      if(pointwise_output_data.write_pressure)
-      {
-        auto const values = this->template compute_point_values<1>(pressure, *dof_handler_pressure);
-        this->write_quantity("Pressure", values);
-      }
-      if(pointwise_output_data.write_velocity)
-      {
-        auto const values =
-          this->template compute_point_values<dim>(velocity, *dof_handler_velocity);
-        this->write_quantity("Velocity", values, 0 /*first_selected_component*/);
-      }
-    },
-    time,
-    unsteady);
-}
+      pointwise_output_data = pointwise_output_data_in;
 
-template class PointwiseOutputGenerator<2, float>;
-template class PointwiseOutputGenerator<2, double>;
+      if (pointwise_output_data_in.time_control_data.is_active and
+          pointwise_output_data_in.evaluation_points.size() > 0)
+        {
+          if (pointwise_output_data_in.write_pressure)
+            this->add_quantity("Pressure", 1);
+          if (pointwise_output_data_in.write_velocity)
+            this->add_quantity("Velocity", dim);
+        }
+    }
 
-template class PointwiseOutputGenerator<3, float>;
-template class PointwiseOutputGenerator<3, double>;
+    template <int dim, typename Number>
+    void
+    PointwiseOutputGenerator<dim, Number>::evaluate(VectorType const &pressure,
+                                                    VectorType const &velocity,
+                                                    double const      time,
+                                                    bool const        unsteady)
+    {
+      this->do_evaluate(
+        [&]() {
+          if (pointwise_output_data.write_pressure)
+            {
+              auto const values =
+                this->template compute_point_values<1>(pressure,
+                                                       *dof_handler_pressure);
+              this->write_quantity("Pressure", values);
+            }
+          if (pointwise_output_data.write_velocity)
+            {
+              auto const values =
+                this->template compute_point_values<dim>(velocity,
+                                                         *dof_handler_velocity);
+              this->write_quantity("Velocity",
+                                   values,
+                                   0 /*first_selected_component*/);
+            }
+        },
+        time,
+        unsteady);
+    }
 
-} // namespace Acoustics
+    template class PointwiseOutputGenerator<2, float>;
+    template class PointwiseOutputGenerator<2, double>;
+
+    template class PointwiseOutputGenerator<3, float>;
+    template class PointwiseOutputGenerator<3, double>;
+
+  } // namespace Acoustics
 } // namespace ExaDG

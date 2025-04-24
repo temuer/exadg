@@ -28,147 +28,168 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-// standard constructor that initializes parameters
-Parameters::Parameters()
-  : // MATHEMATICAL MODEL
-    formulation(Formulation::Undefined),
-    right_hand_side(false),
-    aero_acoustic_source_term(false),
-
-    // PHYSICAL QUANTITIES
-    start_time(0.),
-    end_time(-1.),
-    speed_of_sound(-1.),
-
-    // TEMPORAL DISCRETIZATION
-    calculation_of_time_step_size(TimeStepCalculation::Undefined),
-    cfl(-1.),
-    cfl_exponent_fe_degree(1.5),
-    time_step_size(-1.),
-    max_number_of_time_steps(std::numeric_limits<unsigned int>::max()),
-    n_refine_time(0),
-    order_time_integrator(1),
-    start_with_low_order(true),
-    restarted_simulation(false),
-    adaptive_time_stepping(false),
-    restart_data(RestartData()),
-    solver_info_data(SolverInfoData()),
-
-    // SPATIAL DISCRETIZATION
-    grid(GridData()),
-    mapping_degree(1),
-    degree_u(1),
-    degree_p(1)
-{
-}
-
-void
-Parameters::check() const
-{
-  // MATHEMATICAL MODEL
-  AssertThrow(formulation != Formulation::Undefined,
-              dealii::ExcMessage("parameter must be defined"));
-
-  // PHYSICAL QUANTITIES
-  AssertThrow(end_time > start_time, dealii::ExcMessage("parameter end_time must be defined"));
-  AssertThrow(speed_of_sound >= 0.0, dealii::ExcMessage("parameter must be defined"));
-
-  // TEMPORAL DISCRETIZATION
-  AssertThrow(calculation_of_time_step_size != TimeStepCalculation::Undefined,
-              dealii::ExcMessage("parameter must be defined"));
-
-  if(calculation_of_time_step_size == TimeStepCalculation::UserSpecified)
-    AssertThrow(time_step_size > 0., dealii::ExcMessage("parameter must be defined"));
-
-  if(calculation_of_time_step_size == TimeStepCalculation::CFL)
+  namespace Acoustics
   {
-    AssertThrow(cfl > 0., dealii::ExcMessage("parameter must be defined"));
-    AssertThrow(cfl_exponent_fe_degree > 0., dealii::ExcMessage("cfl_exponent_fe_degree > 0."));
-  }
+    // standard constructor that initializes parameters
+    Parameters::Parameters()
+      : // MATHEMATICAL MODEL
+      formulation(Formulation::Undefined)
+      , right_hand_side(false)
+      , aero_acoustic_source_term(false)
+      ,
 
-  // SPATIAL DISCRETIZATION
-  grid.check();
-}
+      // PHYSICAL QUANTITIES
+      start_time(0.)
+      , end_time(-1.)
+      , speed_of_sound(-1.)
+      ,
 
-void
-Parameters::print(dealii::ConditionalOStream const & pcout, std::string const & name) const
-{
-  pcout << std::endl << name << std::endl;
+      // TEMPORAL DISCRETIZATION
+      calculation_of_time_step_size(TimeStepCalculation::Undefined)
+      , cfl(-1.)
+      , cfl_exponent_fe_degree(1.5)
+      , time_step_size(-1.)
+      , max_number_of_time_steps(std::numeric_limits<unsigned int>::max())
+      , n_refine_time(0)
+      , order_time_integrator(1)
+      , start_with_low_order(true)
+      , restarted_simulation(false)
+      , adaptive_time_stepping(false)
+      , restart_data(RestartData())
+      , solver_info_data(SolverInfoData())
+      ,
 
-  // MATHEMATICAL MODEL
-  print_parameters_mathematical_model(pcout);
+      // SPATIAL DISCRETIZATION
+      grid(GridData())
+      , mapping_degree(1)
+      , degree_u(1)
+      , degree_p(1)
+    {}
 
-  // PHYSICAL QUANTITIES
-  print_parameters_physical_quantities(pcout);
+    void
+    Parameters::check() const
+    {
+      // MATHEMATICAL MODEL
+      AssertThrow(formulation != Formulation::Undefined,
+                  dealii::ExcMessage("parameter must be defined"));
 
-  // TEMPORAL DISCRETIZATION
-  print_parameters_temporal_discretization(pcout);
+      // PHYSICAL QUANTITIES
+      AssertThrow(end_time > start_time,
+                  dealii::ExcMessage("parameter end_time must be defined"));
+      AssertThrow(speed_of_sound >= 0.0,
+                  dealii::ExcMessage("parameter must be defined"));
 
-  // SPATIAL DISCRETIZATION
-  print_parameters_spatial_discretization(pcout);
-}
+      // TEMPORAL DISCRETIZATION
+      AssertThrow(calculation_of_time_step_size !=
+                    TimeStepCalculation::Undefined,
+                  dealii::ExcMessage("parameter must be defined"));
 
-void
-Parameters::print_parameters_mathematical_model(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Mathematical model:" << std::endl;
+      if (calculation_of_time_step_size == TimeStepCalculation::UserSpecified)
+        AssertThrow(time_step_size > 0.,
+                    dealii::ExcMessage("parameter must be defined"));
 
-  print_parameter(pcout, "Formulation", formulation);
-  print_parameter(pcout, "Right-hand side", right_hand_side);
-}
+      if (calculation_of_time_step_size == TimeStepCalculation::CFL)
+        {
+          AssertThrow(cfl > 0.,
+                      dealii::ExcMessage("parameter must be defined"));
+          AssertThrow(cfl_exponent_fe_degree > 0.,
+                      dealii::ExcMessage("cfl_exponent_fe_degree > 0."));
+        }
+
+      // SPATIAL DISCRETIZATION
+      grid.check();
+    }
+
+    void
+    Parameters::print(dealii::ConditionalOStream const &pcout,
+                      std::string const                &name) const
+    {
+      pcout << std::endl << name << std::endl;
+
+      // MATHEMATICAL MODEL
+      print_parameters_mathematical_model(pcout);
+
+      // PHYSICAL QUANTITIES
+      print_parameters_physical_quantities(pcout);
+
+      // TEMPORAL DISCRETIZATION
+      print_parameters_temporal_discretization(pcout);
+
+      // SPATIAL DISCRETIZATION
+      print_parameters_spatial_discretization(pcout);
+    }
+
+    void
+    Parameters::print_parameters_mathematical_model(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Mathematical model:" << std::endl;
+
+      print_parameter(pcout, "Formulation", formulation);
+      print_parameter(pcout, "Right-hand side", right_hand_side);
+    }
 
 
-void
-Parameters::print_parameters_physical_quantities(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Physical quantities:" << std::endl;
+    void
+    Parameters::print_parameters_physical_quantities(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Physical quantities:" << std::endl;
 
-  // start and end time
-  print_parameter(pcout, "Start time", start_time);
-  print_parameter(pcout, "End time", end_time);
+      // start and end time
+      print_parameter(pcout, "Start time", start_time);
+      print_parameter(pcout, "End time", end_time);
 
-  // speed of sound
-  print_parameter(pcout, "Speed of sound", speed_of_sound);
-}
+      // speed of sound
+      print_parameter(pcout, "Speed of sound", speed_of_sound);
+    }
 
-void
-Parameters::print_parameters_temporal_discretization(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Temporal discretization:" << std::endl;
+    void
+    Parameters::print_parameters_temporal_discretization(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Temporal discretization:" << std::endl;
 
-  print_parameter(pcout, "Calculation of time step size", calculation_of_time_step_size);
+      print_parameter(pcout,
+                      "Calculation of time step size",
+                      calculation_of_time_step_size);
 
-  // here we do not print quantities such as time_step_size because this is
-  // done by the time integration scheme (or the functions that calculate
-  // the time step size)
+      // here we do not print quantities such as time_step_size because this is
+      // done by the time integration scheme (or the functions that calculate
+      // the time step size)
 
-  print_parameter(pcout, "Maximum number of time steps", max_number_of_time_steps);
-  print_parameter(pcout, "Temporal refinements", n_refine_time);
-  print_parameter(pcout, "Order of time integration scheme", order_time_integrator);
-  print_parameter(pcout, "Start with low order method", start_with_low_order);
+      print_parameter(pcout,
+                      "Maximum number of time steps",
+                      max_number_of_time_steps);
+      print_parameter(pcout, "Temporal refinements", n_refine_time);
+      print_parameter(pcout,
+                      "Order of time integration scheme",
+                      order_time_integrator);
+      print_parameter(pcout,
+                      "Start with low order method",
+                      start_with_low_order);
 
-  // restart
-  print_parameter(pcout, "Restarted simulation", restarted_simulation);
-  restart_data.print(pcout);
+      // restart
+      print_parameter(pcout, "Restarted simulation", restarted_simulation);
+      restart_data.print(pcout);
 
-  // adaptive time-stepping
-  print_parameter(pcout, "Adaptive time stepping", adaptive_time_stepping);
-}
+      // adaptive time-stepping
+      print_parameter(pcout, "Adaptive time stepping", adaptive_time_stepping);
+    }
 
-void
-Parameters::print_parameters_spatial_discretization(dealii::ConditionalOStream const & pcout) const
-{
-  pcout << std::endl << "Spatial discretization:" << std::endl;
+    void
+    Parameters::print_parameters_spatial_discretization(
+      dealii::ConditionalOStream const &pcout) const
+    {
+      pcout << std::endl << "Spatial discretization:" << std::endl;
 
-  grid.print(pcout);
+      grid.print(pcout);
 
-  print_parameter(pcout, "Mapping degree", mapping_degree);
+      print_parameter(pcout, "Mapping degree", mapping_degree);
 
-  print_parameter(pcout, "Polynomial degree pressure", degree_p);
-  print_parameter(pcout, "Polynomial degree velocity", degree_u);
-}
+      print_parameter(pcout, "Polynomial degree pressure", degree_p);
+      print_parameter(pcout, "Polynomial degree velocity", degree_u);
+    }
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG

@@ -28,46 +28,48 @@
 
 namespace ExaDG
 {
-struct GeneralParameters
-{
-  GeneralParameters()
+  struct GeneralParameters
   {
-  }
+    GeneralParameters()
+    {}
 
-  GeneralParameters(std::string const & input_file)
-  {
-    dealii::ParameterHandler prm;
-    add_parameters(prm);
-    prm.parse_input(input_file, "", true, true);
-  }
-
-  void
-  add_parameters(dealii::ParameterHandler & prm)
-  {
-    prm.enter_subsection("General");
+    GeneralParameters(std::string const &input_file)
     {
-      prm.add_parameter("Precision",
-                        precision,
-                        "Floating point precision.",
-                        dealii::Patterns::Selection("float|double"),
-                        false);
-      prm.add_parameter(
-        "Dim", dim, "Number of space dimension.", dealii::Patterns::Integer(2, 3), true);
-      prm.add_parameter("IsTest",
-                        is_test,
-                        "Set to true if the program is run as a test.",
-                        dealii::Patterns::Bool(),
-                        false);
+      dealii::ParameterHandler prm;
+      add_parameters(prm);
+      prm.parse_input(input_file, "", true, true);
     }
-    prm.leave_subsection();
-  }
 
-  std::string precision = "double";
+    void
+    add_parameters(dealii::ParameterHandler &prm)
+    {
+      prm.enter_subsection("General");
+      {
+        prm.add_parameter("Precision",
+                          precision,
+                          "Floating point precision.",
+                          dealii::Patterns::Selection("float|double"),
+                          false);
+        prm.add_parameter("Dim",
+                          dim,
+                          "Number of space dimension.",
+                          dealii::Patterns::Integer(2, 3),
+                          true);
+        prm.add_parameter("IsTest",
+                          is_test,
+                          "Set to true if the program is run as a test.",
+                          dealii::Patterns::Bool(),
+                          false);
+      }
+      prm.leave_subsection();
+    }
 
-  unsigned int dim = 2;
+    std::string precision = "double";
 
-  bool is_test = false;
-};
+    unsigned int dim = 2;
+
+    bool is_test = false;
+  };
 
 } // namespace ExaDG
 

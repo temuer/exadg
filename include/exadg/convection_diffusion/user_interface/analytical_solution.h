@@ -26,15 +26,15 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-template<int dim>
-struct AnalyticalSolution
-{
-  std::shared_ptr<dealii::Function<dim>> solution;
-};
+  namespace ConvDiff
+  {
+    template <int dim>
+    struct AnalyticalSolution
+    {
+      std::shared_ptr<dealii::Function<dim>> solution;
+    };
 
-} // namespace ConvDiff
+  } // namespace ConvDiff
 } // namespace ExaDG
 
 #endif /* INCLUDE_CONVECTION_DIFFUSION_ANALYTICAL_SOLUTION_H_ */

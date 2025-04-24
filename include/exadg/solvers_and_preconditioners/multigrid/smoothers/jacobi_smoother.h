@@ -30,155 +30,158 @@
 
 namespace ExaDG
 {
-template<typename Operator, typename VectorType>
-class JacobiSmoother : public SmootherBase<VectorType>
-{
-public:
-  JacobiSmoother() : underlying_operator(nullptr), preconditioner(nullptr)
+  template <typename Operator, typename VectorType>
+  class JacobiSmoother : public SmootherBase<VectorType>
   {
-  }
+  public:
+    JacobiSmoother()
+      : underlying_operator(nullptr)
+      , preconditioner(nullptr)
+    {}
 
-  ~JacobiSmoother()
-  {
-    delete preconditioner;
-    preconditioner = nullptr;
-  }
+    ~JacobiSmoother()
+    {
+      delete preconditioner;
+      preconditioner = nullptr;
+    }
 
-  JacobiSmoother(JacobiSmoother const &) = delete;
+    JacobiSmoother(JacobiSmoother const &) = delete;
 
-  JacobiSmoother &
-  operator=(JacobiSmoother const &) = delete;
+    JacobiSmoother &
+    operator=(JacobiSmoother const &) = delete;
 
-  struct AdditionalData
-  {
-    /**
-     * Constructor.
+    struct AdditionalData
+    {
+      /**
+       * Constructor.
+       */
+      AdditionalData()
+        : preconditioner(PreconditionerSmoother::PointJacobi)
+        , number_of_smoothing_steps(5)
+        , damping_factor(1.0)
+      {}
+
+      // preconditioner
+      PreconditionerSmoother preconditioner;
+
+      // number of iterations per smoothing step
+      unsigned int number_of_smoothing_steps;
+
+      // damping factor
+      double damping_factor;
+    };
+
+    void
+    setup(Operator const       &operator_in,
+          bool const            initialize_preconditioner,
+          AdditionalData const &additional_data_in)
+    {
+      underlying_operator = &operator_in;
+
+      data = additional_data_in;
+
+      if (data.preconditioner == PreconditionerSmoother::PointJacobi)
+        {
+          preconditioner =
+            new JacobiPreconditioner<Operator>(*underlying_operator,
+                                               initialize_preconditioner);
+        }
+      else if (data.preconditioner == PreconditionerSmoother::BlockJacobi)
+        {
+          preconditioner =
+            new BlockJacobiPreconditioner<Operator>(*underlying_operator,
+                                                    initialize_preconditioner);
+        }
+      else if (data.preconditioner == PreconditionerSmoother::AdditiveSchwarz)
+        {
+          preconditioner = new AdditiveSchwarzPreconditioner<Operator>(
+            *underlying_operator, initialize_preconditioner);
+        }
+      else
+        {
+          AssertThrow(
+            data.preconditioner == PreconditionerSmoother::PointJacobi or
+              data.preconditioner == PreconditionerSmoother::BlockJacobi,
+            dealii::ExcMessage(
+              "Specified type of preconditioner for Jacobi smoother not implemented."));
+        }
+    }
+
+    void
+    update() final
+    {
+      if (preconditioner != nullptr)
+        preconditioner->update();
+    }
+
+    /*
+     *  Approximately solve linear system of equations (b=src, x=dst)
+     *
+     *    A*x = b   (r=b-A*x)
+     *
+     *  using the iteration
+     *
+     *    x^{k+1} = x^{k} + omega * P^{-1} * r^{k}
+     *
+     *  where
+     *
+     *    omega: damping factor
+     *    P:     preconditioner
      */
-    AdditionalData()
-      : preconditioner(PreconditionerSmoother::PointJacobi),
-        number_of_smoothing_steps(5),
-        damping_factor(1.0)
+    void
+    vmult(VectorType &dst, VectorType const &src) const final
     {
+      dst = 0;
+
+      VectorType tmp(src), residual(src);
+
+      for (unsigned int k = 0; k < data.number_of_smoothing_steps; ++k)
+        {
+          if (k > 0)
+            {
+              // calculate residual r^{k} = src - A * x^{k}
+              underlying_operator->vmult(residual, dst);
+              residual.sadd(-1.0, 1.0, src);
+            }
+          else // we do not have to evaluate the residual for k=0 since dst = 0
+            {
+              residual = src;
+            }
+
+          // apply preconditioner: tmp = P^{-1} * residual
+          preconditioner->vmult(tmp, residual);
+
+          // x^{k+1} = x^{k} + damping_factor * tmp
+          dst.add(data.damping_factor, tmp);
+        }
     }
 
-    // preconditioner
-    PreconditionerSmoother preconditioner;
+    void
+    step(VectorType &dst, VectorType const &src) const final
+    {
+      VectorType tmp(src), residual(src);
 
-    // number of iterations per smoothing step
-    unsigned int number_of_smoothing_steps;
+      for (unsigned int k = 0; k < data.number_of_smoothing_steps; ++k)
+        {
+          // calculate residual r^{k} = src - A * x^{k}
+          underlying_operator->vmult(residual, dst);
+          residual.sadd(-1.0, 1.0, src);
 
-    // damping factor
-    double damping_factor;
+          // apply preconditioner: tmp = P^{-1} * residual
+          preconditioner->vmult(tmp, residual);
+
+          // x^{k+1} = x^{k} + damping_factor * tmp
+          dst.add(data.damping_factor, tmp);
+        }
+    }
+
+  private:
+    Operator const *underlying_operator;
+
+    AdditionalData data;
+
+    PreconditionerBase<typename Operator::value_type> *preconditioner;
   };
-
-  void
-  setup(Operator const &       operator_in,
-        bool const             initialize_preconditioner,
-        AdditionalData const & additional_data_in)
-  {
-    underlying_operator = &operator_in;
-
-    data = additional_data_in;
-
-    if(data.preconditioner == PreconditionerSmoother::PointJacobi)
-    {
-      preconditioner =
-        new JacobiPreconditioner<Operator>(*underlying_operator, initialize_preconditioner);
-    }
-    else if(data.preconditioner == PreconditionerSmoother::BlockJacobi)
-    {
-      preconditioner =
-        new BlockJacobiPreconditioner<Operator>(*underlying_operator, initialize_preconditioner);
-    }
-    else if(data.preconditioner == PreconditionerSmoother::AdditiveSchwarz)
-    {
-      preconditioner = new AdditiveSchwarzPreconditioner<Operator>(*underlying_operator,
-                                                                   initialize_preconditioner);
-    }
-    else
-    {
-      AssertThrow(data.preconditioner == PreconditionerSmoother::PointJacobi or
-                    data.preconditioner == PreconditionerSmoother::BlockJacobi,
-                  dealii::ExcMessage(
-                    "Specified type of preconditioner for Jacobi smoother not implemented."));
-    }
-  }
-
-  void
-  update() final
-  {
-    if(preconditioner != nullptr)
-      preconditioner->update();
-  }
-
-  /*
-   *  Approximately solve linear system of equations (b=src, x=dst)
-   *
-   *    A*x = b   (r=b-A*x)
-   *
-   *  using the iteration
-   *
-   *    x^{k+1} = x^{k} + omega * P^{-1} * r^{k}
-   *
-   *  where
-   *
-   *    omega: damping factor
-   *    P:     preconditioner
-   */
-  void
-  vmult(VectorType & dst, VectorType const & src) const final
-  {
-    dst = 0;
-
-    VectorType tmp(src), residual(src);
-
-    for(unsigned int k = 0; k < data.number_of_smoothing_steps; ++k)
-    {
-      if(k > 0)
-      {
-        // calculate residual r^{k} = src - A * x^{k}
-        underlying_operator->vmult(residual, dst);
-        residual.sadd(-1.0, 1.0, src);
-      }
-      else // we do not have to evaluate the residual for k=0 since dst = 0
-      {
-        residual = src;
-      }
-
-      // apply preconditioner: tmp = P^{-1} * residual
-      preconditioner->vmult(tmp, residual);
-
-      // x^{k+1} = x^{k} + damping_factor * tmp
-      dst.add(data.damping_factor, tmp);
-    }
-  }
-
-  void
-  step(VectorType & dst, VectorType const & src) const final
-  {
-    VectorType tmp(src), residual(src);
-
-    for(unsigned int k = 0; k < data.number_of_smoothing_steps; ++k)
-    {
-      // calculate residual r^{k} = src - A * x^{k}
-      underlying_operator->vmult(residual, dst);
-      residual.sadd(-1.0, 1.0, src);
-
-      // apply preconditioner: tmp = P^{-1} * residual
-      preconditioner->vmult(tmp, residual);
-
-      // x^{k+1} = x^{k} + damping_factor * tmp
-      dst.add(data.damping_factor, tmp);
-    }
-  }
-
-private:
-  Operator const * underlying_operator;
-
-  AdditionalData data;
-
-  PreconditionerBase<typename Operator::value_type> * preconditioner;
-};
 } // namespace ExaDG
 
 

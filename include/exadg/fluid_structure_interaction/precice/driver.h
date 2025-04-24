@@ -33,64 +33,66 @@
 
 namespace ExaDG
 {
-namespace FSI
-{
-namespace preCICE
-{
-template<int dim, typename Number>
-class Driver
-{
-private:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
-
-public:
-  Driver(std::string const &                           input_file,
-         MPI_Comm const &                              comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> app,
-         bool const                                    is_test)
-    : mpi_comm(comm),
-      pcout(std::cout, dealii::Utilities::MPI::this_mpi_process(comm) == 0),
-      application(app),
-      precice_parameters(ExaDG::preCICE::ConfigurationParameters(input_file)),
-      is_test(is_test)
+  namespace FSI
   {
-    print_general_info<Number>(pcout, mpi_comm, is_test);
-  }
+    namespace preCICE
+    {
+      template <int dim, typename Number>
+      class Driver
+      {
+      private:
+        using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  virtual void
-  setup() = 0;
+      public:
+        Driver(std::string const                            &input_file,
+               MPI_Comm const                               &comm,
+               std::shared_ptr<ApplicationBase<dim, Number>> app,
+               bool const                                    is_test)
+          : mpi_comm(comm)
+          , pcout(std::cout,
+                  dealii::Utilities::MPI::this_mpi_process(comm) == 0)
+          , application(app)
+          , precice_parameters(
+              ExaDG::preCICE::ConfigurationParameters(input_file))
+          , is_test(is_test)
+        {
+          print_general_info<Number>(pcout, mpi_comm, is_test);
+        }
 
-  virtual void
-  solve() const = 0;
+        virtual void
+        setup() = 0;
 
-  virtual void
-  print_performance_results(double const total_time) const = 0;
+        virtual void
+        solve() const = 0;
 
-  virtual ~Driver() = default;
+        virtual void
+        print_performance_results(double const total_time) const = 0;
 
-protected:
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+        virtual ~Driver() = default;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      protected:
+        // MPI communicator
+        MPI_Comm const mpi_comm;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>>                  application;
-  std::shared_ptr<ExaDG::preCICE::Adapter<dim, dim, VectorType>> precice;
-  ExaDG::preCICE::ConfigurationParameters                        precice_parameters;
+        // output to std::cout
+        dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+        // application
+        std::shared_ptr<ApplicationBase<dim, Number>> application;
+        std::shared_ptr<ExaDG::preCICE::Adapter<dim, dim, VectorType>> precice;
+        ExaDG::preCICE::ConfigurationParameters precice_parameters;
 
-  /*
-   * Computation time (wall clock time).
-   */
-  mutable TimerTree timer_tree;
-};
+        // do not print wall times if is_test
+        bool const is_test;
 
-} // namespace preCICE
-} // namespace FSI
+        /*
+         * Computation time (wall clock time).
+         */
+        mutable TimerTree timer_tree;
+      };
+
+    } // namespace preCICE
+  }   // namespace FSI
 } // namespace ExaDG
 
 

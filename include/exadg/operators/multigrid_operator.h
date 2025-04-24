@@ -26,172 +26,177 @@
 
 namespace ExaDG
 {
-template<int dim, typename Number, typename Operator>
-class MultigridOperator : public MultigridOperatorBase<dim, Number>
-{
-public:
-  typedef MultigridOperatorBase<dim, Number> Base;
-  typedef typename Base::value_type          value_type;
-  typedef typename Base::VectorType          VectorType;
-
-  MultigridOperator(std::shared_ptr<Operator> op) : pde_operator(op)
+  template <int dim, typename Number, typename Operator>
+  class MultigridOperator : public MultigridOperatorBase<dim, Number>
   {
-  }
+  public:
+    typedef MultigridOperatorBase<dim, Number> Base;
+    typedef typename Base::value_type          value_type;
+    typedef typename Base::VectorType          VectorType;
 
-  virtual ~MultigridOperator()
-  {
-  }
+    MultigridOperator(std::shared_ptr<Operator> op)
+      : pde_operator(op)
+    {}
 
-  std::shared_ptr<Operator>
-  get_pde_operator() const
-  {
-    AssertThrow(pde_operator.get() != 0, dealii::ExcMessage("Invalid pointer"));
+    virtual ~MultigridOperator()
+    {}
 
-    return pde_operator;
-  }
+    std::shared_ptr<Operator>
+    get_pde_operator() const
+    {
+      AssertThrow(pde_operator.get() != 0,
+                  dealii::ExcMessage("Invalid pointer"));
 
-  dealii::AffineConstraints<typename Operator::value_type> const &
-  get_affine_constraints() const final
-  {
-    return pde_operator->get_affine_constraints();
-  }
+      return pde_operator;
+    }
 
-  dealii::MatrixFree<dim, Number> const &
-  get_matrix_free() const final
-  {
-    return pde_operator->get_matrix_free();
-  }
+    dealii::AffineConstraints<typename Operator::value_type> const &
+    get_affine_constraints() const final
+    {
+      return pde_operator->get_affine_constraints();
+    }
 
-  unsigned int
-  get_dof_index() const final
-  {
-    return pde_operator->get_dof_index();
-  }
+    dealii::MatrixFree<dim, Number> const &
+    get_matrix_free() const final
+    {
+      return pde_operator->get_matrix_free();
+    }
 
-  dealii::types::global_dof_index
-  m() const final
-  {
-    return pde_operator->m();
-  }
+    unsigned int
+    get_dof_index() const final
+    {
+      return pde_operator->get_dof_index();
+    }
 
-  dealii::types::global_dof_index
-  n() const final
-  {
-    return pde_operator->n();
-  }
+    dealii::types::global_dof_index
+    m() const final
+    {
+      return pde_operator->m();
+    }
 
-  Number
-  el(unsigned int const i, unsigned int const j) const final
-  {
-    return pde_operator->el(i, j);
-  }
+    dealii::types::global_dof_index
+    n() const final
+    {
+      return pde_operator->n();
+    }
 
-  void
-  initialize_dof_vector(VectorType & vector) const final
-  {
-    pde_operator->initialize_dof_vector(vector);
-  }
+    Number
+    el(unsigned int const i, unsigned int const j) const final
+    {
+      return pde_operator->el(i, j);
+    }
 
-  void
-  vmult(VectorType & dst, VectorType const & src) const final
-  {
-    pde_operator->vmult(dst, src);
-  }
+    void
+    initialize_dof_vector(VectorType &vector) const final
+    {
+      pde_operator->initialize_dof_vector(vector);
+    }
 
-  void
-  vmult_add(VectorType & dst, VectorType const & src) const final
-  {
-    pde_operator->vmult_add(dst, src);
-  }
+    void
+    vmult(VectorType &dst, VectorType const &src) const final
+    {
+      pde_operator->vmult(dst, src);
+    }
 
-  void
-  vmult_interface_down(VectorType & dst, VectorType const & src) const final
-  {
-    pde_operator->vmult_interface_down(dst, src);
-  }
+    void
+    vmult_add(VectorType &dst, VectorType const &src) const final
+    {
+      pde_operator->vmult_add(dst, src);
+    }
 
-  void
-  vmult_add_interface_up(VectorType & dst, VectorType const & src) const final
-  {
-    pde_operator->vmult_add_interface_up(dst, src);
-  }
+    void
+    vmult_interface_down(VectorType &dst, VectorType const &src) const final
+    {
+      pde_operator->vmult_interface_down(dst, src);
+    }
 
-  void
-  calculate_inverse_diagonal(VectorType & inverse_diagonal_entries) const final
-  {
-    pde_operator->calculate_inverse_diagonal(inverse_diagonal_entries);
-  }
+    void
+    vmult_add_interface_up(VectorType &dst, VectorType const &src) const final
+    {
+      pde_operator->vmult_add_interface_up(dst, src);
+    }
 
-  void
-  initialize_block_diagonal_preconditioner(bool const initialize) const final
-  {
-    pde_operator->initialize_block_diagonal_preconditioner(initialize);
-  }
+    void
+    calculate_inverse_diagonal(VectorType &inverse_diagonal_entries) const final
+    {
+      pde_operator->calculate_inverse_diagonal(inverse_diagonal_entries);
+    }
 
-  void
-  update_block_diagonal_preconditioner() const final
-  {
-    pde_operator->update_block_diagonal_preconditioner();
-  }
+    void
+    initialize_block_diagonal_preconditioner(bool const initialize) const final
+    {
+      pde_operator->initialize_block_diagonal_preconditioner(initialize);
+    }
 
-  void
-  apply_inverse_block_diagonal(VectorType & dst, VectorType const & src) const final
-  {
-    pde_operator->apply_inverse_block_diagonal(dst, src);
-  }
+    void
+    update_block_diagonal_preconditioner() const final
+    {
+      pde_operator->update_block_diagonal_preconditioner();
+    }
 
-  virtual void
-  apply_inverse_additive_schwarz_matrices(VectorType & dst, VectorType const & src) const final
-  {
-    pde_operator->apply_inverse_additive_schwarz_matrices(dst, src);
-  }
+    void
+    apply_inverse_block_diagonal(VectorType       &dst,
+                                 VectorType const &src) const final
+    {
+      pde_operator->apply_inverse_block_diagonal(dst, src);
+    }
 
-  virtual void
-  compute_factorized_additive_schwarz_matrices() const final
-  {
-    pde_operator->compute_factorized_additive_schwarz_matrices();
-  }
+    virtual void
+    apply_inverse_additive_schwarz_matrices(VectorType       &dst,
+                                            VectorType const &src) const final
+    {
+      pde_operator->apply_inverse_additive_schwarz_matrices(dst, src);
+    }
+
+    virtual void
+    compute_factorized_additive_schwarz_matrices() const final
+    {
+      pde_operator->compute_factorized_additive_schwarz_matrices();
+    }
 
 #ifdef DEAL_II_WITH_TRILINOS
-  void
-  init_system_matrix(dealii::TrilinosWrappers::SparseMatrix & system_matrix,
-                     MPI_Comm const &                         mpi_comm) const final
-  {
-    pde_operator->init_system_matrix(system_matrix, mpi_comm);
-  }
+    void
+    init_system_matrix(dealii::TrilinosWrappers::SparseMatrix &system_matrix,
+                       MPI_Comm const &mpi_comm) const final
+    {
+      pde_operator->init_system_matrix(system_matrix, mpi_comm);
+    }
 
-  void
-  calculate_system_matrix(dealii::TrilinosWrappers::SparseMatrix & system_matrix) const final
-  {
-    pde_operator->calculate_system_matrix(system_matrix);
-  }
+    void
+    calculate_system_matrix(
+      dealii::TrilinosWrappers::SparseMatrix &system_matrix) const final
+    {
+      pde_operator->calculate_system_matrix(system_matrix);
+    }
 #endif
 
 #ifdef DEAL_II_WITH_PETSC
-  void
-  init_system_matrix(dealii::PETScWrappers::MPI::SparseMatrix & system_matrix,
-                     MPI_Comm const &                           mpi_comm) const final
-  {
-    pde_operator->init_system_matrix(system_matrix, mpi_comm);
-  }
+    void
+    init_system_matrix(dealii::PETScWrappers::MPI::SparseMatrix &system_matrix,
+                       MPI_Comm const &mpi_comm) const final
+    {
+      pde_operator->init_system_matrix(system_matrix, mpi_comm);
+    }
 
-  void
-  calculate_system_matrix(dealii::PETScWrappers::MPI::SparseMatrix & system_matrix) const final
-  {
-    pde_operator->calculate_system_matrix(system_matrix);
-  }
+    void
+    calculate_system_matrix(
+      dealii::PETScWrappers::MPI::SparseMatrix &system_matrix) const final
+    {
+      pde_operator->calculate_system_matrix(system_matrix);
+    }
 #endif
 
-  void
-  get_constant_modes(std::vector<std::vector<bool>> &   constant_modes,
-                     std::vector<std::vector<double>> & constant_modes_values) const final
-  {
-    pde_operator->get_constant_modes(constant_modes, constant_modes_values);
-  }
+    void
+    get_constant_modes(
+      std::vector<std::vector<bool>>   &constant_modes,
+      std::vector<std::vector<double>> &constant_modes_values) const final
+    {
+      pde_operator->get_constant_modes(constant_modes, constant_modes_values);
+    }
 
-private:
-  std::shared_ptr<Operator> pde_operator;
-};
+  private:
+    std::shared_ptr<Operator> pde_operator;
+  };
 
 } // namespace ExaDG
 

@@ -28,76 +28,83 @@
 
 namespace ExaDG
 {
-template<int dim, typename Number>
-class VelocityProjection
-{
-private:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  typedef CellIntegrator<dim, dim, Number> IntegratorCell;
-
-  typedef std::pair<unsigned int, unsigned int> Range;
-
-public:
-  /*
-   * (v_h, u_h)_Omega^e = (v_h, f)_Omega^e -> M * U = RHS -> U = M^{-1} * RHS
-   */
-  void
-  apply(dealii::MatrixFree<dim, Number> const &      matrix_free,
-        InverseMassOperatorData const                inverse_mass_operator_data,
-        std::shared_ptr<dealii::Function<dim>> const function,
-        double const &                               time,
-        VectorType &                                 vector)
+  template <int dim, typename Number>
+  class VelocityProjection
   {
-    this->dof_index  = inverse_mass_operator_data.dof_index;
-    this->quad_index = inverse_mass_operator_data.quad_index;
-    this->function   = function;
-    this->time       = time;
+  private:
+    typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-    // calculate RHS
-    VectorType src;
-    matrix_free.cell_loop(&VelocityProjection<dim, Number>::cell_loop, this, vector, src);
+    typedef CellIntegrator<dim, dim, Number> IntegratorCell;
 
-    // apply M^{-1}
-    InverseMassOperator<dim, dim, Number> inverse_mass;
-    inverse_mass.initialize(matrix_free, inverse_mass_operator_data);
-    inverse_mass.apply(vector, vector);
-  }
+    typedef std::pair<unsigned int, unsigned int> Range;
 
-private:
-  void
-  cell_loop(dealii::MatrixFree<dim, Number> const & matrix_free,
-            VectorType &                            dst,
-            VectorType const &                      src,
-            Range const &                           cell_range) const
-  {
-    (void)src;
-
-    IntegratorCell integrator(matrix_free, dof_index, quad_index);
-
-    for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
+  public:
+    /*
+     * (v_h, u_h)_Omega^e = (v_h, f)_Omega^e -> M * U = RHS -> U = M^{-1} * RHS
+     */
+    void
+    apply(dealii::MatrixFree<dim, Number> const &matrix_free,
+          InverseMassOperatorData const          inverse_mass_operator_data,
+          std::shared_ptr<dealii::Function<dim>> const function,
+          double const                                &time,
+          VectorType                                  &vector)
     {
-      integrator.reinit(cell);
+      this->dof_index  = inverse_mass_operator_data.dof_index;
+      this->quad_index = inverse_mass_operator_data.quad_index;
+      this->function   = function;
+      this->time       = time;
 
-      for(unsigned int q = 0; q < integrator.n_q_points; ++q)
-      {
-        integrator.submit_value(
-          FunctionEvaluator<1, dim, Number>::value(*function, integrator.quadrature_point(q), time),
-          q);
-      }
+      // calculate RHS
+      VectorType src;
+      matrix_free.cell_loop(&VelocityProjection<dim, Number>::cell_loop,
+                            this,
+                            vector,
+                            src);
 
-      integrator.integrate(dealii::EvaluationFlags::values);
-
-      integrator.distribute_local_to_global(dst);
+      // apply M^{-1}
+      InverseMassOperator<dim, dim, Number> inverse_mass;
+      inverse_mass.initialize(matrix_free, inverse_mass_operator_data);
+      inverse_mass.apply(vector, vector);
     }
-  }
 
-  unsigned int                           dof_index;
-  unsigned int                           quad_index;
-  std::shared_ptr<dealii::Function<dim>> function;
-  double                                 time;
-};
+  private:
+    void
+    cell_loop(dealii::MatrixFree<dim, Number> const &matrix_free,
+              VectorType                            &dst,
+              VectorType const                      &src,
+              Range const                           &cell_range) const
+    {
+      (void)src;
+
+      IntegratorCell integrator(matrix_free, dof_index, quad_index);
+
+      for (unsigned int cell = cell_range.first; cell < cell_range.second;
+           ++cell)
+        {
+          integrator.reinit(cell);
+
+          for (unsigned int q = 0; q < integrator.n_q_points; ++q)
+            {
+              integrator.submit_value(FunctionEvaluator<1, dim, Number>::value(
+                                        *function,
+                                        integrator.quadrature_point(q),
+                                        time),
+                                      q);
+            }
+
+          integrator.integrate(dealii::EvaluationFlags::values);
+
+          integrator.distribute_local_to_global(dst);
+        }
+    }
+
+    unsigned int                           dof_index;
+    unsigned int                           quad_index;
+    std::shared_ptr<dealii::Function<dim>> function;
+    double                                 time;
+  };
 
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_SPATIAL_DISCRETIZATION_PROJECT_VELOCITY_H_ */
+#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_SPATIAL_DISCRETIZATION_PROJECT_VELOCITY_H_ \
+        */

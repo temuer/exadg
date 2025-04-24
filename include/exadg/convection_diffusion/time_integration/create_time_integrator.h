@@ -28,45 +28,56 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-/**
- * Creates time integrator depending on type of time integration strategy.
- */
-template<int dim, typename Number>
-std::shared_ptr<TimeIntBase>
-create_time_integrator(std::shared_ptr<Operator<dim, Number>>          pde_operator,
-                       std::shared_ptr<HelpersALE<dim, Number> const>  helpers_ale,
-                       std::shared_ptr<PostProcessorInterface<Number>> postprocessor,
-                       Parameters const &                              parameters,
-                       MPI_Comm const &                                mpi_comm,
-                       bool const                                      is_test)
-{
-  std::shared_ptr<TimeIntBase> time_integrator;
-
-  if(parameters.temporal_discretization == TemporalDiscretization::ExplRK)
+  namespace ConvDiff
   {
-    time_integrator = std::make_shared<TimeIntExplRK<Number>>(
-      pde_operator, postprocessor, parameters, mpi_comm, is_test);
-  }
-  else if(parameters.temporal_discretization == TemporalDiscretization::BDF)
-  {
-    time_integrator = std::make_shared<TimeIntBDF<dim, Number>>(
-      pde_operator, helpers_ale, postprocessor, parameters, mpi_comm, is_test);
-  }
-  else
-  {
-    AssertThrow(parameters.temporal_discretization == TemporalDiscretization::ExplRK or
-                  parameters.temporal_discretization == TemporalDiscretization::BDF,
-                dealii::ExcMessage("Specified time integration scheme is not implemented!"));
-  }
+    /**
+     * Creates time integrator depending on type of time integration strategy.
+     */
+    template <int dim, typename Number>
+    std::shared_ptr<TimeIntBase>
+    create_time_integrator(
+      std::shared_ptr<Operator<dim, Number>>          pde_operator,
+      std::shared_ptr<HelpersALE<dim, Number> const>  helpers_ale,
+      std::shared_ptr<PostProcessorInterface<Number>> postprocessor,
+      Parameters const                               &parameters,
+      MPI_Comm const                                 &mpi_comm,
+      bool const                                      is_test)
+    {
+      std::shared_ptr<TimeIntBase> time_integrator;
 
-  return time_integrator;
-}
+      if (parameters.temporal_discretization == TemporalDiscretization::ExplRK)
+        {
+          time_integrator = std::make_shared<TimeIntExplRK<Number>>(
+            pde_operator, postprocessor, parameters, mpi_comm, is_test);
+        }
+      else if (parameters.temporal_discretization ==
+               TemporalDiscretization::BDF)
+        {
+          time_integrator =
+            std::make_shared<TimeIntBDF<dim, Number>>(pde_operator,
+                                                      helpers_ale,
+                                                      postprocessor,
+                                                      parameters,
+                                                      mpi_comm,
+                                                      is_test);
+        }
+      else
+        {
+          AssertThrow(
+            parameters.temporal_discretization ==
+                TemporalDiscretization::ExplRK or
+              parameters.temporal_discretization == TemporalDiscretization::BDF,
+            dealii::ExcMessage(
+              "Specified time integration scheme is not implemented!"));
+        }
 
-} // namespace ConvDiff
+      return time_integrator;
+    }
+
+  } // namespace ConvDiff
 } // namespace ExaDG
 
 
 
-#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_TIME_INTEGRATION_CREATE_TIME_INTEGRATOR_H_ */
+#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_TIME_INTEGRATION_CREATE_TIME_INTEGRATOR_H_ \
+        */

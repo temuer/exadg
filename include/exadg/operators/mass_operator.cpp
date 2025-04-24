@@ -23,92 +23,98 @@
 
 namespace ExaDG
 {
-template<int dim, int n_components, typename Number>
-MassOperator<dim, n_components, Number>::MassOperator() : scaling_factor(1.0)
-{
-}
+  template <int dim, int n_components, typename Number>
+  MassOperator<dim, n_components, Number>::MassOperator()
+    : scaling_factor(1.0)
+  {}
 
-template<int dim, int n_components, typename Number>
-void
-MassOperator<dim, n_components, Number>::initialize(
-  dealii::MatrixFree<dim, Number> const &   matrix_free,
-  dealii::AffineConstraints<Number> const & affine_constraints,
-  MassOperatorData<dim> const &             data)
-{
-  Base::reinit(matrix_free, affine_constraints, data);
-
-  this->integrator_flags = kernel.get_integrator_flags();
-}
-
-template<int dim, int n_components, typename Number>
-void
-MassOperator<dim, n_components, Number>::set_scaling_factor(Number const & number)
-{
-  scaling_factor = number;
-}
-
-template<int dim, int n_components, typename Number>
-void
-MassOperator<dim, n_components, Number>::apply_scale(VectorType &       dst,
-                                                     Number const &     factor,
-                                                     VectorType const & src) const
-{
-  scaling_factor = factor;
-
-  this->apply(dst, src);
-
-  scaling_factor = 1.0;
-}
-
-template<int dim, int n_components, typename Number>
-void
-MassOperator<dim, n_components, Number>::apply_scale_add(VectorType &       dst,
-                                                         Number const &     factor,
-                                                         VectorType const & src) const
-{
-  scaling_factor = factor;
-
-  this->apply_add(dst, src);
-
-  scaling_factor = 1.0;
-}
-
-template<int dim, int n_components, typename Number>
-void
-MassOperator<dim, n_components, Number>::do_cell_integral(IntegratorCell & integrator) const
-{
-  for(unsigned int q = 0; q < integrator.n_q_points; ++q)
+  template <int dim, int n_components, typename Number>
+  void
+  MassOperator<dim, n_components, Number>::initialize(
+    dealii::MatrixFree<dim, Number> const   &matrix_free,
+    dealii::AffineConstraints<Number> const &affine_constraints,
+    MassOperatorData<dim> const             &data)
   {
-    integrator.submit_value(kernel.get_volume_flux(scaling_factor, integrator.get_value(q)), q);
+    Base::reinit(matrix_free, affine_constraints, data);
+
+    this->integrator_flags = kernel.get_integrator_flags();
   }
-}
 
-// 1 component
-template class MassOperator<2, 1, float>;
-template class MassOperator<2, 1, double>;
+  template <int dim, int n_components, typename Number>
+  void
+  MassOperator<dim, n_components, Number>::set_scaling_factor(
+    Number const &number)
+  {
+    scaling_factor = number;
+  }
 
-template class MassOperator<3, 1, float>;
-template class MassOperator<3, 1, double>;
+  template <int dim, int n_components, typename Number>
+  void
+  MassOperator<dim, n_components, Number>::apply_scale(
+    VectorType       &dst,
+    Number const     &factor,
+    VectorType const &src) const
+  {
+    scaling_factor = factor;
 
-// dim components
-template class MassOperator<2, 2, float>;
-template class MassOperator<2, 2, double>;
+    this->apply(dst, src);
 
-template class MassOperator<3, 3, float>;
-template class MassOperator<3, 3, double>;
+    scaling_factor = 1.0;
+  }
 
-// dim + 1 components
-template class MassOperator<2, 3, float>;
-template class MassOperator<2, 3, double>;
+  template <int dim, int n_components, typename Number>
+  void
+  MassOperator<dim, n_components, Number>::apply_scale_add(
+    VectorType       &dst,
+    Number const     &factor,
+    VectorType const &src) const
+  {
+    scaling_factor = factor;
 
-template class MassOperator<3, 4, float>;
-template class MassOperator<3, 4, double>;
+    this->apply_add(dst, src);
 
-// dim + 2 components
-template class MassOperator<2, 4, float>;
-template class MassOperator<2, 4, double>;
+    scaling_factor = 1.0;
+  }
 
-template class MassOperator<3, 5, float>;
-template class MassOperator<3, 5, double>;
+  template <int dim, int n_components, typename Number>
+  void
+  MassOperator<dim, n_components, Number>::do_cell_integral(
+    IntegratorCell &integrator) const
+  {
+    for (unsigned int q = 0; q < integrator.n_q_points; ++q)
+      {
+        integrator.submit_value(kernel.get_volume_flux(scaling_factor,
+                                                       integrator.get_value(q)),
+                                q);
+      }
+  }
+
+  // 1 component
+  template class MassOperator<2, 1, float>;
+  template class MassOperator<2, 1, double>;
+
+  template class MassOperator<3, 1, float>;
+  template class MassOperator<3, 1, double>;
+
+  // dim components
+  template class MassOperator<2, 2, float>;
+  template class MassOperator<2, 2, double>;
+
+  template class MassOperator<3, 3, float>;
+  template class MassOperator<3, 3, double>;
+
+  // dim + 1 components
+  template class MassOperator<2, 3, float>;
+  template class MassOperator<2, 3, double>;
+
+  template class MassOperator<3, 4, float>;
+  template class MassOperator<3, 4, double>;
+
+  // dim + 2 components
+  template class MassOperator<2, 4, float>;
+  template class MassOperator<2, 4, double>;
+
+  template class MassOperator<3, 5, float>;
+  template class MassOperator<3, 5, double>;
 
 } // namespace ExaDG

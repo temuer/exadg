@@ -26,16 +26,17 @@
 
 namespace ExaDG
 {
-namespace Poisson
-{
-template<int dim, int n_components, typename Number>
-std::shared_ptr<ApplicationBase<dim, n_components, Number>>
-get_application(std::string input_file, MPI_Comm const & comm)
-{
-  return std::make_shared<Application<dim, n_components, Number>>(input_file, comm);
-}
+  namespace Poisson
+  {
+    template <int dim, int n_components, typename Number>
+    std::shared_ptr<ApplicationBase<dim, n_components, Number>>
+    get_application(std::string input_file, MPI_Comm const &comm)
+    {
+      return std::make_shared<Application<dim, n_components, Number>>(
+        input_file, comm);
+    }
 
-} // namespace Poisson
+  } // namespace Poisson
 } // namespace ExaDG
 
 

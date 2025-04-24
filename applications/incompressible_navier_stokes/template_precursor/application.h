@@ -24,186 +24,199 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-namespace Precursor
-{
-template<int dim, typename Number>
-class PrecursorDomain : public Domain<dim, Number>
-{
-public:
-  PrecursorDomain(std::string parameter_file, MPI_Comm const & comm)
-    : Domain<dim, Number>(parameter_file, comm)
+  namespace IncNS
   {
-  }
+    namespace Precursor
+    {
+      template <int dim, typename Number>
+      class PrecursorDomain : public Domain<dim, Number>
+      {
+      public:
+        PrecursorDomain(std::string parameter_file, MPI_Comm const &comm)
+          : Domain<dim, Number>(parameter_file, comm)
+        {}
 
-  void
-  set_parameters() final
-  {
-    // set parameters here
-  }
+        void
+        set_parameters() final
+        {
+          // set parameters here
+        }
 
-  void
-  create_grid(Grid<dim> &                                       grid,
-              std::shared_ptr<dealii::Mapping<dim>> &           mapping,
-              std::shared_ptr<MultigridMappings<dim, Number>> & multigrid_mappings) final
-  {
-    auto const lambda_create_triangulation =
-      [&](dealii::Triangulation<dim, dim> &                        tria,
-          std::vector<dealii::GridTools::PeriodicFacePair<
-            typename dealii::Triangulation<dim>::cell_iterator>> & periodic_face_pairs,
-          unsigned int const                                       global_refinements,
-          std::vector<unsigned int> const &                        vector_local_refinements) {
-        // create triangulation and perform local/global refinements
-        (void)tria;
-        (void)periodic_face_pairs;
-        (void)global_refinements;
-        (void)vector_local_refinements;
+        void
+        create_grid(Grid<dim>                             &grid,
+                    std::shared_ptr<dealii::Mapping<dim>> &mapping,
+                    std::shared_ptr<MultigridMappings<dim, Number>>
+                      &multigrid_mappings) final
+        {
+          auto const lambda_create_triangulation =
+            [&](dealii::Triangulation<dim, dim> &tria,
+                std::vector<dealii::GridTools::PeriodicFacePair<
+                  typename dealii::Triangulation<dim>::cell_iterator>>
+                                                &periodic_face_pairs,
+                unsigned int const               global_refinements,
+                std::vector<unsigned int> const &vector_local_refinements) {
+              // create triangulation and perform local/global refinements
+              (void)tria;
+              (void)periodic_face_pairs;
+              (void)global_refinements;
+              (void)vector_local_refinements;
+            };
+
+          GridUtilities::create_triangulation_with_multigrid<dim>(
+            grid,
+            this->mpi_comm,
+            this->param.grid,
+            this->param.involves_h_multigrid(),
+            lambda_create_triangulation,
+            {} /* no local refinements */);
+
+          // mappings
+          GridUtilities::create_mapping_with_multigrid(
+            mapping,
+            multigrid_mappings,
+            this->param.grid.element_type,
+            this->param.mapping_degree,
+            this->param.mapping_degree_coarse_grids,
+            this->param.involves_h_multigrid());
+        }
+
+        void
+        set_boundary_descriptor() final
+        {
+          typedef typename std::pair<dealii::types::boundary_id,
+                                     std::shared_ptr<dealii::Function<dim>>>
+            pair;
+        }
+
+        void
+        set_field_functions() final
+        {
+          this->field_functions->initial_solution_velocity.reset(
+            new dealii::Functions::ZeroFunction<dim>(dim));
+          this->field_functions->initial_solution_pressure.reset(
+            new dealii::Functions::ZeroFunction<dim>(1));
+          this->field_functions->analytical_solution_pressure.reset(
+            new dealii::Functions::ZeroFunction<dim>(1));
+          this->field_functions->right_hand_side.reset(
+            new dealii::Functions::ZeroFunction<dim>(dim));
+        }
+
+        std::shared_ptr<PostProcessorBase<dim, Number>>
+        create_postprocessor() final
+        {
+          std::shared_ptr<PostProcessorBase<dim, Number>> pp;
+
+          PostProcessorData<dim> pp_data;
+          pp.reset(new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
+
+          return pp;
+        }
       };
 
-    GridUtilities::create_triangulation_with_multigrid<dim>(grid,
-                                                            this->mpi_comm,
-                                                            this->param.grid,
-                                                            this->param.involves_h_multigrid(),
-                                                            lambda_create_triangulation,
-                                                            {} /* no local refinements */);
+      template <int dim, typename Number>
+      class MainDomain : public Domain<dim, Number>
+      {
+      public:
+        MainDomain(std::string parameter_file, MPI_Comm const &comm)
+          : Domain<dim, Number>(parameter_file, comm)
+        {}
 
-    // mappings
-    GridUtilities::create_mapping_with_multigrid(mapping,
-                                                 multigrid_mappings,
-                                                 this->param.grid.element_type,
-                                                 this->param.mapping_degree,
-                                                 this->param.mapping_degree_coarse_grids,
-                                                 this->param.involves_h_multigrid());
-  }
+        void
+        set_parameters() final
+        {
+          // set parameters here
+        }
 
-  void
-  set_boundary_descriptor() final
-  {
-    typedef typename std::pair<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>>
-      pair;
-  }
+        void
+        create_grid(Grid<dim>                             &grid,
+                    std::shared_ptr<dealii::Mapping<dim>> &mapping,
+                    std::shared_ptr<MultigridMappings<dim, Number>>
+                      &multigrid_mappings) final
+        {
+          auto const lambda_create_triangulation =
+            [&](dealii::Triangulation<dim, dim> &tria,
+                std::vector<dealii::GridTools::PeriodicFacePair<
+                  typename dealii::Triangulation<dim>::cell_iterator>>
+                                                &periodic_face_pairs,
+                unsigned int const               global_refinements,
+                std::vector<unsigned int> const &vector_local_refinements) {
+              // create triangulation and perform local/global refinements
+              (void)tria;
+              (void)periodic_face_pairs;
+              (void)global_refinements;
+              (void)vector_local_refinements;
+            };
 
-  void
-  set_field_functions() final
-  {
-    this->field_functions->initial_solution_velocity.reset(
-      new dealii::Functions::ZeroFunction<dim>(dim));
-    this->field_functions->initial_solution_pressure.reset(
-      new dealii::Functions::ZeroFunction<dim>(1));
-    this->field_functions->analytical_solution_pressure.reset(
-      new dealii::Functions::ZeroFunction<dim>(1));
-    this->field_functions->right_hand_side.reset(new dealii::Functions::ZeroFunction<dim>(dim));
-  }
+          GridUtilities::create_triangulation_with_multigrid<dim>(
+            grid,
+            this->mpi_comm,
+            this->param.grid,
+            this->param.involves_h_multigrid(),
+            lambda_create_triangulation,
+            {} /* no local refinements */);
 
-  std::shared_ptr<PostProcessorBase<dim, Number>>
-  create_postprocessor() final
-  {
-    std::shared_ptr<PostProcessorBase<dim, Number>> pp;
+          // mappings
+          GridUtilities::create_mapping_with_multigrid(
+            mapping,
+            multigrid_mappings,
+            this->param.grid.element_type,
+            this->param.mapping_degree,
+            this->param.mapping_degree_coarse_grids,
+            this->param.involves_h_multigrid());
+        }
 
-    PostProcessorData<dim> pp_data;
-    pp.reset(new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
+        void
+        set_boundary_descriptor() final
+        {
+          typedef typename std::pair<dealii::types::boundary_id,
+                                     std::shared_ptr<dealii::Function<dim>>>
+            pair;
+        }
 
-    return pp;
-  }
-};
+        void
+        set_field_functions() final
+        {
+          this->field_functions->initial_solution_velocity.reset(
+            new dealii::Functions::ZeroFunction<dim>(dim));
+          this->field_functions->initial_solution_pressure.reset(
+            new dealii::Functions::ZeroFunction<dim>(1));
+          this->field_functions->analytical_solution_pressure.reset(
+            new dealii::Functions::ZeroFunction<dim>(1));
+          this->field_functions->right_hand_side.reset(
+            new dealii::Functions::ZeroFunction<dim>(dim));
+        }
 
-template<int dim, typename Number>
-class MainDomain : public Domain<dim, Number>
-{
-public:
-  MainDomain(std::string parameter_file, MPI_Comm const & comm)
-    : Domain<dim, Number>(parameter_file, comm)
-  {
-  }
+        std::shared_ptr<PostProcessorBase<dim, Number>>
+        create_postprocessor() final
+        {
+          std::shared_ptr<PostProcessorBase<dim, Number>> pp;
 
-  void
-  set_parameters() final
-  {
-    // set parameters here
-  }
+          PostProcessorData<dim> pp_data;
+          pp.reset(new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
 
-  void
-  create_grid(Grid<dim> &                                       grid,
-              std::shared_ptr<dealii::Mapping<dim>> &           mapping,
-              std::shared_ptr<MultigridMappings<dim, Number>> & multigrid_mappings) final
-  {
-    auto const lambda_create_triangulation =
-      [&](dealii::Triangulation<dim, dim> &                        tria,
-          std::vector<dealii::GridTools::PeriodicFacePair<
-            typename dealii::Triangulation<dim>::cell_iterator>> & periodic_face_pairs,
-          unsigned int const                                       global_refinements,
-          std::vector<unsigned int> const &                        vector_local_refinements) {
-        // create triangulation and perform local/global refinements
-        (void)tria;
-        (void)periodic_face_pairs;
-        (void)global_refinements;
-        (void)vector_local_refinements;
+          return pp;
+        }
       };
 
-    GridUtilities::create_triangulation_with_multigrid<dim>(grid,
-                                                            this->mpi_comm,
-                                                            this->param.grid,
-                                                            this->param.involves_h_multigrid(),
-                                                            lambda_create_triangulation,
-                                                            {} /* no local refinements */);
+      template <int dim, typename Number>
+      class Application : public ApplicationBase<dim, Number>
+      {
+      public:
+        Application(std::string input_file, MPI_Comm const &comm)
+          : ApplicationBase<dim, Number>(input_file, comm)
+        {
+          this->precursor =
+            std::make_shared<PrecursorDomain<dim, Number>>(input_file, comm);
+          this->main =
+            std::make_shared<MainDomain<dim, Number>>(input_file, comm);
+        }
+      };
 
-    // mappings
-    GridUtilities::create_mapping_with_multigrid(mapping,
-                                                 multigrid_mappings,
-                                                 this->param.grid.element_type,
-                                                 this->param.mapping_degree,
-                                                 this->param.mapping_degree_coarse_grids,
-                                                 this->param.involves_h_multigrid());
-  }
-
-  void
-  set_boundary_descriptor() final
-  {
-    typedef typename std::pair<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>>
-      pair;
-  }
-
-  void
-  set_field_functions() final
-  {
-    this->field_functions->initial_solution_velocity.reset(
-      new dealii::Functions::ZeroFunction<dim>(dim));
-    this->field_functions->initial_solution_pressure.reset(
-      new dealii::Functions::ZeroFunction<dim>(1));
-    this->field_functions->analytical_solution_pressure.reset(
-      new dealii::Functions::ZeroFunction<dim>(1));
-    this->field_functions->right_hand_side.reset(new dealii::Functions::ZeroFunction<dim>(dim));
-  }
-
-  std::shared_ptr<PostProcessorBase<dim, Number>>
-  create_postprocessor() final
-  {
-    std::shared_ptr<PostProcessorBase<dim, Number>> pp;
-
-    PostProcessorData<dim> pp_data;
-    pp.reset(new PostProcessor<dim, Number>(pp_data, this->mpi_comm));
-
-    return pp;
-  }
-};
-
-template<int dim, typename Number>
-class Application : public ApplicationBase<dim, Number>
-{
-public:
-  Application(std::string input_file, MPI_Comm const & comm)
-    : ApplicationBase<dim, Number>(input_file, comm)
-  {
-    this->precursor = std::make_shared<PrecursorDomain<dim, Number>>(input_file, comm);
-    this->main      = std::make_shared<MainDomain<dim, Number>>(input_file, comm);
-  }
-};
-
-} // namespace Precursor
-} // namespace IncNS
+    } // namespace Precursor
+  }   // namespace IncNS
 } // namespace ExaDG
 
 #include <exadg/incompressible_navier_stokes/precursor/user_interface/implement_get_application.h>
 
-#endif /* APPLICATIONS_INCOMPRESSIBLE_NAVIER_STOKES_TEST_CASES_TEMPLATE_PRECURSOR_H_ */
+#endif /* APPLICATIONS_INCOMPRESSIBLE_NAVIER_STOKES_TEST_CASES_TEMPLATE_PRECURSOR_H_ \
+        */

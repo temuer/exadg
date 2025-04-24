@@ -31,30 +31,32 @@
 
 namespace ExaDG
 {
-/**
- * This function creates a Gauss-type quadrature rule depending on the ElementType and the number of
- * one-dimensional quadrature points.
- */
-template<int dim>
-std::shared_ptr<dealii::Quadrature<dim>>
-create_quadrature(ElementType const & element_type, unsigned int const n_q_points_1d)
-{
-  std::shared_ptr<dealii::Quadrature<dim>> quadrature;
-  if(element_type == ElementType::Hypercube)
+  /**
+   * This function creates a Gauss-type quadrature rule depending on the
+   * ElementType and the number of one-dimensional quadrature points.
+   */
+  template <int dim>
+  std::shared_ptr<dealii::Quadrature<dim>>
+  create_quadrature(ElementType const &element_type,
+                    unsigned int const n_q_points_1d)
   {
-    quadrature = std::make_shared<dealii::QGauss<dim>>(n_q_points_1d);
-  }
-  else if(element_type == ElementType::Simplex)
-  {
-    quadrature = std::make_shared<dealii::QGaussSimplex<dim>>(n_q_points_1d);
-  }
-  else
-  {
-    AssertThrow(false, ExcNotImplemented());
-  }
+    std::shared_ptr<dealii::Quadrature<dim>> quadrature;
+    if (element_type == ElementType::Hypercube)
+      {
+        quadrature = std::make_shared<dealii::QGauss<dim>>(n_q_points_1d);
+      }
+    else if (element_type == ElementType::Simplex)
+      {
+        quadrature =
+          std::make_shared<dealii::QGaussSimplex<dim>>(n_q_points_1d);
+      }
+    else
+      {
+        AssertThrow(false, ExcNotImplemented());
+      }
 
-  return quadrature;
-}
+    return quadrature;
+  }
 
 } // namespace ExaDG
 

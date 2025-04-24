@@ -33,105 +33,113 @@
 
 namespace ExaDG
 {
-template<typename Operator, typename VectorType>
-class GMRESSmoother : public SmootherBase<VectorType>
-{
-public:
-  GMRESSmoother() : underlying_operator(nullptr), preconditioner(nullptr)
+  template <typename Operator, typename VectorType>
+  class GMRESSmoother : public SmootherBase<VectorType>
   {
-  }
+  public:
+    GMRESSmoother()
+      : underlying_operator(nullptr)
+      , preconditioner(nullptr)
+    {}
 
-  ~GMRESSmoother()
-  {
-    delete preconditioner;
-    preconditioner = nullptr;
-  }
-
-  GMRESSmoother(GMRESSmoother const &) = delete;
-
-  GMRESSmoother &
-  operator=(GMRESSmoother const &) = delete;
-
-  struct AdditionalData
-  {
-    /**
-     * Constructor.
-     */
-    AdditionalData() : preconditioner(PreconditionerSmoother::None), number_of_iterations(5)
+    ~GMRESSmoother()
     {
+      delete preconditioner;
+      preconditioner = nullptr;
     }
 
-    // preconditioner
-    PreconditionerSmoother preconditioner;
+    GMRESSmoother(GMRESSmoother const &) = delete;
 
-    // number of GMRES iterations per smoothing step
-    unsigned int number_of_iterations;
+    GMRESSmoother &
+    operator=(GMRESSmoother const &) = delete;
+
+    struct AdditionalData
+    {
+      /**
+       * Constructor.
+       */
+      AdditionalData()
+        : preconditioner(PreconditionerSmoother::None)
+        , number_of_iterations(5)
+      {}
+
+      // preconditioner
+      PreconditionerSmoother preconditioner;
+
+      // number of GMRES iterations per smoothing step
+      unsigned int number_of_iterations;
+    };
+
+    void
+    setup(Operator const       &operator_in,
+          bool const            initialize_preconditioner,
+          AdditionalData const &additional_data_in)
+    {
+      underlying_operator = &operator_in;
+
+      data = additional_data_in;
+
+      if (data.preconditioner == PreconditionerSmoother::PointJacobi)
+        {
+          preconditioner =
+            new JacobiPreconditioner<Operator>(*underlying_operator,
+                                               initialize_preconditioner);
+        }
+      else if (data.preconditioner == PreconditionerSmoother::BlockJacobi)
+        {
+          preconditioner =
+            new BlockJacobiPreconditioner<Operator>(*underlying_operator,
+                                                    initialize_preconditioner);
+        }
+      else
+        {
+          AssertThrow(
+            data.preconditioner == PreconditionerSmoother::None,
+            dealii::ExcMessage(
+              "Specified preconditioner not implemented for GMRES smoother"));
+        }
+    }
+
+    void
+    update() final
+    {
+      if (preconditioner != nullptr)
+        preconditioner->update();
+    }
+
+    // same as step(), but sets dst-vector to zero
+    void
+    vmult(VectorType &dst, VectorType const &src) const final
+    {
+      dst = 0.0;
+      step(dst, src);
+    }
+
+    void
+    step(VectorType &dst, VectorType const &src) const final
+    {
+      dealii::IterationNumberControl control(data.number_of_iterations, 1.e-20);
+
+      typename dealii::SolverGMRES<VectorType>::AdditionalData additional_data;
+      additional_data.right_preconditioning = true;
+      dealii::SolverGMRES<VectorType> solver(control, additional_data);
+
+      if (preconditioner != nullptr)
+        solver.solve(*underlying_operator, dst, src, *preconditioner);
+      else
+        solver.solve(*underlying_operator,
+                     dst,
+                     src,
+                     dealii::PreconditionIdentity());
+    }
+
+  private:
+    Operator const *underlying_operator;
+
+    AdditionalData data;
+
+    PreconditionerBase<typename Operator::value_type> *preconditioner;
   };
-
-  void
-  setup(Operator const &       operator_in,
-        bool const             initialize_preconditioner,
-        AdditionalData const & additional_data_in)
-  {
-    underlying_operator = &operator_in;
-
-    data = additional_data_in;
-
-    if(data.preconditioner == PreconditionerSmoother::PointJacobi)
-    {
-      preconditioner =
-        new JacobiPreconditioner<Operator>(*underlying_operator, initialize_preconditioner);
-    }
-    else if(data.preconditioner == PreconditionerSmoother::BlockJacobi)
-    {
-      preconditioner =
-        new BlockJacobiPreconditioner<Operator>(*underlying_operator, initialize_preconditioner);
-    }
-    else
-    {
-      AssertThrow(data.preconditioner == PreconditionerSmoother::None,
-                  dealii::ExcMessage(
-                    "Specified preconditioner not implemented for GMRES smoother"));
-    }
-  }
-
-  void
-  update() final
-  {
-    if(preconditioner != nullptr)
-      preconditioner->update();
-  }
-
-  // same as step(), but sets dst-vector to zero
-  void
-  vmult(VectorType & dst, VectorType const & src) const final
-  {
-    dst = 0.0;
-    step(dst, src);
-  }
-
-  void
-  step(VectorType & dst, VectorType const & src) const final
-  {
-    dealii::IterationNumberControl control(data.number_of_iterations, 1.e-20);
-
-    typename dealii::SolverGMRES<VectorType>::AdditionalData additional_data;
-    additional_data.right_preconditioning = true;
-    dealii::SolverGMRES<VectorType> solver(control, additional_data);
-
-    if(preconditioner != nullptr)
-      solver.solve(*underlying_operator, dst, src, *preconditioner);
-    else
-      solver.solve(*underlying_operator, dst, src, dealii::PreconditionIdentity());
-  }
-
-private:
-  Operator const * underlying_operator;
-
-  AdditionalData data;
-
-  PreconditionerBase<typename Operator::value_type> * preconditioner;
-};
 } // namespace ExaDG
 
 #endif /* INCLUDE_SOLVERS_AND_PRECONDITIONERS_GMRESSMOOTHER_H_ */

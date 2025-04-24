@@ -77,7 +77,9 @@ public:
   }
 
   void
-  evaluate(std::vector<double> const & src, bool needs_value, bool needs_gradient)
+  evaluate(std::vector<double> const &src,
+           bool                       needs_value,
+           bool                       needs_gradient)
   {
     (void)src;
     (void)needs_value;
@@ -85,7 +87,7 @@ public:
   }
 
   void
-  integrate(std::vector<double> & dst, bool submit_value, bool submit_gradient)
+  integrate(std::vector<double> &dst, bool submit_value, bool submit_gradient)
   {
     (void)dst;
     (void)submit_value;
@@ -100,7 +102,7 @@ private:
 class Integrators
 {
 public:
-  Integrators(std::vector<ConfigurationData> const & config_data)
+  Integrators(std::vector<ConfigurationData> const &config_data)
   {
     integrators.resize(config_data.size());
   }
@@ -108,44 +110,44 @@ public:
   void
   reinit(unsigned int const cell)
   {
-    for(unsigned int i = 0; i < integrators.size(); ++i)
-    {
-      integrators[i].reinit(cell);
-    }
+    for (unsigned int i = 0; i < integrators.size(); ++i)
+      {
+        integrators[i].reinit(cell);
+      }
   }
 
   void
-  get(QuadraturePointData & data, unsigned int const q)
+  get(QuadraturePointData &data, unsigned int const q)
   {
-    for(unsigned int i = 0; i < integrators.size(); ++i)
-    {
-      if(config_data[i].needs_value)
-        data[i].value = integrators[i].get_value(q);
-      if(config_data[i].needs_gradient)
-        data[i].gradient = integrators[i].get_gradient(q);
-    }
+    for (unsigned int i = 0; i < integrators.size(); ++i)
+      {
+        if (config_data[i].needs_value)
+          data[i].value = integrators[i].get_value(q);
+        if (config_data[i].needs_gradient)
+          data[i].gradient = integrators[i].get_gradient(q);
+      }
   }
 
   void
-  submit(QuadraturePointData & data, unsigned int const q)
+  submit(QuadraturePointData &data, unsigned int const q)
   {
-    for(unsigned int i = 0; i < integrators.size(); ++i)
-    {
-      if(config_data[i].submit_value)
-        integrators[i].submit_value(data[i].submit_value, q);
-      if(config_data[i].submit_gradient)
-        integrators[i].submit_gradient(data[i].submit_gradient, q);
-    }
+    for (unsigned int i = 0; i < integrators.size(); ++i)
+      {
+        if (config_data[i].submit_value)
+          integrators[i].submit_value(data[i].submit_value, q);
+        if (config_data[i].submit_gradient)
+          integrators[i].submit_gradient(data[i].submit_gradient, q);
+      }
   }
 
   void
-  evaluate(std::vector<double> const & src)
+  evaluate(std::vector<double> const &src)
   {
     (void)src;
   }
 
   void
-  integrate(std::vector<double> & dst)
+  integrate(std::vector<double> &dst)
   {
     (void)dst;
   }
@@ -156,81 +158,83 @@ private:
 };
 
 void
-cell_integral_navier_stokes_cpu_backend(std::vector<double> & dst, std::vector<double> const & src)
+cell_integral_navier_stokes_cpu_backend(std::vector<double>       &dst,
+                                        std::vector<double> const &src)
 {
   FEEvaluation fe_eval_velocity, fe_eval_pressure;
 
   std::vector<double> velocity_src = src; //.block(0);
   std::vector<double> pressure_src = src; //.block(1);
 
-  std::vector<double> & velocity_dst = dst; //.block(0);
-  std::vector<double> & pressure_dst = dst; //.block(1);
+  std::vector<double> &velocity_dst = dst; //.block(0);
+  std::vector<double> &pressure_dst = dst; //.block(1);
 
   unsigned int const n_cells = 10;
-  for(unsigned int cell = 0; cell < n_cells; ++cell)
-  {
-    fe_eval_velocity.reinit(cell);
-    fe_eval_pressure.reinit(cell);
-
-    fe_eval_velocity.evaluate(velocity_src, true, true);
-    fe_eval_pressure.evaluate(pressure_src, false, true);
-
-    unsigned int const n_q_points = 10;
-    for(unsigned int q = 0; q < n_q_points; ++q)
+  for (unsigned int cell = 0; cell < n_cells; ++cell)
     {
-      double u      = fe_eval_velocity.get_value(q);
-      double u_grad = fe_eval_velocity.get_gradient(q);
-      double p_grad = fe_eval_pressure.get_gradient(q);
+      fe_eval_velocity.reinit(cell);
+      fe_eval_pressure.reinit(cell);
 
-      double const dt_inv = 10.0, nu = 0.001;
+      fe_eval_velocity.evaluate(velocity_src, true, true);
+      fe_eval_pressure.evaluate(pressure_src, false, true);
 
-      double submit_value_u    = dt_inv * u + p_grad;
-      double submit_gradient_u = nu * u_grad;
-      double submit_gradient_p = u;
+      unsigned int const n_q_points = 10;
+      for (unsigned int q = 0; q < n_q_points; ++q)
+        {
+          double u      = fe_eval_velocity.get_value(q);
+          double u_grad = fe_eval_velocity.get_gradient(q);
+          double p_grad = fe_eval_pressure.get_gradient(q);
 
-      fe_eval_velocity.submit_value(submit_value_u, q);
-      fe_eval_velocity.submit_gradient(submit_gradient_u, q);
-      fe_eval_pressure.submit_gradient(submit_gradient_p, q);
+          double const dt_inv = 10.0, nu = 0.001;
+
+          double submit_value_u    = dt_inv * u + p_grad;
+          double submit_gradient_u = nu * u_grad;
+          double submit_gradient_p = u;
+
+          fe_eval_velocity.submit_value(submit_value_u, q);
+          fe_eval_velocity.submit_gradient(submit_gradient_u, q);
+          fe_eval_pressure.submit_gradient(submit_gradient_p, q);
+        }
+
+      fe_eval_velocity.integrate(velocity_dst, true, true);
+      fe_eval_pressure.integrate(pressure_dst, false, true);
     }
-
-    fe_eval_velocity.integrate(velocity_dst, true, true);
-    fe_eval_pressure.integrate(pressure_dst, false, true);
-  }
 }
 
 void
-generic_cell_integral_cpu_backend(std::vector<double> &                              dst,
-                                  std::vector<double> const &                        src,
-                                  std::vector<ConfigurationData> const &             config_data,
-                                  std::function<void(QuadraturePointData &)> const & kernel)
+generic_cell_integral_cpu_backend(
+  std::vector<double>                              &dst,
+  std::vector<double> const                        &src,
+  std::vector<ConfigurationData> const             &config_data,
+  std::function<void(QuadraturePointData &)> const &kernel)
 {
   Integrators integrators = Integrators(config_data);
 
   unsigned int const n_cells = 10;
-  for(unsigned int cell = 0; cell < n_cells; ++cell)
-  {
-    integrators.reinit(cell);
-
-    integrators.evaluate(src);
-
-    unsigned int const n_q_points = 10;
-    for(unsigned int q = 0; q < n_q_points; ++q)
+  for (unsigned int cell = 0; cell < n_cells; ++cell)
     {
-      QuadraturePointData data;
+      integrators.reinit(cell);
 
-      integrators.get(data, q);
+      integrators.evaluate(src);
 
-      kernel(data);
+      unsigned int const n_q_points = 10;
+      for (unsigned int q = 0; q < n_q_points; ++q)
+        {
+          QuadraturePointData data;
 
-      integrators.submit(data, q);
+          integrators.get(data, q);
+
+          kernel(data);
+
+          integrators.submit(data, q);
+        }
+
+      integrators.integrate(dst);
     }
-
-    integrators.integrate(dst);
-  }
 }
 
 void
-portable_cell_integral(std::vector<double> & dst, std::vector<double> const & src)
+portable_cell_integral(std::vector<double> &dst, std::vector<double> const &src)
 {
   unsigned int const velocity = 0;
   unsigned int const pressure = velocity + 1;
@@ -248,15 +252,19 @@ portable_cell_integral(std::vector<double> & dst, std::vector<double> const & sr
   config_data[pressure].needs_gradient  = true;
   config_data[pressure].submit_gradient = true;
 
-  auto const navier_stokes_kernel = [&](QuadraturePointData & data) {
+  auto const navier_stokes_kernel = [&](QuadraturePointData &data) {
     double const dt_inv = 10.0, nu = 0.001;
 
-    data[velocity].submit_value    = dt_inv * data[velocity].value + data[pressure].gradient;
+    data[velocity].submit_value =
+      dt_inv * data[velocity].value + data[pressure].gradient;
     data[velocity].submit_gradient = nu * data[velocity].gradient;
     data[pressure].submit_gradient = data[velocity].value;
   };
 
-  generic_cell_integral_cpu_backend(dst, src, config_data, navier_stokes_kernel);
+  generic_cell_integral_cpu_backend(dst,
+                                    src,
+                                    config_data,
+                                    navier_stokes_kernel);
 }
 
 int

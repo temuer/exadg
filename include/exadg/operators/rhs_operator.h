@@ -28,139 +28,145 @@
 
 namespace ExaDG
 {
-namespace Operators
-{
-template<int dim>
-struct RHSKernelData
-{
-  std::shared_ptr<dealii::Function<dim>> f;
-};
-
-template<int dim, typename Number, int n_components = 1>
-class RHSKernel
-{
-private:
-  typedef CellIntegrator<dim, n_components, Number> IntegratorCell;
-
-  static unsigned int const rank =
-    (n_components == 1) ? 0 : ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
-
-  typedef dealii::VectorizedArray<Number>   scalar;
-  typedef dealii::Tensor<rank, dim, scalar> value;
-
-public:
-  void
-  reinit(RHSKernelData<dim> const & data_in) const
+  namespace Operators
   {
-    data = data_in;
-  }
+    template <int dim>
+    struct RHSKernelData
+    {
+      std::shared_ptr<dealii::Function<dim>> f;
+    };
 
-  static MappingFlags
-  get_mapping_flags()
+    template <int dim, typename Number, int n_components = 1>
+    class RHSKernel
+    {
+    private:
+      typedef CellIntegrator<dim, n_components, Number> IntegratorCell;
+
+      static unsigned int const rank =
+        (n_components == 1) ?
+          0 :
+          ((n_components == dim) ? 1 : dealii::numbers::invalid_unsigned_int);
+
+      typedef dealii::VectorizedArray<Number>   scalar;
+      typedef dealii::Tensor<rank, dim, scalar> value;
+
+    public:
+      void
+      reinit(RHSKernelData<dim> const &data_in) const
+      {
+        data = data_in;
+      }
+
+      static MappingFlags
+      get_mapping_flags()
+      {
+        MappingFlags flags;
+
+        flags.cells =
+          dealii::update_JxW_values |
+          dealii::update_quadrature_points; // q-points due to rhs function f
+
+        // no face integrals
+
+        return flags;
+      }
+
+      /*
+       * Volume flux, i.e., the term occurring in the volume integral
+       */
+      inline DEAL_II_ALWAYS_INLINE //
+        value
+        get_volume_flux(IntegratorCell const &integrator,
+                        unsigned int const    q,
+                        Number const         &time) const
+      {
+        dealii::Point<dim, scalar> q_points = integrator.quadrature_point(q);
+
+        return FunctionEvaluator<rank, dim, Number>::value(*(data.f),
+                                                           q_points,
+                                                           time);
+      }
+
+    private:
+      mutable RHSKernelData<dim> data;
+    };
+
+  } // namespace Operators
+
+
+  template <int dim>
+  struct RHSOperatorData
   {
-    MappingFlags flags;
+    RHSOperatorData()
+      : dof_index(0)
+      , quad_index(0)
+    {}
 
-    flags.cells = dealii::update_JxW_values |
-                  dealii::update_quadrature_points; // q-points due to rhs function f
+    unsigned int dof_index;
+    unsigned int quad_index;
 
-    // no face integrals
+    Operators::RHSKernelData<dim> kernel_data;
+  };
 
-    return flags;
-  }
-
-  /*
-   * Volume flux, i.e., the term occurring in the volume integral
-   */
-  inline DEAL_II_ALWAYS_INLINE //
-    value
-    get_volume_flux(IntegratorCell const & integrator,
-                    unsigned int const     q,
-                    Number const &         time) const
+  template <int dim, typename Number, int n_components = 1>
+  class RHSOperator
   {
-    dealii::Point<dim, scalar> q_points = integrator.quadrature_point(q);
+  private:
+    typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-    return FunctionEvaluator<rank, dim, Number>::value(*(data.f), q_points, time);
-  }
+    typedef RHSOperator<dim, Number, n_components> This;
 
-private:
-  mutable RHSKernelData<dim> data;
-};
+    typedef CellIntegrator<dim, n_components, Number> IntegratorCell;
 
-} // namespace Operators
+    typedef std::pair<unsigned int, unsigned int> Range;
 
+  public:
+    /*
+     * Constructor.
+     */
+    RHSOperator();
 
-template<int dim>
-struct RHSOperatorData
-{
-  RHSOperatorData() : dof_index(0), quad_index(0)
-  {
-  }
+    /*
+     * Initialization.
+     */
+    void
+    initialize(dealii::MatrixFree<dim, Number> const &matrix_free,
+               RHSOperatorData<dim> const            &data);
 
-  unsigned int dof_index;
-  unsigned int quad_index;
+    /*
+     * Evaluate operator and overwrite dst-vector.
+     */
+    void
+    evaluate(VectorType &dst, double const evaluation_time) const;
 
-  Operators::RHSKernelData<dim> kernel_data;
-};
+    /*
+     * Evaluate operator and add to dst-vector.
+     */
+    void
+    evaluate_add(VectorType &dst, double const evaluation_time) const;
 
-template<int dim, typename Number, int n_components = 1>
-class RHSOperator
-{
-private:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  private:
+    void
+    do_cell_integral(IntegratorCell &integrator) const;
 
-  typedef RHSOperator<dim, Number, n_components> This;
+    /*
+     * The right-hand side operator involves only cell integrals so we only need
+     * a function looping over all cells and computing the cell integrals.
+     */
+    void
+    cell_loop(dealii::MatrixFree<dim, Number> const &matrix_free,
+              VectorType                            &dst,
+              VectorType const                      &src,
+              Range const                           &cell_range) const;
 
-  typedef CellIntegrator<dim, n_components, Number> IntegratorCell;
+    dealii::MatrixFree<dim, Number> const *matrix_free;
 
-  typedef std::pair<unsigned int, unsigned int> Range;
+    RHSOperatorData<dim> data;
 
-public:
-  /*
-   * Constructor.
-   */
-  RHSOperator();
+    mutable double time;
 
-  /*
-   * Initialization.
-   */
-  void
-  initialize(dealii::MatrixFree<dim, Number> const & matrix_free,
-             RHSOperatorData<dim> const &            data);
-
-  /*
-   * Evaluate operator and overwrite dst-vector.
-   */
-  void
-  evaluate(VectorType & dst, double const evaluation_time) const;
-
-  /*
-   * Evaluate operator and add to dst-vector.
-   */
-  void
-  evaluate_add(VectorType & dst, double const evaluation_time) const;
-
-private:
-  void
-  do_cell_integral(IntegratorCell & integrator) const;
-
-  /*
-   * The right-hand side operator involves only cell integrals so we only need a function looping
-   * over all cells and computing the cell integrals.
-   */
-  void
-  cell_loop(dealii::MatrixFree<dim, Number> const & matrix_free,
-            VectorType &                            dst,
-            VectorType const &                      src,
-            Range const &                           cell_range) const;
-
-  dealii::MatrixFree<dim, Number> const * matrix_free;
-
-  RHSOperatorData<dim> data;
-
-  mutable double time;
-
-  Operators::RHSKernel<dim, Number, n_components> kernel;
-};
+    Operators::RHSKernel<dim, Number, n_components> kernel;
+  };
 
 } // namespace ExaDG
 

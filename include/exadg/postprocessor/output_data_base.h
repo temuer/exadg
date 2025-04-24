@@ -27,74 +27,75 @@
 
 namespace ExaDG
 {
-struct OutputDataBase
-{
-  OutputDataBase()
-    : directory("output/"),
-      filename("name"),
-      write_surface_mesh(false),
-      write_boundary_IDs(false),
-      write_grid(false),
-      write_processor_id(false),
-      write_higher_order(true),
-      degree(1)
+  struct OutputDataBase
   {
-  }
+    OutputDataBase()
+      : directory("output/")
+      , filename("name")
+      , write_surface_mesh(false)
+      , write_boundary_IDs(false)
+      , write_grid(false)
+      , write_processor_id(false)
+      , write_higher_order(true)
+      , degree(1)
+    {}
 
-  void
-  print(dealii::ConditionalOStream & pcout, bool unsteady)
-  {
-    if(time_control_data.is_active)
+    void
+    print(dealii::ConditionalOStream &pcout, bool unsteady)
     {
-      time_control_data.print(pcout, unsteady);
+      if (time_control_data.is_active)
+        {
+          time_control_data.print(pcout, unsteady);
 
-      print_parameter(pcout, "Output directory", directory);
-      print_parameter(pcout, "Name of output files", filename);
+          print_parameter(pcout, "Output directory", directory);
+          print_parameter(pcout, "Name of output files", filename);
 
-      print_parameter(pcout, "Write surface mesh", write_surface_mesh);
-      print_parameter(pcout, "Write boundary IDs", write_boundary_IDs);
+          print_parameter(pcout, "Write surface mesh", write_surface_mesh);
+          print_parameter(pcout, "Write boundary IDs", write_boundary_IDs);
 
-      print_parameter(pcout, "Write processor ID", write_processor_id);
+          print_parameter(pcout, "Write processor ID", write_processor_id);
 
-      print_parameter(pcout, "Write higher order", write_higher_order);
-      print_parameter(pcout, "Polynomial degree", degree);
+          print_parameter(pcout, "Write higher order", write_higher_order);
+          print_parameter(pcout, "Polynomial degree", degree);
+        }
     }
-  }
 
-  TimeControlData time_control_data;
+    TimeControlData time_control_data;
 
-  // output directory
-  std::string directory;
+    // output directory
+    std::string directory;
 
-  // name of generated output files
-  std::string filename;
+    // name of generated output files
+    std::string filename;
 
-  // this variable decides whether the surface mesh is written separately
-  bool write_surface_mesh;
+    // this variable decides whether the surface mesh is written separately
+    bool write_surface_mesh;
 
-  // this variable decides whether a vtk-file is written that allows a visualization of boundary
-  // IDs, e.g., to verify that boundary IDs have been set correctly. Note that in the current
-  // version of deal.II, boundaries with ID = 0 (default) are not visible, but only those with
-  // ID != 0.
-  bool write_boundary_IDs;
+    // this variable decides whether a vtk-file is written that allows a
+    // visualization of boundary IDs, e.g., to verify that boundary IDs have
+    // been set correctly. Note that in the current version of deal.II,
+    // boundaries with ID = 0 (default) are not visible, but only those with ID
+    // != 0.
+    bool write_boundary_IDs;
 
-  // write grid output for debug meshing
-  bool write_grid;
+    // write grid output for debug meshing
+    bool write_grid;
 
-  // write processor ID to scalar field in order to visualize the
-  // distribution of cells to processors
-  bool write_processor_id;
+    // write processor ID to scalar field in order to visualize the
+    // distribution of cells to processors
+    bool write_processor_id;
 
-  // write higher order output (NOTE: requires at least ParaView version 5.5, switch off if ParaView
-  // version is lower)
-  bool write_higher_order;
+    // write higher order output (NOTE: requires at least ParaView version 5.5,
+    // switch off if ParaView version is lower)
+    bool write_higher_order;
 
-  // defines polynomial degree used for output (for visualization in ParaView: Properties >
-  // Miscellaneous > Nonlinear Subdivision Level (use a value > 1)) if write_higher_order = true. In
-  // case of write_higher_order = false, this variable defines the number of subdivisions of a cell,
-  // with ParaView using linear interpolation for visualization on these subdivided cells.
-  unsigned int degree;
-};
+    // defines polynomial degree used for output (for visualization in ParaView:
+    // Properties > Miscellaneous > Nonlinear Subdivision Level (use a value >
+    // 1)) if write_higher_order = true. In case of write_higher_order = false,
+    // this variable defines the number of subdivisions of a cell, with ParaView
+    // using linear interpolation for visualization on these subdivided cells.
+    unsigned int degree;
+  };
 
 } // namespace ExaDG
 

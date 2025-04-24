@@ -27,44 +27,45 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim, typename FEEval>
-struct CurlCompute
-{
-  static typename FEEval::value_type
-  compute(FEEval const & fe_eval, unsigned int const q_point)
+  namespace IncNS
   {
-    return fe_eval.get_curl(q_point);
-  }
-};
+    template <int dim, typename FEEval>
+    struct CurlCompute
+    {
+      static typename FEEval::value_type
+      compute(FEEval const &fe_eval, unsigned int const q_point)
+      {
+        return fe_eval.get_curl(q_point);
+      }
+    };
 
-// use partial specialization of templates to handle the 2-dimensional case
-template<typename FEEval>
-struct CurlCompute<2, FEEval>
-{
-  static typename FEEval::value_type
-  compute(FEEval const & fe_eval, unsigned int const q_point)
-  {
-    /*
-     * fe_eval = / phi \   _____\   grad(fe_eval) = / d(phi)/dx1   d(phi)/dx2 \
-     *           \  0  /        /                   \     0             0     /
-     */
-    typename FEEval::gradient_type temp = fe_eval.get_gradient(q_point);
-    /*
-     *         __    /  0  \     /   d(phi)/dx2 \
-     *  curl = \/ X  |  0  |  =  | - d(phi)/dx1 |
-     *               \ phi /     \      0       /
-     */
-    typename FEEval::value_type curl;
-    curl[0] = temp[0][1];  //   d(phi)/dx2
-    curl[1] = -temp[0][0]; // - d(phi)/dx1
-    return curl;
-  }
-};
+    // use partial specialization of templates to handle the 2-dimensional case
+    template <typename FEEval>
+    struct CurlCompute<2, FEEval>
+    {
+      static typename FEEval::value_type
+      compute(FEEval const &fe_eval, unsigned int const q_point)
+      {
+        /*
+         * fe_eval = / phi \   _____\   grad(fe_eval) = / d(phi)/dx1 d(phi)/dx2
+         * \ \  0  /        /                   \     0             0     /
+         */
+        typename FEEval::gradient_type temp = fe_eval.get_gradient(q_point);
+        /*
+         *         __    /  0  \     /   d(phi)/dx2 \
+         *  curl = \/ X  |  0  |  =  | - d(phi)/dx1 |
+         *               \ phi /     \      0       /
+         */
+        typename FEEval::value_type curl;
+        curl[0] = temp[0][1];  //   d(phi)/dx2
+        curl[1] = -temp[0][0]; // - d(phi)/dx1
+        return curl;
+      }
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_SPATIAL_DISCRETIZATION_CURL_COMPUTE_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_SPATIAL_DISCRETIZATION_CURL_COMPUTE_H_ \
+        */

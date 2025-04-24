@@ -36,77 +36,78 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-// Select the operator to be applied
-enum class OperatorType
-{
-  ConvectiveTerm,
-  ViscousTerm,
-  ViscousAndConvectiveTerms,
-  InverseMassOperator,
-  InverseMassOperatorDstDst,
-  VectorUpdate,
-  EvaluateOperatorExplicit
-};
+  namespace CompNS
+  {
+    // Select the operator to be applied
+    enum class OperatorType
+    {
+      ConvectiveTerm,
+      ViscousTerm,
+      ViscousAndConvectiveTerms,
+      InverseMassOperator,
+      InverseMassOperatorDstDst,
+      VectorUpdate,
+      EvaluateOperatorExplicit
+    };
 
-template<int dim, typename Number = double>
-class Driver
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+    template <int dim, typename Number = double>
+    class Driver
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  Driver(MPI_Comm const &                              comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test,
-         bool const                                    is_throughput_study);
+      Driver(MPI_Comm const                               &comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test,
+             bool const                                    is_throughput_study);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve();
+      void
+      solve();
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-  /*
-   * Throughput study
-   */
-  std::tuple<unsigned int, dealii::types::global_dof_index, double>
-  apply_operator(OperatorType const & operator_type,
-                 unsigned int const   n_repetitions_inner,
-                 unsigned int const   n_repetitions_outer) const;
+      /*
+       * Throughput study
+       */
+      std::tuple<unsigned int, dealii::types::global_dof_index, double>
+      apply_operator(OperatorType const &operator_type,
+                     unsigned int const  n_repetitions_inner,
+                     unsigned int const  n_repetitions_outer) const;
 
-private:
-  MPI_Comm const mpi_comm;
+    private:
+      MPI_Comm const mpi_comm;
 
-  dealii::ConditionalOStream pcout;
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // do not set up certain data structures (solver, postprocessor) in case of throughput study
-  bool const is_throughput_study;
+      // do not set up certain data structures (solver, postprocessor) in case
+      // of throughput study
+      bool const is_throughput_study;
 
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  // Grid and mapping
-  std::shared_ptr<Grid<dim>> grid;
+      // Grid and mapping
+      std::shared_ptr<Grid<dim>> grid;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  std::shared_ptr<Operator<dim, Number>> pde_operator;
+      std::shared_ptr<Operator<dim, Number>> pde_operator;
 
-  std::shared_ptr<PostProcessorBase<dim, Number>> postprocessor;
+      std::shared_ptr<PostProcessorBase<dim, Number>> postprocessor;
 
-  std::shared_ptr<TimeIntExplRK<Number>> time_integrator;
+      std::shared_ptr<TimeIntExplRK<Number>> time_integrator;
 
-  // Computation time (wall clock time)
-  mutable TimerTree timer_tree;
-};
+      // Computation time (wall clock time)
+      mutable TimerTree timer_tree;
+    };
 
-} // namespace CompNS
+  } // namespace CompNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_COMPRESSIBLE_NAVIER_STOKES_DRIVER_H_ */

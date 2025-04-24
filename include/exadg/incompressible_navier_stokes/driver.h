@@ -40,15 +40,17 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-// Note: Make sure that the correct time integration scheme is selected in the input file that is
-//       compatible with the OperatorType specified here. This also includes the treatment of the
-//       convective term (explicit/implicit), e.g., specifying VelocityConvDiffOperator together
-//       with an explicit treatment of the convective term will only apply the Helmholtz-like
-//       operator.
+  namespace IncNS
+  {
+    // Note: Make sure that the correct time integration scheme is selected in
+    // the input file that is
+    //       compatible with the OperatorType specified here. This also includes
+    //       the treatment of the convective term (explicit/implicit), e.g.,
+    //       specifying VelocityConvDiffOperator together with an explicit
+    //       treatment of the convective term will only apply the Helmholtz-like
+    //       operator.
 
-// clang-format off
+    // clang-format off
 enum class OperatorType{
   CoupledNonlinearResidual, // nonlinear residual of coupled system of equations
   CoupledLinearized,        // linearized system of equations for coupled solution approach
@@ -59,154 +61,157 @@ enum class OperatorType{
   VelocityConvDiffOperator, // mass + convective + viscous (vectorial quantity, velocity)
   InverseMassOperator       // inverse mass operator (vectorial quantity, velocity)
 };
-// clang-format on
+    // clang-format on
 
-enum class PressureDegree
-{
-  MixedOrder,
-  EqualOrder
-};
+    enum class PressureDegree
+    {
+      MixedOrder,
+      EqualOrder
+    };
 
-inline unsigned int
-get_dofs_per_element(OperatorType const &     operator_type,
-                     PressureDegree const &   pressure_degree,
-                     unsigned int const       dim,
-                     unsigned int const       degree,
-                     ExaDG::ElementType const element_type)
-{
-  unsigned int degree_p = 1;
-  if(pressure_degree == PressureDegree::MixedOrder)
-    degree_p = degree - 1;
-  else if(pressure_degree == PressureDegree::EqualOrder)
-    degree_p = degree;
-  else
-    AssertThrow(false, dealii::ExcMessage("Not implemented."));
+    inline unsigned int
+    get_dofs_per_element(OperatorType const      &operator_type,
+                         PressureDegree const    &pressure_degree,
+                         unsigned int const       dim,
+                         unsigned int const       degree,
+                         ExaDG::ElementType const element_type)
+    {
+      unsigned int degree_p = 1;
+      if (pressure_degree == PressureDegree::MixedOrder)
+        degree_p = degree - 1;
+      else if (pressure_degree == PressureDegree::EqualOrder)
+        degree_p = degree;
+      else
+        AssertThrow(false, dealii::ExcMessage("Not implemented."));
 
-  unsigned int const velocity_dofs_per_element = ExaDG::get_dofs_per_element(
-    element_type, true /* is_dg */, dim /* n_components */, degree, dim);
+      unsigned int const velocity_dofs_per_element =
+        ExaDG::get_dofs_per_element(
+          element_type, true /* is_dg */, dim /* n_components */, degree, dim);
 
-  unsigned int const pressure_dofs_per_element = ExaDG::get_dofs_per_element(
-    element_type, true /* is_dg */, 1 /* n_components */, degree_p, dim);
+      unsigned int const pressure_dofs_per_element =
+        ExaDG::get_dofs_per_element(
+          element_type, true /* is_dg */, 1 /* n_components */, degree_p, dim);
 
-  // coupled/monolithic problem
-  if(operator_type == OperatorType::CoupledNonlinearResidual or
-     operator_type == OperatorType::CoupledLinearized)
-  {
-    return velocity_dofs_per_element + pressure_dofs_per_element;
-  }
-  // velocity only
-  else if(operator_type == OperatorType::ConvectiveOperator or
-          operator_type == OperatorType::VelocityConvDiffOperator or
-          operator_type == OperatorType::HelmholtzOperator or
-          operator_type == OperatorType::ProjectionOperator or
-          operator_type == OperatorType::InverseMassOperator)
-  {
-    return velocity_dofs_per_element;
-  }
-  // pressure only
-  else if(operator_type == OperatorType::PressurePoissonOperator)
-  {
-    return pressure_dofs_per_element;
-  }
-  else
-  {
-    AssertThrow(false, dealii::ExcMessage("Not implemented."));
-  }
+      // coupled/monolithic problem
+      if (operator_type == OperatorType::CoupledNonlinearResidual or
+          operator_type == OperatorType::CoupledLinearized)
+        {
+          return velocity_dofs_per_element + pressure_dofs_per_element;
+        }
+      // velocity only
+      else if (operator_type == OperatorType::ConvectiveOperator or
+               operator_type == OperatorType::VelocityConvDiffOperator or
+               operator_type == OperatorType::HelmholtzOperator or
+               operator_type == OperatorType::ProjectionOperator or
+               operator_type == OperatorType::InverseMassOperator)
+        {
+          return velocity_dofs_per_element;
+        }
+      // pressure only
+      else if (operator_type == OperatorType::PressurePoissonOperator)
+        {
+          return pressure_dofs_per_element;
+        }
+      else
+        {
+          AssertThrow(false, dealii::ExcMessage("Not implemented."));
+        }
 
-  return 0;
-}
+      return 0;
+    }
 
-template<int dim, typename Number>
-class Driver
-{
-public:
-  Driver(MPI_Comm const &                              comm,
-         std::shared_ptr<ApplicationBase<dim, Number>> application,
-         bool const                                    is_test,
-         bool const                                    is_throughput_study);
+    template <int dim, typename Number>
+    class Driver
+    {
+    public:
+      Driver(MPI_Comm const                               &comm,
+             std::shared_ptr<ApplicationBase<dim, Number>> application,
+             bool const                                    is_test,
+             bool const                                    is_throughput_study);
 
-  void
-  setup();
+      void
+      setup();
 
-  void
-  solve() const;
+      void
+      solve() const;
 
-  void
-  print_performance_results(double const total_time) const;
+      void
+      print_performance_results(double const total_time) const;
 
-  /*
-   * Throughput study
-   */
-  std::tuple<unsigned int, dealii::types::global_dof_index, double>
-  apply_operator(OperatorType const & operator_type,
-                 unsigned int const   n_repetitions_inner,
-                 unsigned int const   n_repetitions_outer) const;
+      /*
+       * Throughput study
+       */
+      std::tuple<unsigned int, dealii::types::global_dof_index, double>
+      apply_operator(OperatorType const &operator_type,
+                     unsigned int const  n_repetitions_inner,
+                     unsigned int const  n_repetitions_outer) const;
 
-private:
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+    private:
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-  void
-  ale_update() const;
+      void
+      ale_update() const;
 
-  // MPI communicator
-  MPI_Comm const mpi_comm;
+      // MPI communicator
+      MPI_Comm const mpi_comm;
 
-  // output to std::cout
-  dealii::ConditionalOStream pcout;
+      // output to std::cout
+      dealii::ConditionalOStream pcout;
 
-  // do not print wall times if is_test
-  bool const is_test;
+      // do not print wall times if is_test
+      bool const is_test;
 
-  // do not set up certain data structures (solver, postprocessor) in case of throughput study
-  bool const is_throughput_study;
+      // do not set up certain data structures (solver, postprocessor) in case
+      // of throughput study
+      bool const is_throughput_study;
 
-  // application
-  std::shared_ptr<ApplicationBase<dim, Number>> application;
+      // application
+      std::shared_ptr<ApplicationBase<dim, Number>> application;
 
-  // Grid and mapping
-  std::shared_ptr<Grid<dim>> grid;
+      // Grid and mapping
+      std::shared_ptr<Grid<dim>> grid;
 
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-  // ALE mapping
-  std::shared_ptr<DeformedMappingBase<dim, Number>> ale_mapping;
+      // ALE mapping
+      std::shared_ptr<DeformedMappingBase<dim, Number>> ale_mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> ale_multigrid_mappings;
 
-  // ALE helper functions required by time integrator
-  std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
+      // ALE helper functions required by time integrator
+      std::shared_ptr<HelpersALE<dim, Number>> helpers_ale;
 
-  /*
-   * Spatial discretization
-   */
-  std::shared_ptr<SpatialOperatorBase<dim, Number>> pde_operator;
+      /*
+       * Spatial discretization
+       */
+      std::shared_ptr<SpatialOperatorBase<dim, Number>> pde_operator;
 
-  /*
-   * Postprocessor
-   */
-  typedef PostProcessorBase<dim, Number> Postprocessor;
+      /*
+       * Postprocessor
+       */
+      typedef PostProcessorBase<dim, Number> Postprocessor;
 
-  std::shared_ptr<Postprocessor> postprocessor;
+      std::shared_ptr<Postprocessor> postprocessor;
 
-  /*
-   * Temporal discretization
-   */
+      /*
+       * Temporal discretization
+       */
 
-  // unsteady solver
-  std::shared_ptr<TimeIntBDF<dim, Number>> time_integrator;
+      // unsteady solver
+      std::shared_ptr<TimeIntBDF<dim, Number>> time_integrator;
 
-  // steady solver
-  std::shared_ptr<DriverSteadyProblems<dim, Number>> driver_steady;
+      // steady solver
+      std::shared_ptr<DriverSteadyProblems<dim, Number>> driver_steady;
 
-  /*
-   * Computation time (wall clock time).
-   */
-  mutable TimerTree timer_tree;
-};
+      /*
+       * Computation time (wall clock time).
+       */
+      mutable TimerTree timer_tree;
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_DRIVER_H_ */

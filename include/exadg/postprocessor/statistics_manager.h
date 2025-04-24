@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -32,120 +33,122 @@
 
 namespace ExaDG
 {
-// turbulent channel data
+  // turbulent channel data
 
-struct TurbulentChannelData
-{
-  TurbulentChannelData()
-    : cells_are_stretched(false),
-      viscosity(1.0),
-      density(1.0),
-      directory("output/"),
-      filename("channel")
+  struct TurbulentChannelData
   {
-  }
+    TurbulentChannelData()
+      : cells_are_stretched(false)
+      , viscosity(1.0)
+      , density(1.0)
+      , directory("output/")
+      , filename("channel")
+    {}
 
-  void
-  print(dealii::ConditionalOStream & pcout)
-  {
-    if(time_control_data_statistics.time_control_data.is_active)
+    void
+    print(dealii::ConditionalOStream &pcout)
     {
-      pcout << "  Turbulent channel statistics:" << std::endl;
+      if (time_control_data_statistics.time_control_data.is_active)
+        {
+          pcout << "  Turbulent channel statistics:" << std::endl;
 
-      // only implemented for unsteady problem
-      pcout << "    Time control:" << std::endl;
-      time_control_data_statistics.print(pcout, true /*unsteady*/);
+          // only implemented for unsteady problem
+          pcout << "    Time control:" << std::endl;
+          time_control_data_statistics.print(pcout, true /*unsteady*/);
 
-      print_parameter(pcout, "Cells are stretched", cells_are_stretched);
-      print_parameter(pcout, "Dynamic viscosity", viscosity);
-      print_parameter(pcout, "Density", density);
-      print_parameter(pcout, "Directory of output files", directory);
-      print_parameter(pcout, "Filename", filename);
+          print_parameter(pcout, "Cells are stretched", cells_are_stretched);
+          print_parameter(pcout, "Dynamic viscosity", viscosity);
+          print_parameter(pcout, "Density", density);
+          print_parameter(pcout, "Directory of output files", directory);
+          print_parameter(pcout, "Filename", filename);
+        }
     }
-  }
 
-  TimeControlDataStatistics time_control_data_statistics;
+    TimeControlDataStatistics time_control_data_statistics;
 
-  // are cells stretched, i.e., is a volume manifold applied?
-  bool cells_are_stretched;
+    // are cells stretched, i.e., is a volume manifold applied?
+    bool cells_are_stretched;
 
-  // dynamic viscosity
-  double viscosity;
+    // dynamic viscosity
+    double viscosity;
 
-  // density
-  double density;
+    // density
+    double density;
 
-  // directory and filename
-  std::string directory;
-  std::string filename;
-};
+    // directory and filename
+    std::string directory;
+    std::string filename;
+  };
 
-template<int dim, typename Number>
-class StatisticsManager
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  template <int dim, typename Number>
+  class StatisticsManager
+  {
+  public:
+    typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  StatisticsManager(dealii::DoFHandler<dim> const & dof_handler_velocity,
-                    dealii::Mapping<dim> const &    mapping);
+    StatisticsManager(dealii::DoFHandler<dim> const &dof_handler_velocity,
+                      dealii::Mapping<dim> const    &mapping);
 
-  // The argument grid_transform indicates how the y-direction that is initially distributed from
-  // [0,1] is mapped to the actual grid. This must match the transformation applied to the
-  // triangulation, otherwise the identification of data will fail
-  void
-  setup(std::function<double(double const &)> const & grid_tranform,
-        TurbulentChannelData const &                  data);
+    // The argument grid_transform indicates how the y-direction that is
+    // initially distributed from [0,1] is mapped to the actual grid. This must
+    // match the transformation applied to the triangulation, otherwise the
+    // identification of data will fail
+    void
+    setup(std::function<double(double const &)> const &grid_tranform,
+          TurbulentChannelData const                  &data);
 
-  void
-  evaluate(VectorType const & velocity, bool const unsteady);
+    void
+    evaluate(VectorType const &velocity, bool const unsteady);
 
-  void
-  write_output();
+    void
+    write_output();
 
-  void
-  reset();
+    void
+    reset();
 
-  TimeControlStatistics time_control_statistics;
+    TimeControlStatistics time_control_statistics;
 
-private:
-  static unsigned int const n_points_y_per_cell_linear = 11;
-  unsigned int              n_points_y_per_cell;
+  private:
+    static unsigned int const n_points_y_per_cell_linear = 11;
+    unsigned int              n_points_y_per_cell;
 
-  void
-  evaluate_statistics(VectorType const & velocity);
+    void
+    evaluate_statistics(VectorType const &velocity);
 
-  void
-  evaluate_statistics(const std::vector<VectorType> & velocity);
+    void
+    evaluate_statistics(std::vector<VectorType> const &velocity);
 
-  void
-  do_evaluate(const std::vector<VectorType const *> & velocity);
+    void
+    do_evaluate(std::vector<VectorType const *> const &velocity);
 
-  void
-  do_write_output(std::string const filename, double const dynamic_viscosity, double const density);
+    void
+    do_write_output(std::string const filename,
+                    double const      dynamic_viscosity,
+                    double const      density);
 
-  dealii::DoFHandler<dim> const & dof_handler;
-  dealii::Mapping<dim> const &    mapping;
-  MPI_Comm                        mpi_comm;
+    dealii::DoFHandler<dim> const &dof_handler;
+    dealii::Mapping<dim> const    &mapping;
+    MPI_Comm                       mpi_comm;
 
-  // vector of y-coordinates at which statistical quantities are computed
-  std::vector<double> y_glob;
+    // vector of y-coordinates at which statistical quantities are computed
+    std::vector<double> y_glob;
 
-  // mean velocity <u_i>, i=1,...,d (for all y-coordinates)
-  std::vector<std::vector<double>> vel_glob;
+    // mean velocity <u_i>, i=1,...,d (for all y-coordinates)
+    std::vector<std::vector<double>> vel_glob;
 
-  // square velocity <u_i²>, i=1,...,d (for all y-coordinates)
-  std::vector<std::vector<double>> velsq_glob;
+    // square velocity <u_i²>, i=1,...,d (for all y-coordinates)
+    std::vector<std::vector<double>> velsq_glob;
 
-  // <u_1*u_2> = <u*v> (for all y-coordinates)
-  std::vector<double> veluv_glob;
+    // <u_1*u_2> = <u*v> (for all y-coordinates)
+    std::vector<double> veluv_glob;
 
-  // number of samples
-  int number_of_samples;
+    // number of samples
+    int number_of_samples;
 
-  bool write_final_output;
+    bool write_final_output;
 
-  TurbulentChannelData data;
-};
+    TurbulentChannelData data;
+  };
 
 } // namespace ExaDG
 

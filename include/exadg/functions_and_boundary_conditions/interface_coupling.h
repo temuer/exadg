@@ -31,56 +31,60 @@
 
 namespace ExaDG
 {
-template<int rank, int dim, typename Number>
-class InterfaceCoupling
-{
-private:
-  static unsigned int const n_components = rank_to_n_components<rank, dim>();
+  template <int rank, int dim, typename Number>
+  class InterfaceCoupling
+  {
+  private:
+    static unsigned int const n_components = rank_to_n_components<rank, dim>();
 
-  using quad_index = unsigned int;
+    using quad_index = unsigned int;
 
-  using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+    using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
 
-public:
-  InterfaceCoupling();
+  public:
+    InterfaceCoupling();
 
-  /**
-   * setup() function.
-   *
-   * The aim of @param marked_vertices_src_ is to make the search of points on the src side
-   * computationally more efficient. If no useful information can be provided for this parameter, an
-   * empty vector has to be passed to this function.
-   *
-   * @param tolerance_ is a geometric tolerance passed to dealii::RemotePointEvaluation and used for
-   * the search of points on the src side.
-   */
-  void
-  setup(std::shared_ptr<ContainerInterfaceData<rank, dim, double>> interface_data_dst_,
-        dealii::DoFHandler<dim> const &                            dof_handler_src_,
-        dealii::Mapping<dim> const &                               mapping_src_,
-        std::vector<bool> const &                                  marked_vertices_src_,
-        double const                                               tolerance_);
+    /**
+     * setup() function.
+     *
+     * The aim of @param marked_vertices_src_ is to make the search of points on the src side
+     * computationally more efficient. If no useful information can be provided
+     * for this parameter, an empty vector has to be passed to this function.
+     *
+     * @param tolerance_ is a geometric tolerance passed to dealii::RemotePointEvaluation and used for
+     * the search of points on the src side.
+     */
+    void
+    setup(std::shared_ptr<ContainerInterfaceData<rank, dim, double>>
+                                         interface_data_dst_,
+          dealii::DoFHandler<dim> const &dof_handler_src_,
+          dealii::Mapping<dim> const    &mapping_src_,
+          std::vector<bool> const       &marked_vertices_src_,
+          double const                   tolerance_);
 
-  void
-  update_data(VectorType const & dof_vector_src);
+    void
+    update_data(VectorType const &dof_vector_src);
 
-private:
-  /*
-   * dst-side
-   */
-  std::shared_ptr<ContainerInterfaceData<rank, dim, double>> interface_data_dst;
+  private:
+    /*
+     * dst-side
+     */
+    std::shared_ptr<ContainerInterfaceData<rank, dim, double>>
+      interface_data_dst;
 
-  /*
-   *  Evaluates solution on src-side in those points specified by dst-side
-   */
-  std::map<quad_index, std::unique_ptr<dealii::Utilities::MPI::RemotePointEvaluation<dim>>>
-    map_evaluator;
+    /*
+     *  Evaluates solution on src-side in those points specified by dst-side
+     */
+    std::map<
+      quad_index,
+      std::unique_ptr<dealii::Utilities::MPI::RemotePointEvaluation<dim>>>
+      map_evaluator;
 
-  /*
-   * src-side
-   */
-  dealii::DoFHandler<dim> const * dof_handler_src;
-};
+    /*
+     * src-side
+     */
+    dealii::DoFHandler<dim> const *dof_handler_src;
+  };
 
 } // namespace ExaDG
 

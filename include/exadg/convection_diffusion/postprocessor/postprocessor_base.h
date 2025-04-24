@@ -24,8 +24,11 @@
 
 // deal.II
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/fe/mapping_q.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
+
 #include <deal.II/matrix_free/matrix_free.h>
 
 // ExaDG
@@ -34,49 +37,50 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-template<int dim, typename Number>
-class Operator;
-
-template<typename Number>
-class PostProcessorInterface
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  virtual ~PostProcessorInterface()
+  namespace ConvDiff
   {
-  }
+    template <int dim, typename Number>
+    class Operator;
 
-  virtual void
-  do_postprocessing(VectorType const &     solution,
-                    double const           time             = 0.0,
-                    types::time_step const time_step_number = numbers::steady_timestep) = 0;
-};
+    template <typename Number>
+    class PostProcessorInterface
+    {
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-template<int dim, typename Number>
-class PostProcessorBase : public PostProcessorInterface<Number>
-{
-protected:
-  typedef typename PostProcessorInterface<Number>::VectorType VectorType;
+      virtual ~PostProcessorInterface()
+      {}
 
-public:
-  virtual ~PostProcessorBase()
-  {
-  }
+      virtual void
+      do_postprocessing(
+        VectorType const      &solution,
+        double const           time             = 0.0,
+        types::time_step const time_step_number = numbers::steady_timestep) = 0;
+    };
 
-  virtual void
-  setup(Operator<dim, Number> const & pde_operator) = 0;
+    template <int dim, typename Number>
+    class PostProcessorBase : public PostProcessorInterface<Number>
+    {
+    protected:
+      typedef typename PostProcessorInterface<Number>::VectorType VectorType;
 
-  /*
-   * In the derived classes, one might need to take some actions after coarsening and refinement.
-   */
-  virtual void
-  setup_after_coarsening_and_refinement() = 0;
-};
+    public:
+      virtual ~PostProcessorBase()
+      {}
 
-} // namespace ConvDiff
+      virtual void
+      setup(Operator<dim, Number> const &pde_operator) = 0;
+
+      /*
+       * In the derived classes, one might need to take some actions after
+       * coarsening and refinement.
+       */
+      virtual void
+      setup_after_coarsening_and_refinement() = 0;
+    };
+
+  } // namespace ConvDiff
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ */
+#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_POSTPROCESSOR_POSTPROCESSOR_BASE_H_ \
+        */

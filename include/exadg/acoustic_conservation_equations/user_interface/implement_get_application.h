@@ -27,17 +27,18 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim, typename Number>
-std::shared_ptr<ApplicationBase<dim, Number>>
-get_application(std::string input_file, MPI_Comm const & comm)
-{
-  return std::make_shared<Application<dim, Number>>(input_file, comm);
-}
+  namespace Acoustics
+  {
+    template <int dim, typename Number>
+    std::shared_ptr<ApplicationBase<dim, Number>>
+    get_application(std::string input_file, MPI_Comm const &comm)
+    {
+      return std::make_shared<Application<dim, Number>>(input_file, comm);
+    }
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
 
-#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_IMPLEMENT_GET_APPLICATION_H_ */
+#endif /* EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_IMPLEMENT_GET_APPLICATION_H_ \
+        */

@@ -26,28 +26,34 @@
 
 namespace ExaDG
 {
-struct IntegratorFlags
-{
-  IntegratorFlags
-  operator|(IntegratorFlags const & other)
+  struct IntegratorFlags
   {
-    IntegratorFlags flags_combined;
+    IntegratorFlags
+    operator|(IntegratorFlags const &other)
+    {
+      IntegratorFlags flags_combined;
 
-    flags_combined.cell_evaluate  = this->cell_evaluate | other.cell_evaluate;
-    flags_combined.cell_integrate = this->cell_integrate | other.cell_integrate;
+      flags_combined.cell_evaluate = this->cell_evaluate | other.cell_evaluate;
+      flags_combined.cell_integrate =
+        this->cell_integrate | other.cell_integrate;
 
-    flags_combined.face_evaluate  = this->face_evaluate | other.face_evaluate;
-    flags_combined.face_integrate = this->face_integrate | other.face_integrate;
+      flags_combined.face_evaluate = this->face_evaluate | other.face_evaluate;
+      flags_combined.face_integrate =
+        this->face_integrate | other.face_integrate;
 
-    return flags_combined;
-  }
+      return flags_combined;
+    }
 
-  dealii::EvaluationFlags::EvaluationFlags cell_evaluate{dealii::EvaluationFlags::nothing};
-  dealii::EvaluationFlags::EvaluationFlags cell_integrate{dealii::EvaluationFlags::nothing};
+    dealii::EvaluationFlags::EvaluationFlags cell_evaluate{
+      dealii::EvaluationFlags::nothing};
+    dealii::EvaluationFlags::EvaluationFlags cell_integrate{
+      dealii::EvaluationFlags::nothing};
 
-  dealii::EvaluationFlags::EvaluationFlags face_evaluate{dealii::EvaluationFlags::nothing};
-  dealii::EvaluationFlags::EvaluationFlags face_integrate{dealii::EvaluationFlags::nothing};
-};
+    dealii::EvaluationFlags::EvaluationFlags face_evaluate{
+      dealii::EvaluationFlags::nothing};
+    dealii::EvaluationFlags::EvaluationFlags face_integrate{
+      dealii::EvaluationFlags::nothing};
+  };
 
 } // namespace ExaDG
 

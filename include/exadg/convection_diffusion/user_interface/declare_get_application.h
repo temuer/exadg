@@ -27,14 +27,15 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-template<int dim, typename Number>
-std::shared_ptr<ApplicationBase<dim, Number>>
-get_application(std::string input_file, MPI_Comm const & comm);
+  namespace ConvDiff
+  {
+    template <int dim, typename Number>
+    std::shared_ptr<ApplicationBase<dim, Number>>
+    get_application(std::string input_file, MPI_Comm const &comm);
 
-} // namespace ConvDiff
+  } // namespace ConvDiff
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ */
+#endif /* INCLUDE_EXADG_CONVECTION_DIFFUSION_USER_INTERFACE_DECLARE_GET_APPLICATION_H_ \
+        */

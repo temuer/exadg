@@ -34,86 +34,89 @@
 
 namespace ExaDG
 {
-struct SolverInfoData
-{
-  SolverInfoData()
-    : interval_time(std::numeric_limits<double>::max()),
-      interval_wall_time(std::numeric_limits<double>::max()),
-      interval_time_steps(std::numeric_limits<unsigned int>::max()),
-      counter(0),
-      do_output_in_this_time_step(false),
-      old_time_step_number(0)
+  struct SolverInfoData
   {
-  }
+    SolverInfoData()
+      : interval_time(std::numeric_limits<double>::max())
+      , interval_wall_time(std::numeric_limits<double>::max())
+      , interval_time_steps(std::numeric_limits<unsigned int>::max())
+      , counter(0)
+      , do_output_in_this_time_step(false)
+      , old_time_step_number(0)
+    {}
 
-  void
-  print(dealii::ConditionalOStream const & pcout) const
-  {
-    pcout << "  Solver information:" << std::endl;
-    print_parameter(pcout, "Interval physical time", interval_time);
-    print_parameter(pcout, "Interval wall time", interval_wall_time);
-    print_parameter(pcout, "Interval time steps", interval_time_steps);
-  }
-
-  bool
-  check_for_output(double const           wall_time,
-                   double const           time,
-                   types::time_step const time_step_number) const
-  {
-    // After a restart, the counter is reset to 1, but time = current_time - start time != 0 after a
-    // restart. Hence, we have to explicitly reset the counter in that case. There is nothing to do
-    // if the restart is controlled by the wall time or the time_step_number because these
-    // variables are reinitialized after a restart anyway.
-    if(time_step_number == 1)
+    void
+    print(dealii::ConditionalOStream const &pcout) const
     {
-      counter += int((time + 1.e-10) / interval_time);
+      pcout << "  Solver information:" << std::endl;
+      print_parameter(pcout, "Interval physical time", interval_time);
+      print_parameter(pcout, "Interval wall time", interval_wall_time);
+      print_parameter(pcout, "Interval time steps", interval_time_steps);
     }
 
-    do_output_in_this_time_step = wall_time > interval_wall_time * counter or
-                                  time > interval_time * counter or
-                                  time_step_number % interval_time_steps == 0;
-
-    if(do_output_in_this_time_step)
+    bool
+    check_for_output(double const           wall_time,
+                     double const           time,
+                     types::time_step const time_step_number) const
     {
-      ++counter;
-    }
+      // After a restart, the counter is reset to 1, but time = current_time -
+      // start time != 0 after a restart. Hence, we have to explicitly reset the
+      // counter in that case. There is nothing to do if the restart is
+      // controlled by the wall time or the time_step_number because these
+      // variables are reinitialized after a restart anyway.
+      if (time_step_number == 1)
+        {
+          counter += int((time + 1.e-10) / interval_time);
+        }
 
-    return do_output_in_this_time_step;
-  }
+      do_output_in_this_time_step = wall_time > interval_wall_time * counter or
+                                    time > interval_time * counter or
+                                    time_step_number % interval_time_steps == 0;
 
-  bool
-  write(double const wall_time, double const time, types::time_step const time_step_number) const
-  {
-    if(time_step_number > old_time_step_number)
-    {
-      old_time_step_number = time_step_number;
-      return check_for_output(wall_time, time, time_step_number);
-    }
-    else
-    {
+      if (do_output_in_this_time_step)
+        {
+          ++counter;
+        }
+
       return do_output_in_this_time_step;
     }
-  }
 
-  // physical time
-  double interval_time;
+    bool
+    write(double const           wall_time,
+          double const           time,
+          types::time_step const time_step_number) const
+    {
+      if (time_step_number > old_time_step_number)
+        {
+          old_time_step_number = time_step_number;
+          return check_for_output(wall_time, time, time_step_number);
+        }
+      else
+        {
+          return do_output_in_this_time_step;
+        }
+    }
 
-  // wall time in seconds (= hours * 3600)
-  double interval_wall_time;
+    // physical time
+    double interval_time;
 
-  // number of time steps after which to write restart
-  unsigned int interval_time_steps;
+    // wall time in seconds (= hours * 3600)
+    double interval_wall_time;
 
-  // counter needed do decide when to write restart
-  mutable unsigned int counter;
+    // number of time steps after which to write restart
+    unsigned int interval_time_steps;
 
-  // variable that stores whether output should be printed in current time step
-  mutable bool do_output_in_this_time_step;
+    // counter needed do decide when to write restart
+    mutable unsigned int counter;
 
-  // we need to store the old time step number since the function write() might be called multiple
-  // times during one time step
-  mutable unsigned int old_time_step_number;
-};
+    // variable that stores whether output should be printed in current time
+    // step
+    mutable bool do_output_in_this_time_step;
+
+    // we need to store the old time step number since the function write()
+    // might be called multiple times during one time step
+    mutable unsigned int old_time_step_number;
+  };
 
 } // namespace ExaDG
 

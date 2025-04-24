@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/distributed/tria.h>
+
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_tools.h>
 
@@ -32,59 +33,74 @@
 
 namespace ExaDG
 {
-template<int dim>
-void
-create_periodic_box(dealii::Triangulation<dim> &                             triangulation,
-                    unsigned int const                                       n_refine_space,
-                    std::vector<dealii::GridTools::PeriodicFacePair<
-                      typename dealii::Triangulation<dim>::cell_iterator>> & periodic_faces,
-                    unsigned int const                                       n_subdivisions,
-                    double const                                             left,
-                    double const                                             right,
-                    bool const   curvilinear_mesh = false,
-                    double const deformation      = 0.1)
-{
-  dealii::GridGenerator::subdivided_hyper_cube(triangulation, n_subdivisions, left, right);
-
-  if(curvilinear_mesh)
+  template <int dim>
+  void
+  create_periodic_box(
+    dealii::Triangulation<dim>                             &triangulation,
+    unsigned int const                                      n_refine_space,
+    std::vector<dealii::GridTools::PeriodicFacePair<
+      typename dealii::Triangulation<dim>::cell_iterator>> &periodic_faces,
+    unsigned int const                                      n_subdivisions,
+    double const                                            left,
+    double const                                            right,
+    bool const   curvilinear_mesh = false,
+    double const deformation      = 0.1)
   {
-    unsigned int const frequency = 2;
-    apply_deformed_cube_manifold(triangulation, left, right, deformation, frequency);
-  }
+    dealii::GridGenerator::subdivided_hyper_cube(triangulation,
+                                                 n_subdivisions,
+                                                 left,
+                                                 right);
 
-  for(auto const & cell : triangulation.cell_iterators())
-  {
-    for(unsigned int const face_number : cell->face_indices())
-    {
-      // x-direction
-      if((std::fabs(cell->face(face_number)->center()(0) - left) < 1e-12))
-        cell->face(face_number)->set_all_boundary_ids(0);
-      else if((std::fabs(cell->face(face_number)->center()(0) - right) < 1e-12))
-        cell->face(face_number)->set_all_boundary_ids(1);
-      // y-direction
-      else if((std::fabs(cell->face(face_number)->center()(1) - left) < 1e-12))
-        cell->face(face_number)->set_all_boundary_ids(2);
-      else if((std::fabs(cell->face(face_number)->center()(1) - right) < 1e-12))
-        cell->face(face_number)->set_all_boundary_ids(3);
-      // z-direction
-      else if(dim == 3 and (std::fabs(cell->face(face_number)->center()(2) - left) < 1e-12))
-        cell->face(face_number)->set_all_boundary_ids(4);
-      else if(dim == 3 and (std::fabs(cell->face(face_number)->center()(2) - right) < 1e-12))
-        cell->face(face_number)->set_all_boundary_ids(5);
-    }
-  }
+    if (curvilinear_mesh)
+      {
+        unsigned int const frequency = 2;
+        apply_deformed_cube_manifold(
+          triangulation, left, right, deformation, frequency);
+      }
 
-  dealii::GridTools::collect_periodic_faces(triangulation, 0, 1, 0 /*x-direction*/, periodic_faces);
-  dealii::GridTools::collect_periodic_faces(triangulation, 2, 3, 1 /*y-direction*/, periodic_faces);
-  if(dim == 3)
+    for (auto const &cell : triangulation.cell_iterators())
+      {
+        for (unsigned int const face_number : cell->face_indices())
+          {
+            // x-direction
+            if ((std::fabs(cell->face(face_number)->center()(0) - left) <
+                 1e-12))
+              cell->face(face_number)->set_all_boundary_ids(0);
+            else if ((std::fabs(cell->face(face_number)->center()(0) - right) <
+                      1e-12))
+              cell->face(face_number)->set_all_boundary_ids(1);
+            // y-direction
+            else if ((std::fabs(cell->face(face_number)->center()(1) - left) <
+                      1e-12))
+              cell->face(face_number)->set_all_boundary_ids(2);
+            else if ((std::fabs(cell->face(face_number)->center()(1) - right) <
+                      1e-12))
+              cell->face(face_number)->set_all_boundary_ids(3);
+            // z-direction
+            else if (dim == 3 and
+                     (std::fabs(cell->face(face_number)->center()(2) - left) <
+                      1e-12))
+              cell->face(face_number)->set_all_boundary_ids(4);
+            else if (dim == 3 and
+                     (std::fabs(cell->face(face_number)->center()(2) - right) <
+                      1e-12))
+              cell->face(face_number)->set_all_boundary_ids(5);
+          }
+      }
+
     dealii::GridTools::collect_periodic_faces(
-      triangulation, 4, 5, 2 /*z-direction*/, periodic_faces);
+      triangulation, 0, 1, 0 /*x-direction*/, periodic_faces);
+    dealii::GridTools::collect_periodic_faces(
+      triangulation, 2, 3, 1 /*y-direction*/, periodic_faces);
+    if (dim == 3)
+      dealii::GridTools::collect_periodic_faces(
+        triangulation, 4, 5, 2 /*z-direction*/, periodic_faces);
 
-  triangulation.add_periodicity(periodic_faces);
+    triangulation.add_periodicity(periodic_faces);
 
-  // perform global refinements
-  triangulation.refine_global(n_refine_space);
-}
+    // perform global refinements
+    triangulation.refine_global(n_refine_space);
+  }
 
 } // namespace ExaDG
 

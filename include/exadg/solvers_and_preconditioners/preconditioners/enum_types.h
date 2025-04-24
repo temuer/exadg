@@ -26,21 +26,22 @@
 
 namespace ExaDG
 {
-namespace Elementwise
-{
-/*
- * Elementwise preconditioner for block Jacobi preconditioner (only relevant for
- * elementwise iterative solution procedure)
- */
-enum class Preconditioner
-{
-  Undefined,
-  None,
-  PointJacobi,
-  InverseMassMatrix
-};
+  namespace Elementwise
+  {
+    /*
+     * Elementwise preconditioner for block Jacobi preconditioner (only relevant
+     * for elementwise iterative solution procedure)
+     */
+    enum class Preconditioner
+    {
+      Undefined,
+      None,
+      PointJacobi,
+      InverseMassMatrix
+    };
 
-} // namespace Elementwise
+  } // namespace Elementwise
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_SOLVERS_AND_PRECONDITIONERS_PRECONDITIONER_ENUM_TYPES_H_ */
+#endif /* INCLUDE_EXADG_SOLVERS_AND_PRECONDITIONERS_PRECONDITIONER_ENUM_TYPES_H_ \
+        */

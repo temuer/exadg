@@ -28,49 +28,53 @@
 
 namespace ExaDG
 {
-template<int dim>
-struct MassOperatorData : public OperatorBaseData
-{
-  MassOperatorData() : OperatorBaseData()
+  template <int dim>
+  struct MassOperatorData : public OperatorBaseData
   {
-  }
-};
+    MassOperatorData()
+      : OperatorBaseData()
+    {}
+  };
 
-template<int dim, int n_components, typename Number>
-class MassOperator : public OperatorBase<dim, Number, n_components>
-{
-public:
-  typedef Number value_type;
+  template <int dim, int n_components, typename Number>
+  class MassOperator : public OperatorBase<dim, Number, n_components>
+  {
+  public:
+    typedef Number value_type;
 
-  typedef OperatorBase<dim, Number, n_components> Base;
+    typedef OperatorBase<dim, Number, n_components> Base;
 
-  typedef typename Base::VectorType     VectorType;
-  typedef typename Base::IntegratorCell IntegratorCell;
+    typedef typename Base::VectorType     VectorType;
+    typedef typename Base::IntegratorCell IntegratorCell;
 
-  MassOperator();
+    MassOperator();
 
-  void
-  initialize(dealii::MatrixFree<dim, Number> const &   matrix_free,
-             dealii::AffineConstraints<Number> const & affine_constraints,
-             MassOperatorData<dim> const &             data);
+    void
+    initialize(dealii::MatrixFree<dim, Number> const   &matrix_free,
+               dealii::AffineConstraints<Number> const &affine_constraints,
+               MassOperatorData<dim> const             &data);
 
-  void
-  set_scaling_factor(Number const & number);
+    void
+    set_scaling_factor(Number const &number);
 
-  void
-  apply_scale(VectorType & dst, Number const & factor, VectorType const & src) const;
+    void
+    apply_scale(VectorType       &dst,
+                Number const     &factor,
+                VectorType const &src) const;
 
-  void
-  apply_scale_add(VectorType & dst, Number const & factor, VectorType const & src) const;
+    void
+    apply_scale_add(VectorType       &dst,
+                    Number const     &factor,
+                    VectorType const &src) const;
 
-private:
-  void
-  do_cell_integral(IntegratorCell & integrator) const final;
+  private:
+    void
+    do_cell_integral(IntegratorCell &integrator) const final;
 
-  MassKernel<dim, Number> kernel;
+    MassKernel<dim, Number> kernel;
 
-  mutable double scaling_factor;
-};
+    mutable double scaling_factor;
+  };
 
 } // namespace ExaDG
 

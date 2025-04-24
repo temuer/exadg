@@ -24,48 +24,50 @@
 
 namespace ExaDG
 {
-/*
- *  Initialize block Jacobi matrices with zeros.
- */
-template<typename Number>
-void
-initialize_block_jacobi_matrices_with_zero(std::vector<dealii::LAPACKFullMatrix<Number>> & matrices)
-{
-  // initialize matrices
-  for(auto & m : matrices)
-    m = 0;
-}
-
-
-/*
- *  This function calculates the LU factorization for a given vector
- *  of matrices of type LAPACKFullMatrix.
- */
-template<typename Number>
-void
-calculate_lu_factorization_block_jacobi(std::vector<dealii::LAPACKFullMatrix<Number>> & matrices)
-{
-  for(auto & matrix : matrices)
+  /*
+   *  Initialize block Jacobi matrices with zeros.
+   */
+  template <typename Number>
+  void
+  initialize_block_jacobi_matrices_with_zero(
+    std::vector<dealii::LAPACKFullMatrix<Number>> &matrices)
   {
-    try // the matrix might be singular
-    {
-      matrix.compute_lu_factorization();
-    }
-    catch(std::exception & exc)
-    {
-      // add a small, positive value to the diagonal
-      // of the LU factorized matrix
-      for(unsigned int i = 0; i < matrix.m(); ++i)
-      {
-        for(unsigned int j = 0; j < matrix.n(); ++j)
-        {
-          if(i == j)
-            matrix(i, j) += 1.e-4;
-        }
-      }
-    }
+    // initialize matrices
+    for (auto &m : matrices)
+      m = 0;
   }
-}
+
+
+  /*
+   *  This function calculates the LU factorization for a given vector
+   *  of matrices of type LAPACKFullMatrix.
+   */
+  template <typename Number>
+  void
+  calculate_lu_factorization_block_jacobi(
+    std::vector<dealii::LAPACKFullMatrix<Number>> &matrices)
+  {
+    for (auto &matrix : matrices)
+      {
+        try // the matrix might be singular
+          {
+            matrix.compute_lu_factorization();
+          }
+        catch (std::exception &exc)
+          {
+            // add a small, positive value to the diagonal
+            // of the LU factorized matrix
+            for (unsigned int i = 0; i < matrix.m(); ++i)
+              {
+                for (unsigned int j = 0; j < matrix.n(); ++j)
+                  {
+                    if (i == j)
+                      matrix(i, j) += 1.e-4;
+                  }
+              }
+          }
+      }
+  }
 
 } // namespace ExaDG
 

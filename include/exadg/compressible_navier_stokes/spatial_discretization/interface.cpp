@@ -23,18 +23,18 @@
 
 namespace ExaDG
 {
-namespace CompNS
-{
-namespace Interface
-{
-// nothing to implement here because all member functions of interface class Operator are pure
-// virtual.
+  namespace CompNS
+  {
+    namespace Interface
+    {
+      // nothing to implement here because all member functions of interface
+      // class Operator are pure virtual.
 
-// instantiations
+      // instantiations
 
-template class Operator<float>;
-template class Operator<double>;
+      template class Operator<float>;
+      template class Operator<double>;
 
-} // namespace Interface
-} // namespace CompNS
+    } // namespace Interface
+  }   // namespace CompNS
 } // namespace ExaDG

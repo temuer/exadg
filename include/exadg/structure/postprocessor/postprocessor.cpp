@@ -23,52 +23,58 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim, typename Number>
-PostProcessor<dim, Number>::PostProcessor(PostProcessorData<dim> const & pp_data_in,
-                                          MPI_Comm const &               mpi_comm_in)
-  : pp_data(pp_data_in),
-    mpi_comm(mpi_comm_in),
-    output_generator(OutputGenerator<dim, Number>(mpi_comm_in)),
-    error_calculator(ErrorCalculator<dim, Number>(mpi_comm_in))
-{
-}
+  namespace Structure
+  {
+    template <int dim, typename Number>
+    PostProcessor<dim, Number>::PostProcessor(
+      PostProcessorData<dim> const &pp_data_in,
+      MPI_Comm const               &mpi_comm_in)
+      : pp_data(pp_data_in)
+      , mpi_comm(mpi_comm_in)
+      , output_generator(OutputGenerator<dim, Number>(mpi_comm_in))
+      , error_calculator(ErrorCalculator<dim, Number>(mpi_comm_in))
+    {}
 
-template<int dim, typename Number>
-void
-PostProcessor<dim, Number>::setup(dealii::DoFHandler<dim> const & dof_handler,
-                                  dealii::Mapping<dim> const &    mapping)
-{
-  output_generator.setup(dof_handler, mapping, pp_data.output_data);
+    template <int dim, typename Number>
+    void
+    PostProcessor<dim, Number>::setup(
+      dealii::DoFHandler<dim> const &dof_handler,
+      dealii::Mapping<dim> const    &mapping)
+    {
+      output_generator.setup(dof_handler, mapping, pp_data.output_data);
 
-  error_calculator.setup(dof_handler, mapping, pp_data.error_data);
-}
+      error_calculator.setup(dof_handler, mapping, pp_data.error_data);
+    }
 
-template<int dim, typename Number>
-void
-PostProcessor<dim, Number>::do_postprocessing(VectorType const &     solution,
-                                              double const           time,
-                                              types::time_step const time_step_number)
-{
-  /*
-   *  write output
-   */
-  if(output_generator.time_control.needs_evaluation(time, time_step_number))
-    output_generator.evaluate(solution, time, Utilities::is_unsteady_timestep(time_step_number));
+    template <int dim, typename Number>
+    void
+    PostProcessor<dim, Number>::do_postprocessing(
+      VectorType const      &solution,
+      double const           time,
+      types::time_step const time_step_number)
+    {
+      /*
+       *  write output
+       */
+      if (output_generator.time_control.needs_evaluation(time,
+                                                         time_step_number))
+        output_generator.evaluate(
+          solution, time, Utilities::is_unsteady_timestep(time_step_number));
 
-  /*
-   *  calculate error
-   */
-  if(error_calculator.time_control.needs_evaluation(time, time_step_number))
-    error_calculator.evaluate(solution, time, Utilities::is_unsteady_timestep(time_step_number));
-}
+      /*
+       *  calculate error
+       */
+      if (error_calculator.time_control.needs_evaluation(time,
+                                                         time_step_number))
+        error_calculator.evaluate(
+          solution, time, Utilities::is_unsteady_timestep(time_step_number));
+    }
 
-template class PostProcessor<2, float>;
-template class PostProcessor<3, float>;
+    template class PostProcessor<2, float>;
+    template class PostProcessor<3, float>;
 
-template class PostProcessor<2, double>;
-template class PostProcessor<3, double>;
+    template class PostProcessor<2, double>;
+    template class PostProcessor<3, double>;
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG

@@ -27,31 +27,31 @@
 
 namespace ExaDG
 {
-struct MappingFlags
-{
-  MappingFlags()
-    : cells(dealii::update_default),
-      inner_faces(dealii::update_default),
-      boundary_faces(dealii::update_default)
+  struct MappingFlags
   {
-  }
+    MappingFlags()
+      : cells(dealii::update_default)
+      , inner_faces(dealii::update_default)
+      , boundary_faces(dealii::update_default)
+    {}
 
-  MappingFlags
-  operator||(MappingFlags const & other)
-  {
-    MappingFlags flags_combined;
+    MappingFlags
+    operator||(MappingFlags const &other)
+    {
+      MappingFlags flags_combined;
 
-    flags_combined.cells          = this->cells | other.cells;
-    flags_combined.inner_faces    = this->inner_faces | other.inner_faces;
-    flags_combined.boundary_faces = this->boundary_faces | other.boundary_faces;
+      flags_combined.cells       = this->cells | other.cells;
+      flags_combined.inner_faces = this->inner_faces | other.inner_faces;
+      flags_combined.boundary_faces =
+        this->boundary_faces | other.boundary_faces;
 
-    return flags_combined;
-  }
+      return flags_combined;
+    }
 
-  dealii::UpdateFlags cells;
-  dealii::UpdateFlags inner_faces;
-  dealii::UpdateFlags boundary_faces;
-};
+    dealii::UpdateFlags cells;
+    dealii::UpdateFlags inner_faces;
+    dealii::UpdateFlags boundary_faces;
+  };
 
 } // namespace ExaDG
 

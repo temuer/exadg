@@ -24,7 +24,9 @@
 
 // deal.II
 #include <deal.II/dofs/dof_handler.h>
+
 #include <deal.II/fe/mapping_q.h>
+
 #include <deal.II/lac/la_parallel_vector.h>
 
 // ExaDG
@@ -33,31 +35,33 @@
 
 namespace ExaDG
 {
-template<int dim, typename Number>
-class OutputGenerator
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  template <int dim, typename Number>
+  class OutputGenerator
+  {
+  public:
+    typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  OutputGenerator(MPI_Comm const & comm);
+    OutputGenerator(MPI_Comm const &comm);
 
-  void
-  setup(dealii::DoFHandler<dim> const & dof_handler_in,
-        dealii::Mapping<dim> const &    mapping_in,
-        OutputDataBase const &          output_data_in);
+    void
+    setup(dealii::DoFHandler<dim> const &dof_handler_in,
+          dealii::Mapping<dim> const    &mapping_in,
+          OutputDataBase const          &output_data_in);
 
-  void
-  evaluate(VectorType const & solution, double const time, bool const unsteady);
+    void
+    evaluate(VectorType const &solution,
+             double const      time,
+             bool const        unsteady);
 
-  TimeControl time_control;
+    TimeControl time_control;
 
-private:
-  MPI_Comm const mpi_comm;
+  private:
+    MPI_Comm const mpi_comm;
 
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
-  dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
-  OutputDataBase                                      output_data;
-};
+    dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler;
+    dealii::SmartPointer<dealii::Mapping<dim> const>    mapping;
+    OutputDataBase                                      output_data;
+  };
 
 } // namespace ExaDG
 

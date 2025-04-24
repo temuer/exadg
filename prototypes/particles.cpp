@@ -1,5 +1,3 @@
-#include <fstream>
-
 #include <deal.II/dofs/dof_handler.h>
 
 #include <deal.II/fe/fe_q.h>
@@ -14,18 +12,20 @@
 #include <deal.II/particles/data_out.h>
 #include <deal.II/particles/particle_handler.h>
 
-template<int dim>
+#include <fstream>
+
+template <int dim>
 class VelocityField : public dealii::Function<dim>
 {
 public:
-  VelocityField() : dealii::Function<dim>(dim)
-  {
-  }
+  VelocityField()
+    : dealii::Function<dim>(dim)
+  {}
 
   double
-  value(dealii::Point<dim> const & p, unsigned int const component) const final
+  value(dealii::Point<dim> const &p, unsigned int const component) const final
   {
-    if(component == 0)
+    if (component == 0)
       return p[1];
     return 0;
   }
@@ -49,7 +49,10 @@ main()
   dof_handler.distribute_dofs(fe);
 
   dealii::Vector<double> velocity_vector(dof_handler.n_dofs());
-  dealii::VectorTools::interpolate(mapping, dof_handler, VelocityField<dim>(), velocity_vector);
+  dealii::VectorTools::interpolate(mapping,
+                                   dof_handler,
+                                   VelocityField<dim>(),
+                                   velocity_vector);
 
   dealii::DataOut<dim> data_out;
   data_out.add_data_vector(dof_handler, velocity_vector, "velocity");
@@ -60,12 +63,13 @@ main()
   // particle handler and initial position of particles
   dealii::Particles::ParticleHandler<dim> particle_handler(tria, mapping);
   std::vector<dealii::Point<dim>>         particle_positions(100);
-  for(unsigned int i = 0; i < particle_positions.size(); ++i)
-  {
-    double const rad = 2 * dealii::numbers::PI * i / particle_positions.size();
-    particle_positions[i] =
-      dealii::Point<dim>(0.3 + 0.25 * std::cos(rad), 0.5 + 0.25 * std::sin(rad));
-  }
+  for (unsigned int i = 0; i < particle_positions.size(); ++i)
+    {
+      double const rad =
+        2 * dealii::numbers::PI * i / particle_positions.size();
+      particle_positions[i] = dealii::Point<dim>(0.3 + 0.25 * std::cos(rad),
+                                                 0.5 + 0.25 * std::sin(rad));
+    }
 
   particle_handler.insert_particles(particle_positions);
 
@@ -83,36 +87,40 @@ main()
   post(); // print intial configuration
 
   double const dt = 0.1;
-  for(double t = 0.0; t < 0.7; t += dt)
-  {
-    dealii::Vector<double>              solution_values(fe.n_dofs_per_cell());
-    dealii::FEPointEvaluation<dim, dim> evaluator(mapping, fe, dealii::update_values);
-
-    // loop over all cells
-    for(auto const & cell : dof_handler.active_cell_iterators())
+  for (double t = 0.0; t < 0.7; t += dt)
     {
-      if(particle_handler.n_particles_in_cell(cell) == 0)
-        continue; // this cell has not particles
+      dealii::Vector<double>              solution_values(fe.n_dofs_per_cell());
+      dealii::FEPointEvaluation<dim, dim> evaluator(mapping,
+                                                    fe,
+                                                    dealii::update_values);
 
-      // collect current refernce position of particles
-      std::vector<dealii::Point<dim>> particle_positions;
-      for(auto const & particle : particle_handler.particles_in_cell(cell))
-        particle_positions.push_back(particle.get_reference_location());
+      // loop over all cells
+      for (auto const &cell : dof_handler.active_cell_iterators())
+        {
+          if (particle_handler.n_particles_in_cell(cell) == 0)
+            continue; // this cell has not particles
 
-      // compute velocity at these positions
-      cell->get_dof_values(velocity_vector, solution_values);
-      evaluator.reinit(cell, particle_positions);
-      evaluator.evaluate(make_array_view(solution_values), dealii::EvaluationFlags::values);
+          // collect current refernce position of particles
+          std::vector<dealii::Point<dim>> particle_positions;
+          for (auto const &particle : particle_handler.particles_in_cell(cell))
+            particle_positions.push_back(particle.get_reference_location());
 
-      // update position of particles in real space
-      unsigned int p = 0;
-      for(auto & particle : particle_handler.particles_in_cell(cell))
-        particle.set_location(particle.get_location() + dt * evaluator.get_value(p++));
+          // compute velocity at these positions
+          cell->get_dof_values(velocity_vector, solution_values);
+          evaluator.reinit(cell, particle_positions);
+          evaluator.evaluate(make_array_view(solution_values),
+                             dealii::EvaluationFlags::values);
+
+          // update position of particles in real space
+          unsigned int p = 0;
+          for (auto &particle : particle_handler.particles_in_cell(cell))
+            particle.set_location(particle.get_location() +
+                                  dt * evaluator.get_value(p++));
+        }
+
+      // sort particles into new cells
+      particle_handler.sort_particles_into_subdomains_and_cells();
+
+      post();
     }
-
-    // sort particles into new cells
-    particle_handler.sort_particles_into_subdomains_and_cells();
-
-    post();
-  }
 }

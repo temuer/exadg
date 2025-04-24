@@ -23,106 +23,117 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-template<int dim, typename Number>
-PostProcessor<dim, Number>::PostProcessor(PostProcessorData<dim> const & postprocessor_data,
-                                          MPI_Comm const &               comm)
-  : mpi_comm(comm),
-    pp_data(postprocessor_data),
-    output_generator(comm),
-    pointwise_output_generator(comm),
-    error_calculator_p(comm),
-    error_calculator_u(comm),
-    sound_energy_calculator(comm)
-
-{
-}
-
-template<int dim, typename Number>
-void
-PostProcessor<dim, Number>::setup(AcousticsOperator const & pde_operator)
-{
-  output_generator.setup(pde_operator.get_dof_handler_p(),
-                         pde_operator.get_dof_handler_u(),
-                         *pde_operator.get_mapping(),
-                         pp_data.output_data);
-
-  pointwise_output_generator.setup(pde_operator.get_dof_handler_p(),
-                                   pde_operator.get_dof_handler_u(),
-                                   *pde_operator.get_mapping(),
-                                   pp_data.pointwise_output_data);
-
-  error_calculator_p.setup(pde_operator.get_dof_handler_p(),
-                           *pde_operator.get_mapping(),
-                           pp_data.error_data_p);
-
-  error_calculator_u.setup(pde_operator.get_dof_handler_u(),
-                           *pde_operator.get_mapping(),
-                           pp_data.error_data_u);
-
-  sound_energy_calculator.setup(pde_operator.get_matrix_free(),
-                                pp_data.sound_energy_data,
-                                pde_operator.get_dof_index_pressure(),
-                                pde_operator.get_dof_index_velocity(),
-                                pde_operator.get_quad_index_pressure());
-}
-
-template<int dim, typename Number>
-void
-PostProcessor<dim, Number>::do_postprocessing(BlockVectorType const & solution,
-                                              double const            time,
-                                              types::time_step const  time_step_number)
-{
-  /*
-   *  write output
-   */
-  if(output_generator.time_control.needs_evaluation(time, time_step_number))
+  namespace Acoustics
   {
-    output_generator.evaluate(solution.block(block_index_pressure),
-                              solution.block(block_index_velocity),
-                              time,
-                              Utilities::is_unsteady_timestep(time_step_number));
-  }
+    template <int dim, typename Number>
+    PostProcessor<dim, Number>::PostProcessor(
+      PostProcessorData<dim> const &postprocessor_data,
+      MPI_Comm const               &comm)
+      : mpi_comm(comm)
+      , pp_data(postprocessor_data)
+      , output_generator(comm)
+      , pointwise_output_generator(comm)
+      , error_calculator_p(comm)
+      , error_calculator_u(comm)
+      , sound_energy_calculator(comm)
 
-  /*
-   *  write pointwise output
-   */
-  if(pointwise_output_generator.time_control.needs_evaluation(time, time_step_number))
-  {
-    pointwise_output_generator.evaluate(solution.block(block_index_pressure),
-                                        solution.block(block_index_velocity),
-                                        time,
-                                        Utilities::is_unsteady_timestep(time_step_number));
-  }
+    {}
 
-  /*
-   *  calculate error
-   */
-  if(error_calculator_p.time_control.needs_evaluation(time, time_step_number))
-    error_calculator_p.evaluate(solution.block(block_index_pressure),
-                                time,
-                                Utilities::is_unsteady_timestep(time_step_number));
-  if(error_calculator_u.time_control.needs_evaluation(time, time_step_number))
-    error_calculator_u.evaluate(solution.block(block_index_velocity),
-                                time,
-                                Utilities::is_unsteady_timestep(time_step_number));
+    template <int dim, typename Number>
+    void
+    PostProcessor<dim, Number>::setup(AcousticsOperator const &pde_operator)
+    {
+      output_generator.setup(pde_operator.get_dof_handler_p(),
+                             pde_operator.get_dof_handler_u(),
+                             *pde_operator.get_mapping(),
+                             pp_data.output_data);
 
-  /*
-   *  calculate sound energy
-   */
-  if(sound_energy_calculator.time_control.needs_evaluation(time, time_step_number))
-    sound_energy_calculator.evaluate(solution.block(block_index_pressure),
-                                     solution.block(block_index_velocity),
-                                     time,
-                                     Utilities::is_unsteady_timestep(time_step_number));
-}
+      pointwise_output_generator.setup(pde_operator.get_dof_handler_p(),
+                                       pde_operator.get_dof_handler_u(),
+                                       *pde_operator.get_mapping(),
+                                       pp_data.pointwise_output_data);
 
-template class PostProcessor<2, float>;
-template class PostProcessor<2, double>;
+      error_calculator_p.setup(pde_operator.get_dof_handler_p(),
+                               *pde_operator.get_mapping(),
+                               pp_data.error_data_p);
 
-template class PostProcessor<3, float>;
-template class PostProcessor<3, double>;
+      error_calculator_u.setup(pde_operator.get_dof_handler_u(),
+                               *pde_operator.get_mapping(),
+                               pp_data.error_data_u);
 
-} // namespace Acoustics
+      sound_energy_calculator.setup(pde_operator.get_matrix_free(),
+                                    pp_data.sound_energy_data,
+                                    pde_operator.get_dof_index_pressure(),
+                                    pde_operator.get_dof_index_velocity(),
+                                    pde_operator.get_quad_index_pressure());
+    }
+
+    template <int dim, typename Number>
+    void
+    PostProcessor<dim, Number>::do_postprocessing(
+      BlockVectorType const &solution,
+      double const           time,
+      types::time_step const time_step_number)
+    {
+      /*
+       *  write output
+       */
+      if (output_generator.time_control.needs_evaluation(time,
+                                                         time_step_number))
+        {
+          output_generator.evaluate(solution.block(block_index_pressure),
+                                    solution.block(block_index_velocity),
+                                    time,
+                                    Utilities::is_unsteady_timestep(
+                                      time_step_number));
+        }
+
+      /*
+       *  write pointwise output
+       */
+      if (pointwise_output_generator.time_control.needs_evaluation(
+            time, time_step_number))
+        {
+          pointwise_output_generator.evaluate(
+            solution.block(block_index_pressure),
+            solution.block(block_index_velocity),
+            time,
+            Utilities::is_unsteady_timestep(time_step_number));
+        }
+
+      /*
+       *  calculate error
+       */
+      if (error_calculator_p.time_control.needs_evaluation(time,
+                                                           time_step_number))
+        error_calculator_p.evaluate(solution.block(block_index_pressure),
+                                    time,
+                                    Utilities::is_unsteady_timestep(
+                                      time_step_number));
+      if (error_calculator_u.time_control.needs_evaluation(time,
+                                                           time_step_number))
+        error_calculator_u.evaluate(solution.block(block_index_velocity),
+                                    time,
+                                    Utilities::is_unsteady_timestep(
+                                      time_step_number));
+
+      /*
+       *  calculate sound energy
+       */
+      if (sound_energy_calculator.time_control.needs_evaluation(
+            time, time_step_number))
+        sound_energy_calculator.evaluate(solution.block(block_index_pressure),
+                                         solution.block(block_index_velocity),
+                                         time,
+                                         Utilities::is_unsteady_timestep(
+                                           time_step_number));
+    }
+
+    template class PostProcessor<2, float>;
+    template class PostProcessor<2, double>;
+
+    template class PostProcessor<3, float>;
+    template class PostProcessor<3, double>;
+
+  } // namespace Acoustics
 } // namespace ExaDG

@@ -30,61 +30,94 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-/**
- * Creates time integrator depending on type of solution strategy.
- */
-template<int dim, typename Number>
-std::shared_ptr<TimeIntBDF<dim, Number>>
-create_time_integrator(std::shared_ptr<SpatialOperatorBase<dim, Number>> pde_operator,
-                       std::shared_ptr<HelpersALE<dim, Number> const>    helpers_ale,
-                       std::shared_ptr<PostProcessorInterface<Number>>   postprocessor,
-                       Parameters const &                                parameters,
-                       MPI_Comm const &                                  mpi_comm,
-                       bool const                                        is_test)
-{
-  std::shared_ptr<TimeIntBDF<dim, Number>> time_integrator;
-
-  if(parameters.temporal_discretization == TemporalDiscretization::BDFCoupledSolution)
+  namespace IncNS
   {
-    std::shared_ptr<OperatorCoupled<dim, Number>> operator_coupled =
-      std::dynamic_pointer_cast<OperatorCoupled<dim, Number>>(pde_operator);
+    /**
+     * Creates time integrator depending on type of solution strategy.
+     */
+    template <int dim, typename Number>
+    std::shared_ptr<TimeIntBDF<dim, Number>>
+    create_time_integrator(
+      std::shared_ptr<SpatialOperatorBase<dim, Number>> pde_operator,
+      std::shared_ptr<HelpersALE<dim, Number> const>    helpers_ale,
+      std::shared_ptr<PostProcessorInterface<Number>>   postprocessor,
+      Parameters const                                 &parameters,
+      MPI_Comm const                                   &mpi_comm,
+      bool const                                        is_test)
+    {
+      std::shared_ptr<TimeIntBDF<dim, Number>> time_integrator;
 
-    time_integrator = std::make_shared<IncNS::TimeIntBDFCoupled<dim, Number>>(
-      operator_coupled, helpers_ale, postprocessor, parameters, mpi_comm, is_test);
-  }
-  else if(parameters.temporal_discretization == TemporalDiscretization::BDFDualSplittingScheme)
-  {
-    std::shared_ptr<OperatorDualSplitting<dim, Number>> operator_dual_splitting =
-      std::dynamic_pointer_cast<OperatorDualSplitting<dim, Number>>(pde_operator);
+      if (parameters.temporal_discretization ==
+          TemporalDiscretization::BDFCoupledSolution)
+        {
+          std::shared_ptr<OperatorCoupled<dim, Number>> operator_coupled =
+            std::dynamic_pointer_cast<OperatorCoupled<dim, Number>>(
+              pde_operator);
 
-    time_integrator = std::make_shared<IncNS::TimeIntBDFDualSplitting<dim, Number>>(
-      operator_dual_splitting, helpers_ale, postprocessor, parameters, mpi_comm, is_test);
-  }
-  else if(parameters.temporal_discretization == TemporalDiscretization::BDFPressureCorrection)
-  {
-    std::shared_ptr<OperatorPressureCorrection<dim, Number>> operator_pressure_correction =
-      std::dynamic_pointer_cast<OperatorPressureCorrection<dim, Number>>(pde_operator);
+          time_integrator =
+            std::make_shared<IncNS::TimeIntBDFCoupled<dim, Number>>(
+              operator_coupled,
+              helpers_ale,
+              postprocessor,
+              parameters,
+              mpi_comm,
+              is_test);
+        }
+      else if (parameters.temporal_discretization ==
+               TemporalDiscretization::BDFDualSplittingScheme)
+        {
+          std::shared_ptr<OperatorDualSplitting<dim, Number>>
+            operator_dual_splitting =
+              std::dynamic_pointer_cast<OperatorDualSplitting<dim, Number>>(
+                pde_operator);
 
-    time_integrator = std::make_shared<IncNS::TimeIntBDFPressureCorrection<dim, Number>>(
-      operator_pressure_correction, helpers_ale, postprocessor, parameters, mpi_comm, is_test);
-  }
-  else if(parameters.temporal_discretization ==
-          TemporalDiscretization::InterpolateAnalyticalSolution)
-  {
-    time_integrator = std::make_shared<IncNS::TimeIntInterpolateAnalyticalSolution<dim, Number>>(
-      pde_operator, helpers_ale, postprocessor, parameters, mpi_comm, is_test);
-  }
-  else
-  {
-    AssertThrow(false, dealii::ExcMessage("Not implemented."));
-  }
+          time_integrator =
+            std::make_shared<IncNS::TimeIntBDFDualSplitting<dim, Number>>(
+              operator_dual_splitting,
+              helpers_ale,
+              postprocessor,
+              parameters,
+              mpi_comm,
+              is_test);
+        }
+      else if (parameters.temporal_discretization ==
+               TemporalDiscretization::BDFPressureCorrection)
+        {
+          std::shared_ptr<OperatorPressureCorrection<dim, Number>>
+            operator_pressure_correction = std::dynamic_pointer_cast<
+              OperatorPressureCorrection<dim, Number>>(pde_operator);
 
-  return time_integrator;
-}
+          time_integrator =
+            std::make_shared<IncNS::TimeIntBDFPressureCorrection<dim, Number>>(
+              operator_pressure_correction,
+              helpers_ale,
+              postprocessor,
+              parameters,
+              mpi_comm,
+              is_test);
+        }
+      else if (parameters.temporal_discretization ==
+               TemporalDiscretization::InterpolateAnalyticalSolution)
+        {
+          time_integrator = std::make_shared<
+            IncNS::TimeIntInterpolateAnalyticalSolution<dim, Number>>(
+            pde_operator,
+            helpers_ale,
+            postprocessor,
+            parameters,
+            mpi_comm,
+            is_test);
+        }
+      else
+        {
+          AssertThrow(false, dealii::ExcMessage("Not implemented."));
+        }
 
-} // namespace IncNS
+      return time_integrator;
+    }
+
+  } // namespace IncNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_TIME_INTEGRATION_CREATE_TIME_INTEGRATOR_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_TIME_INTEGRATION_CREATE_TIME_INTEGRATOR_H_ \
+        */

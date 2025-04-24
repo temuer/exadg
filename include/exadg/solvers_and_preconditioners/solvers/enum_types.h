@@ -26,19 +26,19 @@
 
 namespace ExaDG
 {
-namespace Elementwise
-{
-/*
- * Elementwise solver for block Jacobi preconditioner
- */
-enum class Solver
-{
-  Undefined,
-  CG,
-  GMRES
-};
+  namespace Elementwise
+  {
+    /*
+     * Elementwise solver for block Jacobi preconditioner
+     */
+    enum class Solver
+    {
+      Undefined,
+      CG,
+      GMRES
+    };
 
-} // namespace Elementwise
+  } // namespace Elementwise
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_SOLVERS_AND_PRECONDITIONERS_SOLVERS_ENUM_TYPES_H_ */

@@ -27,36 +27,42 @@
 
 namespace ExaDG
 {
-template<int dim, typename BoundaryDescriptor>
-void
-verify_boundary_conditions(BoundaryDescriptor const & boundary_descriptor, Grid<dim> const & grid)
-{
-  // fill set with periodic boundary ids
-  std::set<dealii::types::boundary_id> periodic_boundary_ids;
-  for(auto periodic_pair : grid.periodic_face_pairs)
+  template <int dim, typename BoundaryDescriptor>
+  void
+  verify_boundary_conditions(BoundaryDescriptor const &boundary_descriptor,
+                             Grid<dim> const          &grid)
   {
-    AssertThrow(periodic_pair.cell[0]->level() == 0,
-                dealii::ExcMessage("Received periodic face pair on non-zero level"));
-
-    periodic_boundary_ids.insert(
-      periodic_pair.cell[0]->face(periodic_pair.face_idx[0])->boundary_id());
-    periodic_boundary_ids.insert(
-      periodic_pair.cell[1]->face(periodic_pair.face_idx[1])->boundary_id());
-  }
-
-  // Make sure that each boundary face has exactly one boundary type
-  for(auto cell : *grid.triangulation)
-  {
-    for(unsigned int const f : cell.face_indices())
-    {
-      if(cell.at_boundary(f))
+    // fill set with periodic boundary ids
+    std::set<dealii::types::boundary_id> periodic_boundary_ids;
+    for (auto periodic_pair : grid.periodic_face_pairs)
       {
-        dealii::types::boundary_id const boundary_id = cell.face(f)->boundary_id();
-        boundary_descriptor.verify_boundary_conditions(boundary_id, periodic_boundary_ids);
+        AssertThrow(periodic_pair.cell[0]->level() == 0,
+                    dealii::ExcMessage(
+                      "Received periodic face pair on non-zero level"));
+
+        periodic_boundary_ids.insert(periodic_pair.cell[0]
+                                       ->face(periodic_pair.face_idx[0])
+                                       ->boundary_id());
+        periodic_boundary_ids.insert(periodic_pair.cell[1]
+                                       ->face(periodic_pair.face_idx[1])
+                                       ->boundary_id());
       }
-    }
+
+    // Make sure that each boundary face has exactly one boundary type
+    for (auto cell : *grid.triangulation)
+      {
+        for (unsigned int const f : cell.face_indices())
+          {
+            if (cell.at_boundary(f))
+              {
+                dealii::types::boundary_id const boundary_id =
+                  cell.face(f)->boundary_id();
+                boundary_descriptor.verify_boundary_conditions(
+                  boundary_id, periodic_boundary_ids);
+              }
+          }
+      }
   }
-}
 
 } // namespace ExaDG
 

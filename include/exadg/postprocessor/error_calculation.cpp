@@ -33,187 +33,161 @@
 
 namespace ExaDG
 {
-template<int dim, typename VectorType>
-double
-calculate_error(MPI_Comm const &                               mpi_comm,
-                bool const &                                   relative_error,
-                dealii::DoFHandler<dim> const &                dof_handler,
-                dealii::Mapping<dim> const &                   mapping,
-                VectorType const &                             numerical_solution,
-                std::shared_ptr<dealii::Function<dim>> const   analytical_solution,
-                double const &                                 time,
-                dealii::VectorTools::NormType const &          norm_type,
-                bool const                                     spatially_weight_error,
-                std::shared_ptr<dealii::Function<dim>> const & weight,
-                unsigned int const                             additional_quadrature_points = 3)
-{
-  if(spatially_weight_error == true)
-    AssertThrow(weight != nullptr,
-                dealii::ExcMessage("No spatial weight provided for error computation."));
-
-  double error = 1.0;
-  analytical_solution->set_time(time);
-
-  dealii::LinearAlgebra::distributed::Vector<double> numerical_solution_double;
-  numerical_solution_double = numerical_solution;
-  numerical_solution_double.update_ghost_values();
-
-  // quadrature rule
-  ElementType const element_type = get_element_type(dof_handler.get_triangulation());
-  std::shared_ptr<dealii::Quadrature<dim>> quadrature =
-    create_quadrature<dim>(element_type,
-                           dof_handler.get_fe().degree + additional_quadrature_points);
-
-  // calculate error norm
-  dealii::Vector<double> error_norm_per_cell(dof_handler.get_triangulation().n_active_cells());
-  dealii::VectorTools::integrate_difference(mapping,
-                                            dof_handler,
-                                            numerical_solution_double,
-                                            *analytical_solution,
-                                            error_norm_per_cell,
-                                            *quadrature,
-                                            norm_type,
-                                            spatially_weight_error ? weight.get() : nullptr);
-
-  double error_norm =
-    std::sqrt(dealii::Utilities::MPI::sum(error_norm_per_cell.norm_sqr(), mpi_comm));
-
-  if(relative_error == true)
+  template <int dim, typename VectorType>
+  double
+  calculate_error(
+    MPI_Comm const                               &mpi_comm,
+    bool const                                   &relative_error,
+    dealii::DoFHandler<dim> const                &dof_handler,
+    dealii::Mapping<dim> const                   &mapping,
+    VectorType const                             &numerical_solution,
+    std::shared_ptr<dealii::Function<dim>> const  analytical_solution,
+    double const                                 &time,
+    dealii::VectorTools::NormType const          &norm_type,
+    bool const                                    spatially_weight_error,
+    std::shared_ptr<dealii::Function<dim>> const &weight,
+    unsigned int const additional_quadrature_points = 3)
   {
-    // calculate solution norm
-    dealii::Vector<double> solution_norm_per_cell(dof_handler.get_triangulation().n_active_cells());
-    dealii::LinearAlgebra::distributed::Vector<double> zero_solution;
-    zero_solution.reinit(numerical_solution);
-    zero_solution.update_ghost_values();
+    if (spatially_weight_error == true)
+      AssertThrow(weight != nullptr,
+                  dealii::ExcMessage(
+                    "No spatial weight provided for error computation."));
 
+    double error = 1.0;
+    analytical_solution->set_time(time);
+
+    dealii::LinearAlgebra::distributed::Vector<double>
+      numerical_solution_double;
+    numerical_solution_double = numerical_solution;
+    numerical_solution_double.update_ghost_values();
+
+    // quadrature rule
+    ElementType const element_type =
+      get_element_type(dof_handler.get_triangulation());
+    std::shared_ptr<dealii::Quadrature<dim>> quadrature =
+      create_quadrature<dim>(element_type,
+                             dof_handler.get_fe().degree +
+                               additional_quadrature_points);
+
+    // calculate error norm
+    dealii::Vector<double> error_norm_per_cell(
+      dof_handler.get_triangulation().n_active_cells());
     dealii::VectorTools::integrate_difference(mapping,
                                               dof_handler,
-                                              zero_solution,
+                                              numerical_solution_double,
                                               *analytical_solution,
-                                              solution_norm_per_cell,
+                                              error_norm_per_cell,
                                               *quadrature,
                                               norm_type,
-                                              spatially_weight_error ? weight.get() : nullptr);
+                                              spatially_weight_error ?
+                                                weight.get() :
+                                                nullptr);
 
-    double solution_norm =
-      std::sqrt(dealii::Utilities::MPI::sum(solution_norm_per_cell.norm_sqr(), mpi_comm));
+    double error_norm = std::sqrt(
+      dealii::Utilities::MPI::sum(error_norm_per_cell.norm_sqr(), mpi_comm));
 
-    AssertThrow(solution_norm > 1.e-15,
-                dealii::ExcMessage(
-                  "Cannot compute relative error since norm of solution tends to zero."));
-
-    error = error_norm / solution_norm;
-  }
-  else // absolute error
-  {
-    error = error_norm;
-  }
-
-  return error;
-}
-
-template<int dim, typename Number>
-ErrorCalculator<dim, Number>::ErrorCalculator(MPI_Comm const & comm)
-  : mpi_comm(comm), clear_files_L2(true), clear_files_H1_seminorm(true)
-{
-}
-
-template<int dim, typename Number>
-void
-ErrorCalculator<dim, Number>::setup(dealii::DoFHandler<dim> const &   dof_handler_in,
-                                    dealii::Mapping<dim> const &      mapping_in,
-                                    ErrorCalculationData<dim> const & error_data_in)
-{
-  dof_handler = &dof_handler_in;
-  mapping     = &mapping_in;
-  error_data  = error_data_in;
-
-  time_control.setup(error_data_in.time_control_data);
-
-  if(error_data.analytical_solution and error_data.write_errors_to_file)
-    create_directories(error_data.directory, mpi_comm);
-}
-
-template<int dim, typename Number>
-void
-ErrorCalculator<dim, Number>::evaluate(VectorType const & solution,
-                                       double const       time,
-                                       bool const         unsteady)
-{
-  AssertThrow(error_data.analytical_solution,
-              dealii::ExcMessage("Function can only be called if analytical solution is given."));
-
-  dealii::ConditionalOStream pcout(std::cout,
-                                   dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0);
-
-  if(unsteady)
-  {
-    pcout << std::endl
-          << "Calculate error for " << error_data.name << " at time t = " << std::scientific
-          << std::setprecision(4) << time << ":" << std::endl;
-  }
-  else
-  {
-    pcout << std::endl
-          << "Calculate error for " << error_data.name << " for "
-          << (time_control.get_counter() == 0 ? "initial" : "solution") << " data:" << std::endl;
-  }
-
-  do_evaluate(solution, time);
-}
-
-template<int dim, typename Number>
-void
-ErrorCalculator<dim, Number>::do_evaluate(VectorType const & solution_vector, double const time)
-{
-  bool relative = error_data.calculate_relative_errors;
-
-  double const error = calculate_error<dim>(mpi_comm,
-                                            relative,
-                                            *dof_handler,
-                                            *mapping,
-                                            solution_vector,
-                                            error_data.analytical_solution,
-                                            time,
-                                            dealii::VectorTools::L2_norm,
-                                            error_data.spatially_weight_error,
-                                            error_data.weight);
-
-  dealii::ConditionalOStream pcout(std::cout,
-                                   dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0);
-  pcout << ((relative == true) ? "  Relative " : "  Absolute ")
-        << "error (L2-norm): " << std::scientific << std::setprecision(5) << error << std::endl;
-
-  if(error_data.write_errors_to_file)
-  {
-    // write output file
-    if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
-    {
-      std::string filename = error_data.directory + error_data.name + "_L2";
-
-      std::ofstream f;
-      if(clear_files_L2 == true)
+    if (relative_error == true)
       {
-        f.open(filename.c_str(), std::ios::trunc);
+        // calculate solution norm
+        dealii::Vector<double> solution_norm_per_cell(
+          dof_handler.get_triangulation().n_active_cells());
+        dealii::LinearAlgebra::distributed::Vector<double> zero_solution;
+        zero_solution.reinit(numerical_solution);
+        zero_solution.update_ghost_values();
 
-        f << "  Time                Error" << std::endl;
+        dealii::VectorTools::integrate_difference(mapping,
+                                                  dof_handler,
+                                                  zero_solution,
+                                                  *analytical_solution,
+                                                  solution_norm_per_cell,
+                                                  *quadrature,
+                                                  norm_type,
+                                                  spatially_weight_error ?
+                                                    weight.get() :
+                                                    nullptr);
 
-        clear_files_L2 = false;
+        double solution_norm = std::sqrt(
+          dealii::Utilities::MPI::sum(solution_norm_per_cell.norm_sqr(),
+                                      mpi_comm));
+
+        AssertThrow(
+          solution_norm > 1.e-15,
+          dealii::ExcMessage(
+            "Cannot compute relative error since norm of solution tends to zero."));
+
+        error = error_norm / solution_norm;
       }
-      else
+    else // absolute error
       {
-        f.open(filename.c_str(), std::ios::app);
+        error = error_norm;
       }
 
-      unsigned int precision = 12;
-      f << std::scientific << std::setprecision(precision) << std::setw(precision + 8) << time
-        << std::setw(precision + 8) << error << std::endl;
-    }
+    return error;
   }
 
-  // H1-seminorm
-  if(error_data.calculate_H1_seminorm_error)
+  template <int dim, typename Number>
+  ErrorCalculator<dim, Number>::ErrorCalculator(MPI_Comm const &comm)
+    : mpi_comm(comm)
+    , clear_files_L2(true)
+    , clear_files_H1_seminorm(true)
+  {}
+
+  template <int dim, typename Number>
+  void
+  ErrorCalculator<dim, Number>::setup(
+    dealii::DoFHandler<dim> const   &dof_handler_in,
+    dealii::Mapping<dim> const      &mapping_in,
+    ErrorCalculationData<dim> const &error_data_in)
   {
+    dof_handler = &dof_handler_in;
+    mapping     = &mapping_in;
+    error_data  = error_data_in;
+
+    time_control.setup(error_data_in.time_control_data);
+
+    if (error_data.analytical_solution and error_data.write_errors_to_file)
+      create_directories(error_data.directory, mpi_comm);
+  }
+
+  template <int dim, typename Number>
+  void
+  ErrorCalculator<dim, Number>::evaluate(VectorType const &solution,
+                                         double const      time,
+                                         bool const        unsteady)
+  {
+    AssertThrow(
+      error_data.analytical_solution,
+      dealii::ExcMessage(
+        "Function can only be called if analytical solution is given."));
+
+    dealii::ConditionalOStream pcout(
+      std::cout, dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0);
+
+    if (unsteady)
+      {
+        pcout << std::endl
+              << "Calculate error for " << error_data.name
+              << " at time t = " << std::scientific << std::setprecision(4)
+              << time << ":" << std::endl;
+      }
+    else
+      {
+        pcout << std::endl
+              << "Calculate error for " << error_data.name << " for "
+              << (time_control.get_counter() == 0 ? "initial" : "solution")
+              << " data:" << std::endl;
+      }
+
+    do_evaluate(solution, time);
+  }
+
+  template <int dim, typename Number>
+  void
+  ErrorCalculator<dim, Number>::do_evaluate(VectorType const &solution_vector,
+                                            double const      time)
+  {
+    bool relative = error_data.calculate_relative_errors;
+
     double const error = calculate_error<dim>(mpi_comm,
                                               relative,
                                               *dof_handler,
@@ -221,49 +195,101 @@ ErrorCalculator<dim, Number>::do_evaluate(VectorType const & solution_vector, do
                                               solution_vector,
                                               error_data.analytical_solution,
                                               time,
-                                              dealii::VectorTools::H1_seminorm,
+                                              dealii::VectorTools::L2_norm,
                                               error_data.spatially_weight_error,
                                               error_data.weight);
 
-    dealii::ConditionalOStream pcout(std::cout,
-                                     dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0);
+    dealii::ConditionalOStream pcout(
+      std::cout, dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0);
     pcout << ((relative == true) ? "  Relative " : "  Absolute ")
-          << "error (H1-seminorm): " << std::scientific << std::setprecision(5) << error
-          << std::endl;
+          << "error (L2-norm): " << std::scientific << std::setprecision(5)
+          << error << std::endl;
 
-    if(error_data.write_errors_to_file)
-    {
-      // write output file
-      if(dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+    if (error_data.write_errors_to_file)
       {
-        std::string filename = error_data.directory + error_data.name + "_H1_seminorm";
+        // write output file
+        if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+          {
+            std::string filename =
+              error_data.directory + error_data.name + "_L2";
 
-        std::ofstream f;
-        if(clear_files_H1_seminorm == true)
-        {
-          f.open(filename.c_str(), std::ios::trunc);
+            std::ofstream f;
+            if (clear_files_L2 == true)
+              {
+                f.open(filename.c_str(), std::ios::trunc);
 
-          f << "  Time                Error" << std::endl;
+                f << "  Time                Error" << std::endl;
 
-          clear_files_H1_seminorm = false;
-        }
-        else
-        {
-          f.open(filename.c_str(), std::ios::app);
-        }
+                clear_files_L2 = false;
+              }
+            else
+              {
+                f.open(filename.c_str(), std::ios::app);
+              }
 
-        unsigned int precision = 12;
-        f << std::scientific << std::setprecision(precision) << std::setw(precision + 8) << time
-          << std::setw(precision + 8) << error << std::endl;
+            unsigned int precision = 12;
+            f << std::scientific << std::setprecision(precision)
+              << std::setw(precision + 8) << time << std::setw(precision + 8)
+              << error << std::endl;
+          }
       }
-    }
+
+    // H1-seminorm
+    if (error_data.calculate_H1_seminorm_error)
+      {
+        double const error =
+          calculate_error<dim>(mpi_comm,
+                               relative,
+                               *dof_handler,
+                               *mapping,
+                               solution_vector,
+                               error_data.analytical_solution,
+                               time,
+                               dealii::VectorTools::H1_seminorm,
+                               error_data.spatially_weight_error,
+                               error_data.weight);
+
+        dealii::ConditionalOStream pcout(
+          std::cout, dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0);
+        pcout << ((relative == true) ? "  Relative " : "  Absolute ")
+              << "error (H1-seminorm): " << std::scientific
+              << std::setprecision(5) << error << std::endl;
+
+        if (error_data.write_errors_to_file)
+          {
+            // write output file
+            if (dealii::Utilities::MPI::this_mpi_process(mpi_comm) == 0)
+              {
+                std::string filename =
+                  error_data.directory + error_data.name + "_H1_seminorm";
+
+                std::ofstream f;
+                if (clear_files_H1_seminorm == true)
+                  {
+                    f.open(filename.c_str(), std::ios::trunc);
+
+                    f << "  Time                Error" << std::endl;
+
+                    clear_files_H1_seminorm = false;
+                  }
+                else
+                  {
+                    f.open(filename.c_str(), std::ios::app);
+                  }
+
+                unsigned int precision = 12;
+                f << std::scientific << std::setprecision(precision)
+                  << std::setw(precision + 8) << time
+                  << std::setw(precision + 8) << error << std::endl;
+              }
+          }
+      }
   }
-}
 
-template class ErrorCalculator<2, float>;
-template class ErrorCalculator<2, double>;
+  template class ErrorCalculator<2, float>;
+  template class ErrorCalculator<2, double>;
 
-template class ErrorCalculator<3, float>;
-template class ErrorCalculator<3, double>;
+  template class ErrorCalculator<3, float>;
+  template class ErrorCalculator<3, double>;
 
 } // namespace ExaDG

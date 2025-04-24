@@ -27,61 +27,62 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim>
-struct MyPostProcessorData
-{
-  PostProcessorData<dim> pp_data;
-  PerturbationEnergyData energy_data;
-};
-
-template<int dim, typename Number>
-class MyPostProcessor : public PostProcessor<dim, Number>
-{
-public:
-  typedef PostProcessor<dim, Number> Base;
-
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  typedef typename Base::Operator Operator;
-
-  MyPostProcessor(MyPostProcessorData<dim> const & pp_data_os, MPI_Comm const & mpi_comm)
-    : Base(pp_data_os.pp_data, mpi_comm),
-      energy_data(pp_data_os.energy_data),
-      energy_calculator(mpi_comm)
+  namespace IncNS
   {
-  }
+    template <int dim>
+    struct MyPostProcessorData
+    {
+      PostProcessorData<dim> pp_data;
+      PerturbationEnergyData energy_data;
+    };
 
-  void
-  setup(Operator const & pde_operator) final
-  {
-    // call setup function of base class
-    Base::setup(pde_operator);
+    template <int dim, typename Number>
+    class MyPostProcessor : public PostProcessor<dim, Number>
+    {
+    public:
+      typedef PostProcessor<dim, Number> Base;
 
-    energy_calculator.setup(pde_operator.get_matrix_free(),
-                            pde_operator.get_dof_index_velocity(),
-                            pde_operator.get_quad_index_velocity_standard(),
-                            energy_data);
-  }
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  void
-  do_postprocessing(VectorType const &     velocity,
-                    VectorType const &     pressure,
-                    double const           time,
-                    types::time_step const time_step_number) final
-  {
-    Base::do_postprocessing(velocity, pressure, time, time_step_number);
+      typedef typename Base::Operator Operator;
 
-    energy_calculator.evaluate(velocity, time, time_step_number);
-  }
+      MyPostProcessor(MyPostProcessorData<dim> const &pp_data_os,
+                      MPI_Comm const                 &mpi_comm)
+        : Base(pp_data_os.pp_data, mpi_comm)
+        , energy_data(pp_data_os.energy_data)
+        , energy_calculator(mpi_comm)
+      {}
 
-  PerturbationEnergyData                    energy_data;
-  PerturbationEnergyCalculator<dim, Number> energy_calculator;
-};
+      void
+      setup(Operator const &pde_operator) final
+      {
+        // call setup function of base class
+        Base::setup(pde_operator);
 
-} // namespace IncNS
+        energy_calculator.setup(pde_operator.get_matrix_free(),
+                                pde_operator.get_dof_index_velocity(),
+                                pde_operator.get_quad_index_velocity_standard(),
+                                energy_data);
+      }
+
+      void
+      do_postprocessing(VectorType const      &velocity,
+                        VectorType const      &pressure,
+                        double const           time,
+                        types::time_step const time_step_number) final
+      {
+        Base::do_postprocessing(velocity, pressure, time, time_step_number);
+
+        energy_calculator.evaluate(velocity, time, time_step_number);
+      }
+
+      PerturbationEnergyData                    energy_data;
+      PerturbationEnergyCalculator<dim, Number> energy_calculator;
+    };
+
+  } // namespace IncNS
 } // namespace ExaDG
 
 
-#endif /* APPLICATIONS_INCOMPRESSIBLE_NAVIER_STOKES_TEST_CASES_ORR_SOMMERFELD_POSTPROCESSOR_H_ */
+#endif /* APPLICATIONS_INCOMPRESSIBLE_NAVIER_STOKES_TEST_CASES_ORR_SOMMERFELD_POSTPROCESSOR_H_ \
+        */

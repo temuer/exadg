@@ -24,21 +24,27 @@
 
 namespace ExaDG
 {
-template<typename VectorType>
-class MultigridTransferBase
-{
-public:
-  virtual ~MultigridTransferBase() = default;
+  template <typename VectorType>
+  class MultigridTransferBase
+  {
+  public:
+    virtual ~MultigridTransferBase() = default;
 
-  virtual void
-  interpolate(unsigned int const level, VectorType & dst, VectorType const & src) const = 0;
+    virtual void
+    interpolate(unsigned int const level,
+                VectorType        &dst,
+                VectorType const  &src) const = 0;
 
-  virtual void
-  restrict_and_add(unsigned int const level, VectorType & dst, VectorType const & src) const = 0;
+    virtual void
+    restrict_and_add(unsigned int const level,
+                     VectorType        &dst,
+                     VectorType const  &src) const = 0;
 
-  virtual void
-  prolongate_and_add(unsigned int const level, VectorType & dst, VectorType const & src) const = 0;
-};
+    virtual void
+    prolongate_and_add(unsigned int const level,
+                       VectorType        &dst,
+                       VectorType const  &src) const = 0;
+  };
 } // namespace ExaDG
 
 #endif

@@ -26,36 +26,38 @@
 
 namespace ExaDG
 {
-namespace AeroAcoustic
-{
-template<int dim>
-struct FieldFunctions
-{
-  /*
-   * The function source_term_blend_in is mainly used to blend in the source
-   * term over time. In some rare cases it might also be beneficial to fade
-   * out the source term in space: If large source term contributions are
-   * placed at the boundary of the CFD domain, there can be problems when
-   * interpolating to the non-matching acoustic domain (that is mostly
-   * much larger than the CFD domain. A typical spatial fade out function
-   * "shrinks" the area of the source terms by a smooth function that is one
-   * in large parts of the domain and reduces to zero at boundaries.
-   *
-   * If the source term is only used to blend in the source term over time
-   * it has to be evaluated only once every time step. Therefore, we are using a
-   * SpatialAwareFunction, which provides information if the function varies in
-   * space for a given time.
-   */
-  std::shared_ptr<Utilities::SpatialAwareFunction<dim>> source_term_blend_in;
+  namespace AeroAcoustic
+  {
+    template <int dim>
+    struct FieldFunctions
+    {
+      /*
+       * The function source_term_blend_in is mainly used to blend in the source
+       * term over time. In some rare cases it might also be beneficial to fade
+       * out the source term in space: If large source term contributions are
+       * placed at the boundary of the CFD domain, there can be problems when
+       * interpolating to the non-matching acoustic domain (that is mostly
+       * much larger than the CFD domain. A typical spatial fade out function
+       * "shrinks" the area of the source terms by a smooth function that is one
+       * in large parts of the domain and reduces to zero at boundaries.
+       *
+       * If the source term is only used to blend in the source term over time
+       * it has to be evaluated only once every time step. Therefore, we are
+       * using a SpatialAwareFunction, which provides information if the
+       * function varies in space for a given time.
+       */
+      std::shared_ptr<Utilities::SpatialAwareFunction<dim>>
+        source_term_blend_in;
 
-  /*
-   * The actual analytical aero acoustic source term that can be used to compute
-   * acoustic propagation.
-   */
-  std::shared_ptr<dealii::Function<dim>> analytical_aero_acoustic_source_term;
-};
+      /*
+       * The actual analytical aero acoustic source term that can be used to
+       * compute acoustic propagation.
+       */
+      std::shared_ptr<dealii::Function<dim>>
+        analytical_aero_acoustic_source_term;
+    };
 
-} // namespace AeroAcoustic
+  } // namespace AeroAcoustic
 } // namespace ExaDG
 
 #endif /* EXADG_AERO_ACOUSTIC_USER_INTERFACE_FIELD_FUNCTIONS_H_ */

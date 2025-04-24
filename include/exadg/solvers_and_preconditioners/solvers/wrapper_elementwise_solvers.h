@@ -24,6 +24,7 @@
 
 // deal.II
 #include <deal.II/lac/la_parallel_vector.h>
+
 #include <deal.II/matrix_free/operators.h>
 
 // ExaDG
@@ -35,133 +36,154 @@
 
 namespace ExaDG
 {
-namespace Elementwise
-{
-/*
- * Solver data
- */
-struct IterativeSolverData
-{
-  IterativeSolverData() : solver_type(Elementwise::Solver::CG), solver_data(SolverData())
+  namespace Elementwise
   {
-  }
-
-  Solver solver_type;
-
-  SolverData solver_data;
-};
-
-template<int dim,
-         int number_of_equations,
-         typename Number,
-         typename Operator,
-         typename Preconditioner>
-class IterativeSolver
-  : public Krylov::SolverBase<dealii::LinearAlgebra::distributed::Vector<Number>>
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
-
-  typedef IterativeSolver<dim, number_of_equations, Number, Operator, Preconditioner> THIS;
-
-  IterativeSolver(Operator &                operator_in,
-                  Preconditioner &          preconditioner_in,
-                  IterativeSolverData const solver_data_in)
-    : op(operator_in), preconditioner(preconditioner_in), iterative_solver_data(solver_data_in)
-  {
-  }
-
-  virtual ~IterativeSolver()
-  {
-  }
-
-  void
-  update_preconditioner(bool const update_preconditioner) const override
-  {
-    if(preconditioner.needs_update() or update_preconditioner)
+    /*
+     * Solver data
+     */
+    struct IterativeSolverData
     {
-      preconditioner.update();
-    }
-  }
+      IterativeSolverData()
+        : solver_type(Elementwise::Solver::CG)
+        , solver_data(SolverData())
+      {}
 
-  /**
-   * Solve function. This function may be called with identical dst, src vectors.
-   */
-  unsigned int
-  solve(VectorType & dst, VectorType const & src) const override
-  {
-    dst = 0;
+      Solver solver_type;
 
-    op.get_matrix_free().cell_loop(&THIS::solve_elementwise, this, dst, src);
+      SolverData solver_data;
+    };
 
-    return 0;
-  }
-
-private:
-  void
-  solve_elementwise(dealii::MatrixFree<dim, Number> const &       matrix_free,
-                    VectorType &                                  dst,
-                    VectorType const &                            src,
-                    std::pair<unsigned int, unsigned int> const & cell_range) const
-  {
-    CellIntegrator<dim, number_of_equations, Number> integrator(matrix_free,
-                                                                op.get_dof_index(),
-                                                                op.get_quad_index());
-
-    unsigned int const dofs_per_cell = integrator.dofs_per_cell;
-
-    dealii::AlignedVector<dealii::VectorizedArray<Number>> solution(dofs_per_cell);
-
-    // setup elementwise solver
-    if(iterative_solver_data.solver_type == Solver::CG)
+    template <int dim,
+              int number_of_equations,
+              typename Number,
+              typename Operator,
+              typename Preconditioner>
+    class IterativeSolver
+      : public Krylov::SolverBase<
+          dealii::LinearAlgebra::distributed::Vector<Number>>
     {
-      solver = std::make_shared<
-        Elementwise::SolverCG<dealii::VectorizedArray<Number>, Operator, Preconditioner>>(
-        dofs_per_cell, iterative_solver_data.solver_data);
-    }
-    else if(iterative_solver_data.solver_type == Solver::GMRES)
-    {
-      solver = std::make_shared<
-        Elementwise::SolverGMRES<dealii::VectorizedArray<Number>, Operator, Preconditioner>>(
-        dofs_per_cell, iterative_solver_data.solver_data);
-    }
-    else
-    {
-      AssertThrow(false, dealii::ExcMessage("Not implemented."));
-    }
+    public:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-    // loop over all cells and solve local problem iteratively on each cell
-    for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
-    {
-      integrator.reinit(cell);
-      integrator.read_dof_values(src, 0);
+      typedef IterativeSolver<dim,
+                              number_of_equations,
+                              Number,
+                              Operator,
+                              Preconditioner>
+        THIS;
 
-      // initialize operator and preconditioner for current cell
-      op.setup(cell, dofs_per_cell);
-      preconditioner.setup(cell);
+      IterativeSolver(Operator                 &operator_in,
+                      Preconditioner           &preconditioner_in,
+                      IterativeSolverData const solver_data_in)
+        : op(operator_in)
+        , preconditioner(preconditioner_in)
+        , iterative_solver_data(solver_data_in)
+      {}
 
-      // call iterative solver and solve on current cell
-      solver->solve(&op, solution.begin(), integrator.begin_dof_values(), &preconditioner);
+      virtual ~IterativeSolver()
+      {}
 
-      // write solution on current element to global dof vector
-      for(unsigned int j = 0; j < dofs_per_cell; ++j)
-        integrator.begin_dof_values()[j] = solution[j];
-      integrator.set_dof_values(dst, 0);
-    }
-  }
+      void
+      update_preconditioner(bool const update_preconditioner) const override
+      {
+        if (preconditioner.needs_update() or update_preconditioner)
+          {
+            preconditioner.update();
+          }
+      }
 
-  mutable std::shared_ptr<
-    Elementwise::SolverBase<dealii::VectorizedArray<Number>, Operator, Preconditioner>>
-    solver;
+      /**
+       * Solve function. This function may be called with identical dst, src
+       * vectors.
+       */
+      unsigned int
+      solve(VectorType &dst, VectorType const &src) const override
+      {
+        dst = 0;
 
-  Operator & op;
+        op.get_matrix_free().cell_loop(&THIS::solve_elementwise,
+                                       this,
+                                       dst,
+                                       src);
 
-  Preconditioner & preconditioner;
+        return 0;
+      }
 
-  IterativeSolverData const iterative_solver_data;
-};
+    private:
+      void
+      solve_elementwise(
+        dealii::MatrixFree<dim, Number> const       &matrix_free,
+        VectorType                                  &dst,
+        VectorType const                            &src,
+        std::pair<unsigned int, unsigned int> const &cell_range) const
+      {
+        CellIntegrator<dim, number_of_equations, Number> integrator(
+          matrix_free, op.get_dof_index(), op.get_quad_index());
 
-} // namespace Elementwise
+        unsigned int const dofs_per_cell = integrator.dofs_per_cell;
+
+        dealii::AlignedVector<dealii::VectorizedArray<Number>> solution(
+          dofs_per_cell);
+
+        // setup elementwise solver
+        if (iterative_solver_data.solver_type == Solver::CG)
+          {
+            solver = std::make_shared<
+              Elementwise::SolverCG<dealii::VectorizedArray<Number>,
+                                    Operator,
+                                    Preconditioner>>(
+              dofs_per_cell, iterative_solver_data.solver_data);
+          }
+        else if (iterative_solver_data.solver_type == Solver::GMRES)
+          {
+            solver = std::make_shared<
+              Elementwise::SolverGMRES<dealii::VectorizedArray<Number>,
+                                       Operator,
+                                       Preconditioner>>(
+              dofs_per_cell, iterative_solver_data.solver_data);
+          }
+        else
+          {
+            AssertThrow(false, dealii::ExcMessage("Not implemented."));
+          }
+
+        // loop over all cells and solve local problem iteratively on each cell
+        for (unsigned int cell = cell_range.first; cell < cell_range.second;
+             ++cell)
+          {
+            integrator.reinit(cell);
+            integrator.read_dof_values(src, 0);
+
+            // initialize operator and preconditioner for current cell
+            op.setup(cell, dofs_per_cell);
+            preconditioner.setup(cell);
+
+            // call iterative solver and solve on current cell
+            solver->solve(&op,
+                          solution.begin(),
+                          integrator.begin_dof_values(),
+                          &preconditioner);
+
+            // write solution on current element to global dof vector
+            for (unsigned int j = 0; j < dofs_per_cell; ++j)
+              integrator.begin_dof_values()[j] = solution[j];
+            integrator.set_dof_values(dst, 0);
+          }
+      }
+
+      mutable std::shared_ptr<
+        Elementwise::
+          SolverBase<dealii::VectorizedArray<Number>, Operator, Preconditioner>>
+        solver;
+
+      Operator &op;
+
+      Preconditioner &preconditioner;
+
+      IterativeSolverData const iterative_solver_data;
+    };
+
+  } // namespace Elementwise
 } // namespace ExaDG
 
 #endif /* INCLUDE_EXADG_SOLVERS_AND_PRECONDITIONERS_SOLVERS_WRAPPER_ELEMENTWISE_SOLVERS_H_ \

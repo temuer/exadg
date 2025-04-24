@@ -26,40 +26,44 @@
 
 namespace ExaDG
 {
-namespace Utilities
-{
-/**
- * The intention behind is to bypass a potentially expensive evaluation of
- * @c dealii::Function::value() (which the internal implementation will call for each quadrature
- * point) in case one knows a priori that the function does not vary in space.
- */
-template<int dim, typename Number = double>
-class SpatialAwareFunction : public dealii::Function<dim, Number>
-{
-public:
-  using time_type = typename dealii::Function<dim, Number>::time_type;
-
-  SpatialAwareFunction(const unsigned int n_components = 1, const time_type initial_time = 0.0)
-    : dealii::Function<dim, Number>(n_components, initial_time)
+  namespace Utilities
   {
-  }
+    /**
+     * The intention behind is to bypass a potentially expensive evaluation of
+     * @c dealii::Function::value() (which the internal implementation will call
+     * for each quadrature point) in case one knows a priori that the function
+     * does not vary in space.
+     */
+    template <int dim, typename Number = double>
+    class SpatialAwareFunction : public dealii::Function<dim, Number>
+    {
+    public:
+      using time_type = typename dealii::Function<dim, Number>::time_type;
 
-  /**
-   * If this function evaluates to true, @c dealii::Function::set_time() in combination with
-   * @c dealii::Function::value() will be used to evaluate the function's value."
-   */
-  virtual bool
-  varies_in_space(double const time) const = 0;
+      SpatialAwareFunction(unsigned int const n_components = 1,
+                           const time_type    initial_time = 0.0)
+        : dealii::Function<dim, Number>(n_components, initial_time)
+      {}
 
-  /**
-   * If the above function @c varies_in_space() returns false, this function will be used to
-   * evaluate the function's value, bypassing @c dealii::Function::value().
-   */
-  virtual Number
-  compute_time_factor(double const time) const = 0;
-};
+      /**
+       * If this function evaluates to true, @c dealii::Function::set_time() in
+       * combination with
+       * @c dealii::Function::value() will be used to evaluate the function's
+       * value."
+       */
+      virtual bool
+      varies_in_space(double const time) const = 0;
 
-} // namespace Utilities
+      /**
+       * If the above function @c varies_in_space() returns false, this function
+       * will be used to evaluate the function's value, bypassing @c
+       * dealii::Function::value().
+       */
+      virtual Number
+      compute_time_factor(double const time) const = 0;
+    };
+
+  } // namespace Utilities
 } // namespace ExaDG
 
 #endif /*EXADG_AERO_UTILITIES_SPATIAL_AWARE_FUNCTION_H_*/

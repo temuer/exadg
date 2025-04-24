@@ -33,35 +33,36 @@
 
 namespace ExaDG
 {
-/**
- * Class that manages Adams--Bashforth time integrator constants.
- */
-class ABTimeIntegratorConstants : public TimeIntegratorConstantsBase
-{
-public:
-  ABTimeIntegratorConstants(unsigned int const order, bool const start_with_low_order);
-
-  double
-  get_alpha(unsigned int const i) const;
-
-  void
-  print(dealii::ConditionalOStream & pcout) const final;
-
-private:
-  void
-  set_constant_time_step(unsigned int const current_order) final;
-
-  void
-  set_adaptive_time_step(unsigned int const          current_order,
-                         std::vector<double> const & time_steps) final;
-
-  /*
-   *  AB time integrator constants:
-   *
-   *  du/dt = (alpha_0 f^{n+1} + alpha_1 f^{n} + alpha_2 f^{n-1} +...)
+  /**
+   * Class that manages Adams--Bashforth time integrator constants.
    */
-  std::vector<double> alpha;
-};
+  class ABTimeIntegratorConstants : public TimeIntegratorConstantsBase
+  {
+  public:
+    ABTimeIntegratorConstants(unsigned int const order,
+                              bool const         start_with_low_order);
+
+    double
+    get_alpha(unsigned int const i) const;
+
+    void
+    print(dealii::ConditionalOStream &pcout) const final;
+
+  private:
+    void
+    set_constant_time_step(unsigned int const current_order) final;
+
+    void
+    set_adaptive_time_step(unsigned int const         current_order,
+                           std::vector<double> const &time_steps) final;
+
+    /*
+     *  AB time integrator constants:
+     *
+     *  du/dt = (alpha_0 f^{n+1} + alpha_1 f^{n} + alpha_2 f^{n-1} +...)
+     */
+    std::vector<double> alpha;
+  };
 
 } // namespace ExaDG
 

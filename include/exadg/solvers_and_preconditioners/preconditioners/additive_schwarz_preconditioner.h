@@ -28,54 +28,59 @@
 
 namespace ExaDG
 {
-template<typename Operator>
-class AdditiveSchwarzPreconditioner : public PreconditionerBase<typename Operator::value_type>
-{
-public:
-  typedef typename PreconditionerBase<typename Operator::value_type>::VectorType VectorType;
-
-  AdditiveSchwarzPreconditioner(Operator const & underlying_operator_in, bool const initialize)
-    : underlying_operator(underlying_operator_in)
+  template <typename Operator>
+  class AdditiveSchwarzPreconditioner
+    : public PreconditionerBase<typename Operator::value_type>
   {
-    if(initialize)
+  public:
+    typedef
+      typename PreconditionerBase<typename Operator::value_type>::VectorType
+        VectorType;
+
+    AdditiveSchwarzPreconditioner(Operator const &underlying_operator_in,
+                                  bool const      initialize)
+      : underlying_operator(underlying_operator_in)
     {
-      this->update();
+      if (initialize)
+        {
+          this->update();
+        }
     }
-  }
 
-  /*
-   *  This function applies the additive Schwarz preconditioner.
-   *  Make sure that the additive Schwarz preconditioner has been
-   *  updated when calling this function.
-   */
-  void
-  vmult(VectorType & dst, VectorType const & src) const final
-  {
-    AssertThrow(
-      not this->update_needed,
-      dealii::ExcMessage(
-        "Additive Schwarz preconditioner can not be applied because it needs to be updated."));
+    /*
+     *  This function applies the additive Schwarz preconditioner.
+     *  Make sure that the additive Schwarz preconditioner has been
+     *  updated when calling this function.
+     */
+    void
+    vmult(VectorType &dst, VectorType const &src) const final
+    {
+      AssertThrow(
+        not this->update_needed,
+        dealii::ExcMessage(
+          "Additive Schwarz preconditioner can not be applied because it needs to be updated."));
 
-    underlying_operator.apply_inverse_additive_schwarz_matrices(dst, src);
-  }
+      underlying_operator.apply_inverse_additive_schwarz_matrices(dst, src);
+    }
 
-  /*
-   *  This function updates the additive Schwarz preconditioner.
-   *  Make sure that the underlying operator has been updated
-   *  when calling this function.
-   */
-  void
-  update() final
-  {
-    underlying_operator.compute_factorized_additive_schwarz_matrices();
-    this->update_needed = false;
-  }
+    /*
+     *  This function updates the additive Schwarz preconditioner.
+     *  Make sure that the underlying operator has been updated
+     *  when calling this function.
+     */
+    void
+    update() final
+    {
+      underlying_operator.compute_factorized_additive_schwarz_matrices();
+      this->update_needed = false;
+    }
 
-private:
-  Operator const & underlying_operator;
-};
+  private:
+    Operator const &underlying_operator;
+  };
 
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_SOLVERS_AND_PRECONDITIONERS_ADDITIVESCHWARZPRECONDITIONER_H_ */
+#endif /* INCLUDE_SOLVERS_AND_PRECONDITIONERS_ADDITIVESCHWARZPRECONDITIONER_H_ \
+        */

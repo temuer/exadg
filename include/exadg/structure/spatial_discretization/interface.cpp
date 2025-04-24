@@ -23,18 +23,18 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-namespace Interface
-{
-// nothing to implement here because all member functions of interface class Operator are pure
-// virtual.
+  namespace Structure
+  {
+    namespace Interface
+    {
+      // nothing to implement here because all member functions of interface
+      // class Operator are pure virtual.
 
-// instantiations
+      // instantiations
 
-template class Operator<float>;
-template class Operator<double>;
+      template class Operator<float>;
+      template class Operator<double>;
 
-} // namespace Interface
-} // namespace Structure
+    } // namespace Interface
+  }   // namespace Structure
 } // namespace ExaDG

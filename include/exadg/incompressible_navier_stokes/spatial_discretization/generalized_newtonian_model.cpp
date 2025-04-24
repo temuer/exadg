@@ -23,240 +23,260 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim, typename Number>
-GeneralizedNewtonianModel<dim, Number>::GeneralizedNewtonianModel()
-{
-}
-
-template<int dim, typename Number>
-GeneralizedNewtonianModel<dim, Number>::~GeneralizedNewtonianModel()
-{
-}
-
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::initialize(
-  dealii::MatrixFree<dim, Number> const &                matrix_free_in,
-  std::shared_ptr<Operators::ViscousKernel<dim, Number>> viscous_kernel_in,
-  GeneralizedNewtonianModelData const &                  generalized_newtonian_model_data_in,
-  unsigned int const                                     dof_index_velocity_in)
-{
-  Base::initialize(matrix_free_in, viscous_kernel_in, dof_index_velocity_in);
-
-  data = generalized_newtonian_model_data_in;
-
-  data.check();
-}
-
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::set_viscosity(VectorType const & velocity) const
-{
-  this->viscous_kernel->set_constant_coefficient(this->viscous_kernel->get_data().viscosity);
-
-  this->add_viscosity(velocity);
-}
-
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::add_viscosity(VectorType const & velocity) const
-{
-  VectorType dummy;
-
-  this->matrix_free->loop(&This::cell_loop_set_coefficients,
-                          &This::face_loop_set_coefficients,
-                          &This::boundary_face_loop_set_coefficients,
-                          this,
-                          dummy,
-                          velocity);
-}
-
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::cell_loop_set_coefficients(
-  dealii::MatrixFree<dim, Number> const & matrix_free,
-  VectorType &,
-  VectorType const & src,
-  Range const &      cell_range) const
-{
-  CellIntegratorU integrator(matrix_free,
-                             this->dof_index_velocity,
-                             this->viscous_kernel->get_quad_index());
-
-  // loop over all cells
-  for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell)
+  namespace IncNS
   {
-    integrator.reinit(cell);
-    integrator.read_dof_values(src);
+    template <int dim, typename Number>
+    GeneralizedNewtonianModel<dim, Number>::GeneralizedNewtonianModel()
+    {}
 
-    // we only need the gradient
-    integrator.evaluate(dealii::EvaluationFlags::gradients);
+    template <int dim, typename Number>
+    GeneralizedNewtonianModel<dim, Number>::~GeneralizedNewtonianModel()
+    {}
 
-    // loop over all quadrature points
-    for(unsigned int q = 0; q < integrator.n_q_points; ++q)
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::initialize(
+      dealii::MatrixFree<dim, Number> const                 &matrix_free_in,
+      std::shared_ptr<Operators::ViscousKernel<dim, Number>> viscous_kernel_in,
+      GeneralizedNewtonianModelData const &generalized_newtonian_model_data_in,
+      unsigned int const                   dof_index_velocity_in)
     {
-      // calculate velocity gradient
-      tensor velocity_gradient = integrator.get_gradient(q);
+      Base::initialize(matrix_free_in,
+                       viscous_kernel_in,
+                       dof_index_velocity_in);
 
-      // get the current viscosity
-      scalar viscosity = this->viscous_kernel->get_viscosity_cell(cell, q);
+      data = generalized_newtonian_model_data_in;
 
-      add_generalized_newtonian_viscosity(viscosity, velocity_gradient);
-
-      // set the coefficients
-      this->viscous_kernel->set_coefficient_cell(cell, q, viscosity);
+      data.check();
     }
-  }
-}
 
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::face_loop_set_coefficients(
-  dealii::MatrixFree<dim, Number> const & matrix_free,
-  VectorType &,
-  VectorType const & src,
-  Range const &      face_range) const
-{
-  FaceIntegratorU integrator_m(matrix_free,
-                               true,
-                               this->dof_index_velocity,
-                               this->viscous_kernel->get_quad_index());
-  FaceIntegratorU integrator_p(matrix_free,
-                               false,
-                               this->dof_index_velocity,
-                               this->viscous_kernel->get_quad_index());
-
-  // loop over all interior faces
-  for(unsigned int face = face_range.first; face < face_range.second; face++)
-  {
-    integrator_m.reinit(face);
-    integrator_p.reinit(face);
-
-    integrator_m.read_dof_values(src);
-    integrator_p.read_dof_values(src);
-
-    // we only need the gradient
-    integrator_m.evaluate(dealii::EvaluationFlags::gradients);
-    integrator_p.evaluate(dealii::EvaluationFlags::gradients);
-
-    // loop over all quadrature points
-    for(unsigned int q = 0; q < integrator_m.n_q_points; ++q)
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::set_viscosity(
+      VectorType const &velocity) const
     {
-      // calculate velocity gradient for both elements adjacent to the current face
-      tensor velocity_gradient          = integrator_m.get_gradient(q);
-      tensor velocity_gradient_neighbor = integrator_p.get_gradient(q);
+      this->viscous_kernel->set_constant_coefficient(
+        this->viscous_kernel->get_data().viscosity);
 
-      // get the coefficients
-      scalar viscosity          = this->viscous_kernel->get_coefficient_face(face, q);
-      scalar viscosity_neighbor = this->viscous_kernel->get_coefficient_face_neighbor(face, q);
-
-      add_generalized_newtonian_viscosity(viscosity, velocity_gradient);
-      add_generalized_newtonian_viscosity(viscosity_neighbor, velocity_gradient_neighbor);
-
-      // set the coefficients
-      this->viscous_kernel->set_coefficient_face(face, q, viscosity);
-      this->viscous_kernel->set_coefficient_face_neighbor(face, q, viscosity_neighbor);
+      this->add_viscosity(velocity);
     }
-  }
-}
 
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::boundary_face_loop_set_coefficients(
-  dealii::MatrixFree<dim, Number> const & matrix_free,
-  VectorType &,
-  VectorType const & src,
-  Range const &      face_range) const
-{
-  FaceIntegratorU integrator(matrix_free,
-                             true,
-                             this->dof_index_velocity,
-                             this->viscous_kernel->get_quad_index());
-
-  // loop over all boundary faces
-  for(unsigned int face = face_range.first; face < face_range.second; face++)
-  {
-    integrator.reinit(face);
-    integrator.read_dof_values(src);
-
-    // we only need the gradient
-    integrator.evaluate(dealii::EvaluationFlags::gradients);
-
-    // loop over all quadrature points
-    for(unsigned int q = 0; q < integrator.n_q_points; ++q)
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::add_viscosity(
+      VectorType const &velocity) const
     {
-      // calculate velocity gradient
-      tensor velocity_gradient = integrator.get_gradient(q);
+      VectorType dummy;
 
-      // get the coefficients
-      scalar viscosity = this->viscous_kernel->get_coefficient_face(face, q);
-
-      add_generalized_newtonian_viscosity(viscosity, velocity_gradient);
-
-      // set the coefficients
-      this->viscous_kernel->set_coefficient_face(face, q, viscosity);
+      this->matrix_free->loop(&This::cell_loop_set_coefficients,
+                              &This::face_loop_set_coefficients,
+                              &This::boundary_face_loop_set_coefficients,
+                              this,
+                              dummy,
+                              velocity);
     }
-  }
-}
 
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::add_generalized_newtonian_viscosity(
-  scalar &       viscosity,
-  tensor const & velocity_gradient) const
-{
-  tensor symmetric_velocity_gradient = 0.5 * (velocity_gradient + transpose(velocity_gradient));
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::cell_loop_set_coefficients(
+      dealii::MatrixFree<dim, Number> const &matrix_free,
+      VectorType &,
+      VectorType const &src,
+      Range const      &cell_range) const
+    {
+      CellIntegratorU integrator(matrix_free,
+                                 this->dof_index_velocity,
+                                 this->viscous_kernel->get_quad_index());
 
-  scalar shear_rate =
-    std::sqrt(2.0 * scalar_product(symmetric_velocity_gradient, symmetric_velocity_gradient));
+      // loop over all cells
+      for (unsigned int cell = cell_range.first; cell < cell_range.second;
+           ++cell)
+        {
+          integrator.reinit(cell);
+          integrator.read_dof_values(src);
 
-  scalar viscosity_factor = compute_viscosity_factor(shear_rate);
+          // we only need the gradient
+          integrator.evaluate(dealii::EvaluationFlags::gradients);
 
-  // add (eta_0 - eta_oo) * [k + (l * y)^a]^[(n-1)/a]
-  viscosity += data.viscosity_margin * viscosity_factor;
-}
+          // loop over all quadrature points
+          for (unsigned int q = 0; q < integrator.n_q_points; ++q)
+            {
+              // calculate velocity gradient
+              tensor velocity_gradient = integrator.get_gradient(q);
 
-template<int dim, typename Number>
-dealii::VectorizedArray<Number>
-GeneralizedNewtonianModel<dim, Number>::compute_viscosity_factor(scalar const & shear_rate) const
-{
-  // compute the factor multiplying the `viscosity_margin`, i.e., (eta_0 - eta_00), in
-  // eta = eta_oo + (eta_0 - eta_oo) * [k + (l * y)^a]^[(n-1)/a]
-  scalar viscosity_factor;
+              // get the current viscosity
+              scalar viscosity =
+                this->viscous_kernel->get_viscosity_cell(cell, q);
 
-  switch(data.generalized_newtonian_model)
-  {
-    case GeneralizedNewtonianViscosityModel::Undefined:
-      AssertThrow(data.generalized_newtonian_model != GeneralizedNewtonianViscosityModel::Undefined,
-                  dealii::ExcMessage("parameter must be defined"));
-      break;
-    case GeneralizedNewtonianViscosityModel::GeneralizedCarreauYasuda:
-      generalized_carreau_yasuda_model(viscosity_factor, shear_rate);
-      break;
-    default:
-      AssertThrow(
-        false, dealii::ExcMessage("This GeneralizedNewtonianViscosityModel is not implemented."));
-  }
+              add_generalized_newtonian_viscosity(viscosity, velocity_gradient);
 
-  return viscosity_factor;
-}
+              // set the coefficients
+              this->viscous_kernel->set_coefficient_cell(cell, q, viscosity);
+            }
+        }
+    }
 
-template<int dim, typename Number>
-void
-GeneralizedNewtonianModel<dim, Number>::generalized_carreau_yasuda_model(
-  scalar &       viscosity_factor,
-  scalar const & shear_rate) const
-{
-  viscosity_factor = pow(data.kappa + pow(shear_rate * data.lambda, static_cast<Number>(data.a)),
-                         static_cast<Number>((data.n - 1.0) / data.a));
-}
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::face_loop_set_coefficients(
+      dealii::MatrixFree<dim, Number> const &matrix_free,
+      VectorType &,
+      VectorType const &src,
+      Range const      &face_range) const
+    {
+      FaceIntegratorU integrator_m(matrix_free,
+                                   true,
+                                   this->dof_index_velocity,
+                                   this->viscous_kernel->get_quad_index());
+      FaceIntegratorU integrator_p(matrix_free,
+                                   false,
+                                   this->dof_index_velocity,
+                                   this->viscous_kernel->get_quad_index());
 
-template class GeneralizedNewtonianModel<2, float>;
-template class GeneralizedNewtonianModel<2, double>;
-template class GeneralizedNewtonianModel<3, float>;
-template class GeneralizedNewtonianModel<3, double>;
+      // loop over all interior faces
+      for (unsigned int face = face_range.first; face < face_range.second;
+           face++)
+        {
+          integrator_m.reinit(face);
+          integrator_p.reinit(face);
 
-} // namespace IncNS
+          integrator_m.read_dof_values(src);
+          integrator_p.read_dof_values(src);
+
+          // we only need the gradient
+          integrator_m.evaluate(dealii::EvaluationFlags::gradients);
+          integrator_p.evaluate(dealii::EvaluationFlags::gradients);
+
+          // loop over all quadrature points
+          for (unsigned int q = 0; q < integrator_m.n_q_points; ++q)
+            {
+              // calculate velocity gradient for both elements adjacent to the
+              // current face
+              tensor velocity_gradient          = integrator_m.get_gradient(q);
+              tensor velocity_gradient_neighbor = integrator_p.get_gradient(q);
+
+              // get the coefficients
+              scalar viscosity =
+                this->viscous_kernel->get_coefficient_face(face, q);
+              scalar viscosity_neighbor =
+                this->viscous_kernel->get_coefficient_face_neighbor(face, q);
+
+              add_generalized_newtonian_viscosity(viscosity, velocity_gradient);
+              add_generalized_newtonian_viscosity(viscosity_neighbor,
+                                                  velocity_gradient_neighbor);
+
+              // set the coefficients
+              this->viscous_kernel->set_coefficient_face(face, q, viscosity);
+              this->viscous_kernel->set_coefficient_face_neighbor(
+                face, q, viscosity_neighbor);
+            }
+        }
+    }
+
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::boundary_face_loop_set_coefficients(
+      dealii::MatrixFree<dim, Number> const &matrix_free,
+      VectorType &,
+      VectorType const &src,
+      Range const      &face_range) const
+    {
+      FaceIntegratorU integrator(matrix_free,
+                                 true,
+                                 this->dof_index_velocity,
+                                 this->viscous_kernel->get_quad_index());
+
+      // loop over all boundary faces
+      for (unsigned int face = face_range.first; face < face_range.second;
+           face++)
+        {
+          integrator.reinit(face);
+          integrator.read_dof_values(src);
+
+          // we only need the gradient
+          integrator.evaluate(dealii::EvaluationFlags::gradients);
+
+          // loop over all quadrature points
+          for (unsigned int q = 0; q < integrator.n_q_points; ++q)
+            {
+              // calculate velocity gradient
+              tensor velocity_gradient = integrator.get_gradient(q);
+
+              // get the coefficients
+              scalar viscosity =
+                this->viscous_kernel->get_coefficient_face(face, q);
+
+              add_generalized_newtonian_viscosity(viscosity, velocity_gradient);
+
+              // set the coefficients
+              this->viscous_kernel->set_coefficient_face(face, q, viscosity);
+            }
+        }
+    }
+
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::add_generalized_newtonian_viscosity(
+      scalar       &viscosity,
+      tensor const &velocity_gradient) const
+    {
+      tensor symmetric_velocity_gradient =
+        0.5 * (velocity_gradient + transpose(velocity_gradient));
+
+      scalar shear_rate =
+        std::sqrt(2.0 * scalar_product(symmetric_velocity_gradient,
+                                       symmetric_velocity_gradient));
+
+      scalar viscosity_factor = compute_viscosity_factor(shear_rate);
+
+      // add (eta_0 - eta_oo) * [k + (l * y)^a]^[(n-1)/a]
+      viscosity += data.viscosity_margin * viscosity_factor;
+    }
+
+    template <int dim, typename Number>
+    dealii::VectorizedArray<Number>
+    GeneralizedNewtonianModel<dim, Number>::compute_viscosity_factor(
+      scalar const &shear_rate) const
+    {
+      // compute the factor multiplying the `viscosity_margin`, i.e., (eta_0 -
+      // eta_00), in eta = eta_oo + (eta_0 - eta_oo) * [k + (l * y)^a]^[(n-1)/a]
+      scalar viscosity_factor;
+
+      switch (data.generalized_newtonian_model)
+        {
+          case GeneralizedNewtonianViscosityModel::Undefined:
+            AssertThrow(data.generalized_newtonian_model !=
+                          GeneralizedNewtonianViscosityModel::Undefined,
+                        dealii::ExcMessage("parameter must be defined"));
+            break;
+          case GeneralizedNewtonianViscosityModel::GeneralizedCarreauYasuda:
+            generalized_carreau_yasuda_model(viscosity_factor, shear_rate);
+            break;
+          default:
+            AssertThrow(
+              false,
+              dealii::ExcMessage(
+                "This GeneralizedNewtonianViscosityModel is not implemented."));
+        }
+
+      return viscosity_factor;
+    }
+
+    template <int dim, typename Number>
+    void
+    GeneralizedNewtonianModel<dim, Number>::generalized_carreau_yasuda_model(
+      scalar       &viscosity_factor,
+      scalar const &shear_rate) const
+    {
+      viscosity_factor = pow(data.kappa + pow(shear_rate * data.lambda,
+                                              static_cast<Number>(data.a)),
+                             static_cast<Number>((data.n - 1.0) / data.a));
+    }
+
+    template class GeneralizedNewtonianModel<2, float>;
+    template class GeneralizedNewtonianModel<2, double>;
+    template class GeneralizedNewtonianModel<3, float>;
+    template class GeneralizedNewtonianModel<3, double>;
+
+  } // namespace IncNS
 } // namespace ExaDG

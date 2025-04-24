@@ -30,41 +30,40 @@
 
 namespace ExaDG
 {
-template<typename value_type>
-class PreconditionerBase
-{
-public:
-  typedef dealii::LinearAlgebra::distributed::Vector<value_type> VectorType;
-
-  PreconditionerBase() : update_needed(true)
+  template <typename value_type>
+  class PreconditionerBase
   {
-  }
+  public:
+    typedef dealii::LinearAlgebra::distributed::Vector<value_type> VectorType;
 
-  virtual ~PreconditionerBase()
-  {
-  }
+    PreconditionerBase()
+      : update_needed(true)
+    {}
 
-  bool
-  needs_update() const
-  {
-    return update_needed;
-  }
+    virtual ~PreconditionerBase()
+    {}
 
-  virtual void
-  vmult(VectorType & dst, VectorType const & src) const = 0;
+    bool
+    needs_update() const
+    {
+      return update_needed;
+    }
 
-  virtual void
-  update() = 0;
+    virtual void
+    vmult(VectorType &dst, VectorType const &src) const = 0;
 
-  virtual std::shared_ptr<TimerTree>
-  get_timings() const
-  {
-    return std::make_shared<TimerTree>();
-  }
+    virtual void
+    update() = 0;
 
-protected:
-  bool update_needed;
-};
+    virtual std::shared_ptr<TimerTree>
+    get_timings() const
+    {
+      return std::make_shared<TimerTree>();
+    }
+
+  protected:
+    bool update_needed;
+  };
 
 } // namespace ExaDG
 

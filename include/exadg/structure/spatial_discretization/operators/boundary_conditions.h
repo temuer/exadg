@@ -27,53 +27,59 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-/*
- * This function calculates the Neumann boundary value.
- */
-template<int dim, typename Number>
-inline DEAL_II_ALWAYS_INLINE //
-  dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
-  calculate_neumann_value(unsigned int const                             q,
-                          FaceIntegrator<dim, dim, Number> const &       integrator,
-                          BoundaryType const &                           boundary_type,
-                          dealii::types::boundary_id const               boundary_id,
-                          std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor,
-                          double const &                                 time)
-{
-  dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> traction;
-
-  if(boundary_type == BoundaryType::Neumann)
+  namespace Structure
   {
-    auto bc       = boundary_descriptor->neumann_bc.find(boundary_id)->second;
-    auto q_points = integrator.quadrature_point(q);
+    /*
+     * This function calculates the Neumann boundary value.
+     */
+    template <int dim, typename Number>
+    inline DEAL_II_ALWAYS_INLINE //
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>
+      calculate_neumann_value(
+        unsigned int const                             q,
+        FaceIntegrator<dim, dim, Number> const        &integrator,
+        BoundaryType const                            &boundary_type,
+        dealii::types::boundary_id const               boundary_id,
+        std::shared_ptr<BoundaryDescriptor<dim> const> boundary_descriptor,
+        double const                                  &time)
+    {
+      dealii::Tensor<1, dim, dealii::VectorizedArray<Number>> traction;
 
-    traction = FunctionEvaluator<1, dim, Number>::value(*bc, q_points, time);
-  }
-  else if(boundary_type == BoundaryType::NeumannCached)
-  {
-    auto bc = boundary_descriptor->get_neumann_cached_data();
+      if (boundary_type == BoundaryType::Neumann)
+        {
+          auto bc = boundary_descriptor->neumann_bc.find(boundary_id)->second;
+          auto q_points = integrator.quadrature_point(q);
 
-    traction = FunctionEvaluator<1, dim, Number>::value(*bc,
-                                                        integrator.get_current_cell_index(),
-                                                        q,
-                                                        integrator.get_quadrature_index());
-  }
-  else
-  {
-    // do nothing
+          traction =
+            FunctionEvaluator<1, dim, Number>::value(*bc, q_points, time);
+        }
+      else if (boundary_type == BoundaryType::NeumannCached)
+        {
+          auto bc = boundary_descriptor->get_neumann_cached_data();
 
-    AssertThrow(boundary_type == BoundaryType::Dirichlet or
-                  boundary_type == BoundaryType::DirichletCached,
-                dealii::ExcMessage("Boundary type of face is invalid or not implemented."));
-  }
+          traction = FunctionEvaluator<1, dim, Number>::value(
+            *bc,
+            integrator.get_current_cell_index(),
+            q,
+            integrator.get_quadrature_index());
+        }
+      else
+        {
+          // do nothing
 
-  return traction;
-}
+          AssertThrow(
+            boundary_type == BoundaryType::Dirichlet or
+              boundary_type == BoundaryType::DirichletCached,
+            dealii::ExcMessage(
+              "Boundary type of face is invalid or not implemented."));
+        }
 
-} // namespace Structure
+      return traction;
+    }
+
+  } // namespace Structure
 } // namespace ExaDG
 
 
-#endif /* INCLUDE_EXADG_STRUCTURE_SPATIAL_DISCRETIZATION_OPERATORS_BOUNDARY_CONDITIONS_H_ */
+#endif /* INCLUDE_EXADG_STRUCTURE_SPATIAL_DISCRETIZATION_OPERATORS_BOUNDARY_CONDITIONS_H_ \
+        */

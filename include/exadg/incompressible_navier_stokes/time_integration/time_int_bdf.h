@@ -31,165 +31,171 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-class Parameters;
-
-template<int dim, typename Number>
-class SpatialOperatorBase;
-
-template<typename Number>
-class PostProcessorInterface;
-
-template<int dim, typename Number>
-class TimeIntBDF : public TimeIntBDFBase
-{
-public:
-  using Base                   = TimeIntBDFBase;
-  using VectorType             = dealii::LinearAlgebra::distributed::Vector<Number>;
-  using BlockVectorType        = dealii::LinearAlgebra::distributed::BlockVector<Number>;
-  using BoostInputArchiveType  = TimeIntBase::BoostInputArchiveType;
-  using BoostOutputArchiveType = TimeIntBase::BoostOutputArchiveType;
-
-  TimeIntBDF(std::shared_ptr<SpatialOperatorBase<dim, Number>> operator_in,
-             std::shared_ptr<HelpersALE<dim, Number> const>    helpers_ale_in,
-             std::shared_ptr<PostProcessorInterface<Number>>   postprocessor_in,
-             Parameters const &                                param_in,
-             MPI_Comm const &                                  mpi_comm_in,
-             bool const                                        is_test_in);
-
-  virtual ~TimeIntBDF()
+  namespace IncNS
   {
-  }
+    class Parameters;
 
-  virtual VectorType const &
-  get_velocity() const = 0;
+    template <int dim, typename Number>
+    class SpatialOperatorBase;
 
-  virtual VectorType const &
-  get_velocity_np() const = 0;
+    template <typename Number>
+    class PostProcessorInterface;
 
-  virtual VectorType const &
-  get_pressure() const = 0;
+    template <int dim, typename Number>
+    class TimeIntBDF : public TimeIntBDFBase
+    {
+    public:
+      using Base       = TimeIntBDFBase;
+      using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
+      using BlockVectorType =
+        dealii::LinearAlgebra::distributed::BlockVector<Number>;
+      using BoostInputArchiveType  = TimeIntBase::BoostInputArchiveType;
+      using BoostOutputArchiveType = TimeIntBase::BoostOutputArchiveType;
 
-  virtual VectorType const &
-  get_pressure_np() const = 0;
+      TimeIntBDF(
+        std::shared_ptr<SpatialOperatorBase<dim, Number>> operator_in,
+        std::shared_ptr<HelpersALE<dim, Number> const>    helpers_ale_in,
+        std::shared_ptr<PostProcessorInterface<Number>>   postprocessor_in,
+        Parameters const                                 &param_in,
+        MPI_Comm const                                   &mpi_comm_in,
+        bool const                                        is_test_in);
 
-  void
-  get_velocities_and_times(std::vector<VectorType const *> & velocities,
-                           std::vector<double> &             times) const;
+      virtual ~TimeIntBDF()
+      {}
 
-  void
-  get_velocities_and_times_np(std::vector<VectorType const *> & velocities,
-                              std::vector<double> &             times) const;
+      virtual VectorType const &
+      get_velocity() const = 0;
 
-  void
-  get_pressures_and_times(std::vector<VectorType const *> & pressures,
-                          std::vector<double> &             times) const;
+      virtual VectorType const &
+      get_velocity_np() const = 0;
 
-  void
-  get_pressures_and_times_np(std::vector<VectorType const *> & pressures,
-                             std::vector<double> &             times) const;
+      virtual VectorType const &
+      get_pressure() const = 0;
 
-  void
-  ale_update();
+      virtual VectorType const &
+      get_pressure_np() const = 0;
 
-  void
-  advance_one_timestep_partitioned_solve(bool const use_extrapolation);
+      void
+      get_velocities_and_times(std::vector<VectorType const *> &velocities,
+                               std::vector<double>             &times) const;
 
-  virtual void
-  print_iterations() const = 0;
+      void
+      get_velocities_and_times_np(std::vector<VectorType const *> &velocities,
+                                  std::vector<double>             &times) const;
 
-  bool
-  print_solver_info() const final;
+      void
+      get_pressures_and_times(std::vector<VectorType const *> &pressures,
+                              std::vector<double>             &times) const;
 
-protected:
-  void
-  allocate_vectors() override;
+      void
+      get_pressures_and_times_np(std::vector<VectorType const *> &pressures,
+                                 std::vector<double>             &times) const;
 
-  void
-  setup_derived() override;
+      void
+      ale_update();
 
-  void
-  read_restart_vectors(BoostInputArchiveType & ia) override;
+      void
+      advance_one_timestep_partitioned_solve(bool const use_extrapolation);
 
-  void
-  write_restart_vectors(BoostOutputArchiveType & oa) const override;
+      virtual void
+      print_iterations() const = 0;
 
-  void
-  prepare_vectors_for_next_timestep() override;
+      bool
+      print_solver_info() const final;
 
-  Parameters const & param;
+    protected:
+      void
+      allocate_vectors() override;
 
-  // number of refinement steps, where the time step size is reduced in
-  // factors of 2 with each refinement
-  unsigned int const refine_steps_time;
+      void
+      setup_derived() override;
 
-  // global cfl number
-  double const cfl;
+      void
+      read_restart_vectors(BoostInputArchiveType &ia) override;
 
-  // spatial discretization operator
-  std::shared_ptr<SpatialOperatorBase<dim, Number>> operator_base;
+      void
+      write_restart_vectors(BoostOutputArchiveType &oa) const override;
 
-  // convective term formulated explicitly
-  bool                    needs_vector_convective_term;
-  std::vector<VectorType> vec_convective_term;
-  VectorType              convective_term_np;
+      void
+      prepare_vectors_for_next_timestep() override;
 
-  // required for strongly-coupled partitioned iteration
-  bool use_extrapolation;
-  bool store_solution;
+      Parameters const &param;
 
-  // This object allows to access utility functions needed for ALE
-  std::shared_ptr<HelpersALE<dim, Number> const> helpers_ale;
+      // number of refinement steps, where the time step size is reduced in
+      // factors of 2 with each refinement
+      unsigned int const refine_steps_time;
 
-private:
-  void
-  get_quantities_and_times(
-    std::vector<VectorType const *> &                             quantities,
-    std::vector<double> &                                         times,
-    std::function<VectorType const *(unsigned int const)> const & get_quantity) const;
+      // global cfl number
+      double const cfl;
 
-  void
-  get_quantities_and_times_np(
-    std::vector<VectorType const *> &                             quantities,
-    std::vector<double> &                                         times,
-    std::function<VectorType const *(unsigned int const)> const & get_quantity,
-    std::function<VectorType const *()> const &                   get_quantity_np) const;
+      // spatial discretization operator
+      std::shared_ptr<SpatialOperatorBase<dim, Number>> operator_base;
 
-  void
-  initialize_vec_convective_term();
+      // convective term formulated explicitly
+      bool                    needs_vector_convective_term;
+      std::vector<VectorType> vec_convective_term;
+      VectorType              convective_term_np;
 
-  double
-  calculate_time_step_size() final;
+      // required for strongly-coupled partitioned iteration
+      bool use_extrapolation;
+      bool store_solution;
 
-  double
-  recalculate_time_step_size() const final;
+      // This object allows to access utility functions needed for ALE
+      std::shared_ptr<HelpersALE<dim, Number> const> helpers_ale;
 
-  virtual VectorType const &
-  get_velocity(unsigned int i /* t_{n-i} */) const = 0;
+    private:
+      void
+      get_quantities_and_times(
+        std::vector<VectorType const *> &quantities,
+        std::vector<double>             &times,
+        std::function<VectorType const *(unsigned int const)> const
+          &get_quantity) const;
 
-  virtual VectorType const &
-  get_pressure(unsigned int i /* t_{n-i} */) const = 0;
+      void
+      get_quantities_and_times_np(
+        std::vector<VectorType const *> &quantities,
+        std::vector<double>             &times,
+        std::function<VectorType const *(unsigned int const)> const
+                                                  &get_quantity,
+        std::function<VectorType const *()> const &get_quantity_np) const;
 
-  virtual void
-  set_velocity(VectorType const & velocity, unsigned int const i /* t_{n-i} */) = 0;
+      void
+      initialize_vec_convective_term();
 
-  virtual void
-  set_pressure(VectorType const & pressure, unsigned int const i /* t_{n-i} */) = 0;
+      double
+      calculate_time_step_size() final;
 
-  void
-  postprocessing() const final;
+      double
+      recalculate_time_step_size() const final;
 
-  // postprocessor
-  std::shared_ptr<PostProcessorInterface<Number>> postprocessor;
+      virtual VectorType const &
+      get_velocity(unsigned int i /* t_{n-i} */) const = 0;
 
-  // ALE
-  VectorType              grid_velocity;
-  std::vector<VectorType> vec_grid_coordinates;
-  VectorType              grid_coordinates_np;
-};
+      virtual VectorType const &
+      get_pressure(unsigned int i /* t_{n-i} */) const = 0;
 
-} // namespace IncNS
+      virtual void
+      set_velocity(VectorType const  &velocity,
+                   unsigned int const i /* t_{n-i} */) = 0;
+
+      virtual void
+      set_pressure(VectorType const  &pressure,
+                   unsigned int const i /* t_{n-i} */) = 0;
+
+      void
+      postprocessing() const final;
+
+      // postprocessor
+      std::shared_ptr<PostProcessorInterface<Number>> postprocessor;
+
+      // ALE
+      VectorType              grid_velocity;
+      std::vector<VectorType> vec_grid_coordinates;
+      VectorType              grid_coordinates_np;
+    };
+
+  } // namespace IncNS
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_TIME_INTEGRATION_TIME_INT_BDF_H_ */
+#endif /* INCLUDE_EXADG_INCOMPRESSIBLE_NAVIER_STOKES_TIME_INTEGRATION_TIME_INT_BDF_H_ \
+        */

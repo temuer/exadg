@@ -28,71 +28,76 @@
 
 namespace ExaDG
 {
-namespace Structure
-{
-template<int dim>
-struct BodyForceData
-{
-  BodyForceData() : dof_index(0), quad_index(0), pull_back_body_force(false)
+  namespace Structure
   {
-  }
+    template <int dim>
+    struct BodyForceData
+    {
+      BodyForceData()
+        : dof_index(0)
+        , quad_index(0)
+        , pull_back_body_force(false)
+      {}
 
-  unsigned int dof_index;
-  unsigned int quad_index;
+      unsigned int dof_index;
+      unsigned int quad_index;
 
-  std::shared_ptr<dealii::Function<dim>> function;
+      std::shared_ptr<dealii::Function<dim>> function;
 
-  bool pull_back_body_force;
-};
+      bool pull_back_body_force;
+    };
 
-template<int dim, typename Number>
-class BodyForceOperator
-{
-private:
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+    template <int dim, typename Number>
+    class BodyForceOperator
+    {
+    private:
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  typedef BodyForceOperator<dim, Number> This;
+      typedef BodyForceOperator<dim, Number> This;
 
-  typedef std::pair<unsigned int, unsigned int> Range;
+      typedef std::pair<unsigned int, unsigned int> Range;
 
-  typedef CellIntegrator<dim, dim, Number> IntegratorCell;
+      typedef CellIntegrator<dim, dim, Number> IntegratorCell;
 
-public:
-  /*
-   * Constructor.
-   */
-  BodyForceOperator();
+    public:
+      /*
+       * Constructor.
+       */
+      BodyForceOperator();
 
-  /*
-   * Initialization.
-   */
-  void
-  initialize(dealii::MatrixFree<dim, Number> const & matrix_free, BodyForceData<dim> const & data);
+      /*
+       * Initialization.
+       */
+      void
+      initialize(dealii::MatrixFree<dim, Number> const &matrix_free,
+                 BodyForceData<dim> const              &data);
 
-  static MappingFlags
-  get_mapping_flags();
+      static MappingFlags
+      get_mapping_flags();
 
-  /*
-   * Evaluate operator and add to dst-vector.
-   */
-  void
-  evaluate_add(VectorType & dst, VectorType const & src, double const time) const;
+      /*
+       * Evaluate operator and add to dst-vector.
+       */
+      void
+      evaluate_add(VectorType       &dst,
+                   VectorType const &src,
+                   double const      time) const;
 
-private:
-  void
-  cell_loop(dealii::MatrixFree<dim, Number> const & matrix_free,
-            VectorType &                            dst,
-            VectorType const &                      src,
-            Range const &                           cell_range) const;
+    private:
+      void
+      cell_loop(dealii::MatrixFree<dim, Number> const &matrix_free,
+                VectorType                            &dst,
+                VectorType const                      &src,
+                Range const                           &cell_range) const;
 
-  dealii::MatrixFree<dim, Number> const * matrix_free;
+      dealii::MatrixFree<dim, Number> const *matrix_free;
 
-  BodyForceData<dim> data;
+      BodyForceData<dim> data;
 
-  double mutable time;
-};
+      double mutable time;
+    };
 
-} // namespace Structure
+  } // namespace Structure
 } // namespace ExaDG
 
 #endif

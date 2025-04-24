@@ -31,84 +31,92 @@
 
 namespace ExaDG
 {
-namespace FSI
-{
-template<int dim, typename Number>
-class SolverStructure
-{
-public:
-  void
-  setup(std::shared_ptr<StructureFSI::ApplicationBase<dim, Number>> application,
+  namespace FSI
+  {
+    template <int dim, typename Number>
+    class SolverStructure
+    {
+    public:
+      void
+      setup(
+        std::shared_ptr<StructureFSI::ApplicationBase<dim, Number>> application,
         MPI_Comm const                                              mpi_comm,
         bool const                                                  is_test);
 
-  // grid and mapping
-  std::shared_ptr<Grid<dim>>            grid;
-  std::shared_ptr<dealii::Mapping<dim>> mapping;
+      // grid and mapping
+      std::shared_ptr<Grid<dim>>            grid;
+      std::shared_ptr<dealii::Mapping<dim>> mapping;
 
-  std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
+      std::shared_ptr<MultigridMappings<dim, Number>> multigrid_mappings;
 
-  // matrix-free
-  std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
-  std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
+      // matrix-free
+      std::shared_ptr<MatrixFreeData<dim, Number>>     matrix_free_data;
+      std::shared_ptr<dealii::MatrixFree<dim, Number>> matrix_free;
 
-  // spatial discretization
-  std::shared_ptr<Structure::Operator<dim, Number>> pde_operator;
+      // spatial discretization
+      std::shared_ptr<Structure::Operator<dim, Number>> pde_operator;
 
-  // temporal discretization
-  std::shared_ptr<Structure::TimeIntGenAlpha<dim, Number>> time_integrator;
+      // temporal discretization
+      std::shared_ptr<Structure::TimeIntGenAlpha<dim, Number>> time_integrator;
 
-  // postprocessor
-  std::shared_ptr<Structure::PostProcessor<dim, Number>> postprocessor;
-};
+      // postprocessor
+      std::shared_ptr<Structure::PostProcessor<dim, Number>> postprocessor;
+    };
 
-template<int dim, typename Number>
-void
-SolverStructure<dim, Number>::setup(
-  std::shared_ptr<StructureFSI::ApplicationBase<dim, Number>> application,
-  MPI_Comm const                                              mpi_comm,
-  bool const                                                  is_test)
-{
-  // setup application
-  application->setup(grid, mapping, multigrid_mappings);
+    template <int dim, typename Number>
+    void
+    SolverStructure<dim, Number>::setup(
+      std::shared_ptr<StructureFSI::ApplicationBase<dim, Number>> application,
+      MPI_Comm const                                              mpi_comm,
+      bool const                                                  is_test)
+    {
+      // setup application
+      application->setup(grid, mapping, multigrid_mappings);
 
-  // setup spatial operator
-  pde_operator =
-    std::make_shared<Structure::Operator<dim, Number>>(grid,
-                                                       mapping,
-                                                       multigrid_mappings,
-                                                       application->get_boundary_descriptor(),
-                                                       application->get_field_functions(),
-                                                       application->get_material_descriptor(),
-                                                       application->get_parameters(),
-                                                       "elasticity",
-                                                       mpi_comm);
+      // setup spatial operator
+      pde_operator = std::make_shared<Structure::Operator<dim, Number>>(
+        grid,
+        mapping,
+        multigrid_mappings,
+        application->get_boundary_descriptor(),
+        application->get_field_functions(),
+        application->get_material_descriptor(),
+        application->get_parameters(),
+        "elasticity",
+        mpi_comm);
 
-  // initialize matrix_free
-  matrix_free_data = std::make_shared<MatrixFreeData<dim, Number>>();
-  matrix_free_data->append(pde_operator);
+      // initialize matrix_free
+      matrix_free_data = std::make_shared<MatrixFreeData<dim, Number>>();
+      matrix_free_data->append(pde_operator);
 
-  matrix_free = std::make_shared<dealii::MatrixFree<dim, Number>>();
-  matrix_free->reinit(*mapping,
-                      matrix_free_data->get_dof_handler_vector(),
-                      matrix_free_data->get_constraint_vector(),
-                      matrix_free_data->get_quadrature_vector(),
-                      matrix_free_data->data);
+      matrix_free = std::make_shared<dealii::MatrixFree<dim, Number>>();
+      matrix_free->reinit(*mapping,
+                          matrix_free_data->get_dof_handler_vector(),
+                          matrix_free_data->get_constraint_vector(),
+                          matrix_free_data->get_quadrature_vector(),
+                          matrix_free_data->data);
 
-  pde_operator->setup(matrix_free, matrix_free_data);
+      pde_operator->setup(matrix_free, matrix_free_data);
 
-  // initialize postprocessor
-  postprocessor = application->create_postprocessor();
-  postprocessor->setup(pde_operator->get_dof_handler(), *mapping);
+      // initialize postprocessor
+      postprocessor = application->create_postprocessor();
+      postprocessor->setup(pde_operator->get_dof_handler(), *mapping);
 
-  // initialize time integrator
-  time_integrator = std::make_shared<Structure::TimeIntGenAlpha<dim, Number>>(
-    pde_operator, postprocessor, application->get_parameters(), mpi_comm, is_test);
+      // initialize time integrator
+      time_integrator =
+        std::make_shared<Structure::TimeIntGenAlpha<dim, Number>>(
+          pde_operator,
+          postprocessor,
+          application->get_parameters(),
+          mpi_comm,
+          is_test);
 
-  time_integrator->setup(application->get_parameters().restarted_simulation);
-}
+      time_integrator->setup(
+        application->get_parameters().restarted_simulation);
+    }
 
-} // namespace FSI
+  } // namespace FSI
 } // namespace ExaDG
 
-#endif /* INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_SINGLE_FIELD_SOLVERS_STRUCTURE_H_ */
+#endif /* INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_SINGLE_FIELD_SOLVERS_STRUCTURE_H_ \
+        */

@@ -30,56 +30,61 @@
 
 namespace ExaDG
 {
-template<typename Operator>
-class JacobiPreconditioner : public PreconditionerBase<typename Operator::value_type>
-{
-public:
-  typedef typename PreconditionerBase<typename Operator::value_type>::VectorType VectorType;
-
-  JacobiPreconditioner(Operator const & underlying_operator_in, bool const initialize)
-    : underlying_operator(underlying_operator_in)
+  template <typename Operator>
+  class JacobiPreconditioner
+    : public PreconditionerBase<typename Operator::value_type>
   {
-    underlying_operator.initialize_dof_vector(inverse_diagonal);
+  public:
+    typedef
+      typename PreconditionerBase<typename Operator::value_type>::VectorType
+        VectorType;
 
-    if(initialize)
+    JacobiPreconditioner(Operator const &underlying_operator_in,
+                         bool const      initialize)
+      : underlying_operator(underlying_operator_in)
     {
-      this->update();
-    }
-  }
+      underlying_operator.initialize_dof_vector(inverse_diagonal);
 
-  void
-  vmult(VectorType & dst, VectorType const & src) const final
-  {
-    if(dealii::PointerComparison::equal(&dst, &src))
+      if (initialize)
+        {
+          this->update();
+        }
+    }
+
+    void
+    vmult(VectorType &dst, VectorType const &src) const final
     {
-      dst.scale(inverse_diagonal);
+      if (dealii::PointerComparison::equal(&dst, &src))
+        {
+          dst.scale(inverse_diagonal);
+        }
+      else
+        {
+          for (unsigned int i = 0; i < dst.locally_owned_size(); ++i)
+            dst.local_element(i) =
+              inverse_diagonal.local_element(i) * src.local_element(i);
+        }
     }
-    else
+
+    unsigned int
+    get_size_of_diagonal()
     {
-      for(unsigned int i = 0; i < dst.locally_owned_size(); ++i)
-        dst.local_element(i) = inverse_diagonal.local_element(i) * src.local_element(i);
+      return inverse_diagonal.size();
     }
-  }
 
-  unsigned int
-  get_size_of_diagonal()
-  {
-    return inverse_diagonal.size();
-  }
+    void
+    update() final
+    {
+      underlying_operator.calculate_inverse_diagonal(inverse_diagonal);
 
-  void
-  update() final
-  {
-    underlying_operator.calculate_inverse_diagonal(inverse_diagonal);
+      this->update_needed = false;
+    }
 
-    this->update_needed = false;
-  }
+  private:
+    Operator const &underlying_operator;
 
-private:
-  Operator const & underlying_operator;
-
-  VectorType inverse_diagonal;
-};
+    VectorType inverse_diagonal;
+  };
 
 } // namespace ExaDG
 

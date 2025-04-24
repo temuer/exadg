@@ -23,17 +23,17 @@
 
 namespace ExaDG
 {
-namespace ConvDiff
-{
-namespace Interface
-{
-// nothing to implement here because all member functions of interface class Operator are pure
-// virtual.
+  namespace ConvDiff
+  {
+    namespace Interface
+    {
+      // nothing to implement here because all member functions of interface
+      // class Operator are pure virtual.
 
-// instantiations
-template class Operator<float>;
-template class Operator<double>;
-} // namespace Interface
+      // instantiations
+      template class Operator<float>;
+      template class Operator<double>;
+    } // namespace Interface
 
-} // namespace ConvDiff
+  } // namespace ConvDiff
 } // namespace ExaDG

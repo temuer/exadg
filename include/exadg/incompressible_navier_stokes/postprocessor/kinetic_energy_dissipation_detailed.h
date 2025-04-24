@@ -28,38 +28,41 @@
 
 namespace ExaDG
 {
-namespace IncNS
-{
-template<int dim, typename Number>
-class KineticEnergyCalculatorDetailed : public KineticEnergyCalculator<dim, Number>
-{
-  typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
+  namespace IncNS
+  {
+    template <int dim, typename Number>
+    class KineticEnergyCalculatorDetailed
+      : public KineticEnergyCalculator<dim, Number>
+    {
+      typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
 
-  typedef KineticEnergyCalculator<dim, Number> Base;
+      typedef KineticEnergyCalculator<dim, Number> Base;
 
-  typedef SpatialOperatorBase<dim, Number> NavierStokesOperator;
+      typedef SpatialOperatorBase<dim, Number> NavierStokesOperator;
 
-public:
-  KineticEnergyCalculatorDetailed(MPI_Comm const & comm);
+    public:
+      KineticEnergyCalculatorDetailed(MPI_Comm const &comm);
 
-  void
-  setup(NavierStokesOperator const &            navier_stokes_operator_in,
-        dealii::MatrixFree<dim, Number> const & matrix_free_in,
-        unsigned int const                      dof_index_in,
-        unsigned int const                      quad_index_in,
-        KineticEnergyData const &               kinetic_energy_data_in);
+      void
+      setup(NavierStokesOperator const            &navier_stokes_operator_in,
+            dealii::MatrixFree<dim, Number> const &matrix_free_in,
+            unsigned int const                     dof_index_in,
+            unsigned int const                     quad_index_in,
+            KineticEnergyData const               &kinetic_energy_data_in);
 
-  void
-  evaluate(VectorType const & velocity, double const time, bool const unsteady);
+      void
+      evaluate(VectorType const &velocity,
+               double const      time,
+               bool const        unsteady);
 
-private:
-  void
-  calculate_detailed(VectorType const & velocity, double const time);
+    private:
+      void
+      calculate_detailed(VectorType const &velocity, double const time);
 
-  dealii::SmartPointer<NavierStokesOperator const> navier_stokes_operator;
-};
+      dealii::SmartPointer<NavierStokesOperator const> navier_stokes_operator;
+    };
 
-} // namespace IncNS
+  } // namespace IncNS
 } // namespace ExaDG
 
 

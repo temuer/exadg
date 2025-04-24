@@ -25,35 +25,36 @@
 
 namespace ExaDG
 {
-namespace Acoustics
-{
-enum class Formulation
-{
-  Undefined,
-  /** Weak form of pressure gradient and velocity divergence terms. */
-  Weak,
-  /** Strong form of pressure gradient and velocity divergence terms. */
-  Strong,
-  /** Strong form of the pressure gradient term and weak form of the velocity divergence term.
-   *  This way, the gradient is only used on scalar variables which reduces the number of sum
-   *  factorization sweeps in the cell loop. Additionally, only the skew-symmetric formulation
-   *  mathematically guarantees that energy will be non-increasing if the numerical quadrature
-   *  is not exact (non-affine cells).
-   */
-  SkewSymmetric
-};
+  namespace Acoustics
+  {
+    enum class Formulation
+    {
+      Undefined,
+      /** Weak form of pressure gradient and velocity divergence terms. */
+      Weak,
+      /** Strong form of pressure gradient and velocity divergence terms. */
+      Strong,
+      /** Strong form of the pressure gradient term and weak form of the
+       * velocity divergence term. This way, the gradient is only used on scalar
+       * variables which reduces the number of sum factorization sweeps in the
+       * cell loop. Additionally, only the skew-symmetric formulation
+       *  mathematically guarantees that energy will be non-increasing if the
+       * numerical quadrature is not exact (non-affine cells).
+       */
+      SkewSymmetric
+    };
 
-/*
- * calculation of time step size
- */
-enum class TimeStepCalculation
-{
-  Undefined,
-  UserSpecified,
-  CFL
-};
+    /*
+     * calculation of time step size
+     */
+    enum class TimeStepCalculation
+    {
+      Undefined,
+      UserSpecified,
+      CFL
+    };
 
-} // namespace Acoustics
+  } // namespace Acoustics
 } // namespace ExaDG
 
 #endif /*EXADG_ACOUSTIC_CONSERVATION_EQUATIONS_USER_INTERFACE_ENUM_TYPES_H_*/
