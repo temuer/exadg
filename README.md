@@ -1,4 +1,5 @@
 # ExaDG - High-Order Discontinuous Galerkin for the Exa-Scale
+
 ExaDG is a software project written in C++ using state-of-the-art programming techniques. The software targets the numerical solution of partial differential equations (PDE) in the field of computational fluid dynamics (CFD).
 
 ## Mission
@@ -17,7 +18,7 @@ Our motto is to provide a software that is intuitive to use and where changes an
 
 The wiki page [Installation](https://github.com/exadg/exadg/wiki/Installation) contains a detailed description of the installation steps of **ExaDG** and the required third-party libraries. To get familar with the code, see also the [doxygen documentation](https://exadg.github.io/exadg/index.html).
 
-#### For the impatient ...
+### For the impatient
 
 For those already working with [**deal.II**](https://github.com/dealii), only a few steps are required to get **ExaDG** running:
 
@@ -46,12 +47,11 @@ There is currently no paper dedicated to the software project **ExaDG**. A detai
 
 ExaDG's principal developer is [Niklas Fehn](https://scholar.google.de/citations?user=8Dm3CikAAAAJ&hl=de&oi=ao) ([@nfehn](https://github.com/nfehn)).
 
-
 ## License
 
 **ExaDG** is published under the [GPL-3.0 License](LICENSE). This project is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-**ExaDG** contains third party libraries. These libraries are located in the bundled folder and are **copyrighted by their authors**. You can find the licence files and links to the original sources in the bundled folder. 
+**ExaDG** contains third party libraries. These libraries are located in the bundled folder and are **copyrighted by their authors**. You can find the licence files and links to the original sources in the bundled folder.
 
 ## Releases
 

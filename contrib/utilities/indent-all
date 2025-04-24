@@ -1,6 +1,6 @@
 #!/bin/sh
 #########################################################################
-# 
+#
 #                 #######               ######  #######
 #                 ##                    ##   ## ##
 #                 #####   ##  ## #####  ##   ## ## ####
@@ -26,8 +26,8 @@
 #
 #########################################################################
 
-if test -f "contrib/utilities/programs/clang-11/bin/clang-format"; then
-  cf=contrib/utilities/programs/clang-11/bin/clang-format
+if test -f "contrib/utilities/programs/clang-16/bin/clang-format"; then
+  cf=contrib/utilities/programs/clang-16/bin/clang-format
 else
   cf=clang-format
 fi
@@ -37,6 +37,7 @@ echo $cf
 $cf --version
 
 # format header files
-for i in $(find . -type f \( -name "*.h" -o -name "*.h.in" -o -name "*.cc" -o -name "*.cpp" \) ); do 
+for i in $(find applications/ include/ prototypes/ tests/ -type f \( -name "*.h" -o -name "*.h.in" -o -name "*.cc" -o -name "*.cpp" \)); do
+  echo $i
   $cf -i $i
 done

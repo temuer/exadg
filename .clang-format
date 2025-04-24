@@ -1,5 +1,5 @@
 #
-# The clang-format (Clang 6) style file used by deal.II.
+# The clang-format (Clang 16) style file used by deal.II.
 #
 
 AccessModifierOffset: -2
@@ -26,8 +26,9 @@ BinPackArguments: false
 BinPackParameters: false
 
 BraceWrapping:
+  AfterCaseLabel: true
   AfterClass: true
-  AfterControlStatement: true
+  AfterControlStatement: Always
   AfterEnum: true
   AfterExternBlock: true
   AfterFunction: true
@@ -36,23 +37,23 @@ BraceWrapping:
   AfterUnion: true
   BeforeCatch: true
   BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: true
   IndentBraces: true
   SplitEmptyFunction: false
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
 
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Custom
 BreakBeforeInheritanceComma: false
 BreakBeforeTernaryOperators: false
-BreakConstructorInitializers: BeforeColon
+BreakConstructorInitializers: BeforeComma
 BreakStringLiterals: false
 
-ColumnLimit: 100
+ColumnLimit: 80
 
 CompactNamespaces: false
-
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
 
 ConstructorInitializerIndentWidth: 2
 
@@ -64,71 +65,79 @@ DerivePointerAlignment: false
 
 FixNamespaceComments: true
 
-IncludeBlocks: Preserve
+IncludeBlocks: Regroup
 IncludeCategories:
-# config.h must always be first:
-  - Regex:    "deal.II/base/config.h"
+  # config.h must always be first:
+  - Regex: "deal.II/base/config.h"
     Priority: -1
-# deal.II folders in sorted order:
-  - Regex:    "deal.II/algorithms/.*\\.h"
+  # deal.II folders in sorted order:
+  - Regex: "deal.II/algorithms/.*\\.h"
+    Priority: 100
+  - Regex: "deal.II/arborx/.*\\.h"
     Priority: 110
-  - Regex:    "deal.II/base/.*\\.h"
+  - Regex: "deal.II/base/.*\\.h"
     Priority: 120
-  - Regex:    "deal.II/boost_adaptors/.*\\.h"
+  - Regex: "deal.II/boost_adaptors/.*\\.h"
     Priority: 125
-  - Regex:    "deal.II/differentiation/.*\\.h"
+  - Regex: "deal.II/differentiation/.*\\.h"
     Priority: 130
-  - Regex:    "deal.II/distributed/.*\\.h"
+  - Regex: "deal.II/distributed/.*\\.h"
     Priority: 140
-  - Regex:    "deal.II/dofs/.*\\.h"
+  - Regex: "deal.II/dofs/.*\\.h"
     Priority: 150
-  - Regex:    "deal.II/fe/.*\\.h"
+  - Regex: "deal.II/fe/.*\\.h"
     Priority: 160
-  - Regex:    "deal.II/gmsh/.*\\.h"
+  - Regex: "deal.II/gmsh/.*\\.h"
     Priority: 170
-  - Regex:    "deal.II/grid/.*\\.h"
+  - Regex: "deal.II/grid/.*\\.h"
     Priority: 180
-  - Regex:    "deal.II/hp/.*\\.h"
+  - Regex: "deal.II/hp/.*\\.h"
     Priority: 190
-  - Regex:    "deal.II/integrators/.*\\.h"
+  - Regex: "deal.II/integrators/.*\\.h"
     Priority: 200
-  - Regex:    "deal.II/lac/.*\\.h"
+  - Regex: "deal.II/lac/.*\\.h"
     Priority: 210
-  - Regex:    "deal.II/matrix_free/.*\\.h"
+  - Regex: "deal.II/matrix_free/.*\\.h"
     Priority: 220
-  - Regex:    "deal.II/meshworker/.*\\.h"
+  - Regex: "deal.II/meshworker/.*\\.h"
     Priority: 230
-  - Regex:    "deal.II/multigrid/.*\\.h"
+  - Regex: "deal.II/multigrid/.*\\.h"
     Priority: 240
-  - Regex:    "deal.II/non_matching/.*\\.h"
+  - Regex: "deal.II/non_matching/.*\\.h"
     Priority: 250
-  - Regex:    "deal.II/numerics/.*\\.h"
+  - Regex: "deal.II/numerics/.*\\.h"
     Priority: 260
-  - Regex:    "deal.II/opencascade/.*\\.h"
+  - Regex: "deal.II/opencascade/.*\\.h"
     Priority: 270
-  - Regex:    "deal.II/optimization/.*\\.h"
+  - Regex: "deal.II/optimization/.*\\.h"
     Priority: 280
-  - Regex:    "deal.II/particles/.*\\.h"
+  - Regex: "deal.II/particles/.*\\.h"
     Priority: 290
-  - Regex:    "deal.II/physics/.*\\.h"
+  - Regex: "deal.II/physics/.*\\.h"
     Priority: 300
-  - Regex:    "deal.II/sundials/.*\\.h"
+  - Regex: "deal.II/sundials/.*\\.h"
     Priority: 310
-# put boost right after deal:
+  - Regex: "deal.II/trilinos/.*\\.h"
+    Priority: 320
+  # put boost right after deal:
   - Regex: "<boost.*>"
     Priority: 500
-# try to group PETSc headers:
+  # try to group PETSc headers:
   - Regex: "<petsc.*\\.h>"
     Priority: 1000
-# try to catch all third party headers and put them after deal.II but before
-# standard headers:
+  # try to catch all third party headers and put them after deal.II but before
+  # standard headers:
   - Regex: "<.*\\.(h|hpp|hxx)>"
     Priority: 2000
-# match all standard headers. Things like '#include <armadillo>' should be
-# surrounded by #ifdef checks (which will not be merged by clang-format) so they
-# should not be caught here
+  # match all standard headers. Things like '#include <armadillo>' should be
+  # surrounded by #ifdef checks (which will not be merged by clang-format) so they
+  # should not be caught here
   - Regex: "<[a-z_]+>"
     Priority: 100000
+  # make sure that "../tests.h" appears before all other local include files
+  # such that replacing Assert in tests also applies to the testing header files.
+  - Regex: "\\.\\./tests\\.h"
+    Priority: 200000
 
 IndentCaseLabels: true
 IndentPPDirectives: AfterHash
@@ -142,22 +151,24 @@ Language: Cpp
 
 MaxEmptyLinesToKeep: 3
 
-NamespaceIndentation: None
+NamespaceIndentation: All
 
 PenaltyBreakBeforeFirstCallParameter: 90
 
-PointerAlignment: Middle
+PointerAlignment: Right
 
 ReflowComments: true
-CommentPragmas: '( \| |\*--|<li>|@ref | @p | @param  |@returns |@warning |@ingroup |@author |@date |@related |@relates |@relatesalso |@deprecated |@image |@return |@brief |@attention |@copydoc |@addtogroup |@todo |@tparam |@see |@note |@skip |@skipline |@until |@line |@dontinclude |@include)'
+CommentPragmas: '( \| |\*--|<li>|@ref | @p |@param |@name |@returns |@warning |@ingroup |@author |@date |@related |@relates |@relatesalso |@deprecated |@image |@return |@brief |@attention |@copydoc |@addtogroup |@todo |@tparam |@see |@note |@skip |@skipline |@until |@line |@dontinclude |@include)'
+
+QualifierAlignment: Right
 
 SortIncludes: true
 SortUsingDeclarations: true
 
 SpaceAfterCStyleCast: false
-SpaceAfterTemplateKeyword: false
+SpaceAfterTemplateKeyword: true
 SpaceBeforeAssignmentOperators: true
-SpaceBeforeParens: Never
+SpaceBeforeParens: ControlStatements
 SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 1
 SpacesInAngles: false
@@ -166,7 +177,7 @@ SpacesInContainerLiterals: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 
-Standard: Cpp11
+Standard: c++20
 
 TabWidth: 2
 
