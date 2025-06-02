@@ -85,7 +85,7 @@ namespace ExaDG
     /**
      * returns the deal.ii mapping object that describes the deformed mapping
      */
-    std::shared_ptr<dealii::Mapping<dim> const>
+    std::shared_ptr<dealii::Mapping<dim>>
     get_mapping() const
     {
       AssertThrow(mapping_q_cache.get(),
@@ -242,6 +242,9 @@ namespace ExaDG
       VectorType const                           &displacement_vector,
       dealii::DoFHandler<dim> const              &dof_handler)
     {
+      std::cout << "n_threads: " << dealii::MultithreadInfo::n_threads()
+                << '\n';
+
       AssertThrow(dealii::MultithreadInfo::n_threads() == 1,
                   dealii::ExcNotImplemented());
 
