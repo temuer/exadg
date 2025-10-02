@@ -32,7 +32,6 @@
 // utilities
 #include <exadg/operators/resolution_parameters.h>
 #include <exadg/time_integration/resolution_parameters.h>
-#include <exadg/utilities/enum_patterns.h>
 #include <exadg/utilities/general_parameters.h>
 
 // application

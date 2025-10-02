@@ -38,7 +38,6 @@
 #include <exadg/operators/finite_element.h>
 #include <exadg/operators/hypercube_resolution_parameters.h>
 #include <exadg/operators/throughput_parameters.h>
-#include <exadg/utilities/enum_patterns.h>
 #include <exadg/utilities/general_parameters.h>
 
 // application
@@ -149,10 +148,11 @@ main(int argc, char ** argv)
   ExaDG::ThroughputParameters<ExaDG::Structure::OperatorType> throughput(input_file);
 
   auto const lambda_get_dofs_per_element =
-    [&](unsigned int const dim, unsigned int const degree, ExaDG::ElementType const element_type) {
-      return ExaDG::get_dofs_per_element(
-        element_type, false /* is_dg */, dim /* n_components */, degree, dim);
-    };
+    [&](unsigned int const dim, unsigned int const degree, ExaDG::ElementType const element_type)
+  {
+    return ExaDG::get_dofs_per_element(
+      element_type, false /* is_dg */, dim /* n_components */, degree, dim);
+  };
 
   // fill resolution vector depending on the operator_type
   resolution.fill_resolution_vector(lambda_get_dofs_per_element);

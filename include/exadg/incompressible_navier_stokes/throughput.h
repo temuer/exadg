@@ -153,7 +153,7 @@ main(int argc, char ** argv)
     prm.add_parameter("PressureDegree",
                       pressure_degree,
                       "Degree of pressure shape functions.",
-                      ExaDG::Patterns::Enum<ExaDG::IncNS::PressureDegree>(),
+                      *dealii::Patterns::Tools::Convert<ExaDG::IncNS::PressureDegree>::to_pattern(),
                       true);
   }
   prm.leave_subsection();

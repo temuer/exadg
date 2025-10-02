@@ -38,7 +38,6 @@
 #include <exadg/operators/finite_element.h>
 #include <exadg/operators/hypercube_resolution_parameters.h>
 #include <exadg/operators/throughput_parameters.h>
-#include <exadg/utilities/enum_patterns.h>
 #include <exadg/utilities/general_parameters.h>
 
 // application
@@ -153,11 +152,12 @@ main(int argc, char ** argv)
   dealii::ParameterHandler prm;
   prm.enter_subsection("Throughput");
   {
-    prm.add_parameter("SpatialDiscretization",
-                      spatial_discretization,
-                      "Spatial discretization (CG vs. DG).",
-                      ExaDG::Patterns::Enum<ExaDG::Poisson::SpatialDiscretization>(),
-                      true);
+    prm.add_parameter(
+      "SpatialDiscretization",
+      spatial_discretization,
+      "Spatial discretization (CG vs. DG).",
+      *dealii::Patterns::Tools::Convert<ExaDG::Poisson::SpatialDiscretization>::to_pattern(),
+      true);
   }
   prm.leave_subsection();
 

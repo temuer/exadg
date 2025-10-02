@@ -28,7 +28,6 @@
 // ExaDG
 #include <exadg/aero_acoustic/driver.h>
 #include <exadg/aero_acoustic/user_interface/declare_get_application.h>
-#include <exadg/utilities/enum_patterns.h>
 #include <exadg/utilities/general_parameters.h>
 
 namespace ExaDG

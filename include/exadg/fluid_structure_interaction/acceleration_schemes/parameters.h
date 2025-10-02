@@ -22,6 +22,10 @@
 #ifndef INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_ACCELERATION_SCHEMES_PARAMETERS_H_
 #define INCLUDE_EXADG_FLUID_STRUCTURE_INTERACTION_ACCELERATION_SCHEMES_PARAMETERS_H_
 
+#include <deal.II/base/parameter_handler.h>
+#include <deal.II/base/patterns.h>
+#include <string>
+
 namespace ExaDG
 {
 namespace FSI
@@ -66,7 +70,7 @@ struct Parameters
       prm.add_parameter("AccelerationMethod",
                         acceleration_method,
                         "Acceleration method.",
-                        Patterns::Enum<AccelerationMethod>(),
+                        *dealii::Patterns::Tools::Convert<AccelerationMethod>::to_pattern(),
                         true);
       prm.add_parameter(
         "AbsTol", abs_tol, "Absolute solver tolerance.", dealii::Patterns::Double(0.0, 1.0), true);
@@ -80,7 +84,7 @@ struct Parameters
       prm.add_parameter("InitialGuessCouplingScheme",
                         initial_guess_coupling_scheme,
                         "Scheme for initial guess for the FSI coupling loop at every time step.",
-                        Patterns::Enum<InitialGuessCouplingScheme>(),
+                        *dealii::Patterns::Tools::Convert<InitialGuessCouplingScheme>::to_pattern(),
                         false);
       prm.add_parameter("ReusedTimeSteps",
                         reused_time_steps,

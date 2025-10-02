@@ -38,7 +38,6 @@
 #include <exadg/operators/finite_element.h>
 #include <exadg/operators/hypercube_resolution_parameters.h>
 #include <exadg/operators/throughput_parameters.h>
-#include <exadg/utilities/enum_patterns.h>
 #include <exadg/utilities/general_parameters.h>
 
 // application

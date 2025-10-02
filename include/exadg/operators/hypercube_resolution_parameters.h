@@ -27,7 +27,6 @@
 
 // ExaDG
 #include <exadg/grid/grid_data.h>
-#include <exadg/utilities/enum_patterns.h>
 
 namespace ExaDG
 {
@@ -199,10 +198,16 @@ struct HypercubeResolutionParameters
   {
     prm.enter_subsection("Resolution");
     {
-      prm.add_parameter(
-        "RunType", run_type, "Type of throughput study.", Patterns::Enum<RunType>(), true);
-      prm.add_parameter(
-        "ElementType", element_type, "Type of elements.", Patterns::Enum<ElementType>(), true);
+      prm.add_parameter("RunType",
+                        run_type,
+                        "Type of throughput study.",
+                        *dealii::Patterns::Tools::Convert<RunType>::to_pattern(),
+                        true);
+      prm.add_parameter("ElementType",
+                        element_type,
+                        "Type of elements.",
+                        *dealii::Patterns::Tools::Convert<ElementType>::to_pattern(),
+                        true);
       prm.add_parameter("DegreeMin",
                         degree_min,
                         "Minimal polynomial degree of shape functions.",

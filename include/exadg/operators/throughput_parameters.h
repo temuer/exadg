@@ -29,10 +29,10 @@
 
 // deal.II
 #include <deal.II/base/parameter_handler.h>
+#include <deal.II/base/patterns.h>
 #include <deal.II/base/timer.h>
 
 // ExaDG
-#include <exadg/utilities/enum_patterns.h>
 #include <exadg/utilities/print_solver_results.h>
 
 
@@ -106,8 +106,11 @@ struct ThroughputParameters
   {
     prm.enter_subsection("Throughput");
     {
-      prm.add_parameter(
-        "OperatorType", operator_type, "Operator type.", Patterns::Enum<EnumOperatorType>(), true);
+      prm.add_parameter("OperatorType",
+                        operator_type,
+                        "Operator type.",
+                        *dealii::Patterns::Tools::Convert<EnumOperatorType>::to_pattern(),
+                        true);
       prm.add_parameter("RepetitionsInner",
                         n_repetitions_inner,
                         "Number of operator evaluations.",

@@ -106,17 +106,19 @@ public:
                         dealii::Patterns::Bool(),
                         true);
 
-      prm.add_parameter("FluidToAcousticCouplingStrategy",
-                        fluid_to_acoustic_coupling_strategy,
-                        "Volume coupling strategy from the fluid to the acoustic field.",
-                        Patterns::Enum<FluidToAcousticCouplingStrategy>(),
-                        true);
+      prm.add_parameter(
+        "FluidToAcousticCouplingStrategy",
+        fluid_to_acoustic_coupling_strategy,
+        "Volume coupling strategy from the fluid to the acoustic field.",
+        *dealii::Patterns::Tools::Convert<FluidToAcousticCouplingStrategy>::to_pattern(),
+        true);
 
-      prm.add_parameter("AcousticSourceTermComputation",
-                        acoustic_source_term_computation,
-                        "How to compute the acustic source term.",
-                        Patterns::Enum<AcousticSourceTermComputation>(),
-                        true);
+      prm.add_parameter(
+        "AcousticSourceTermComputation",
+        acoustic_source_term_computation,
+        "How to compute the acustic source term.",
+        *dealii::Patterns::Tools::Convert<AcousticSourceTermComputation>::to_pattern(),
+        true);
     }
     prm.leave_subsection();
   }

@@ -24,8 +24,6 @@
 
 #include <deal.II/base/parameter_handler.h>
 
-#include <exadg/utilities/enum_patterns.h>
-
 namespace ExaDG
 {
 struct SpatialResolutionParametersMinMax

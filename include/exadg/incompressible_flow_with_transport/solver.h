@@ -29,7 +29,6 @@
 #include <exadg/incompressible_flow_with_transport/driver.h>
 
 // utilities
-#include <exadg/utilities/enum_patterns.h>
 #include <exadg/utilities/general_parameters.h>
 
 // application
