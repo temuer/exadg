@@ -113,7 +113,7 @@ private:
  * operators that implement the physics.
  */
 template<int dim, typename Number>
-class LinearizedOperator : public dealii::Subscriptor
+class LinearizedOperator : public dealii::EnableObserverPointer
 {
 private:
   typedef dealii::LinearAlgebra::distributed::Vector<Number> VectorType;
@@ -122,7 +122,7 @@ private:
 
 public:
   LinearizedOperator()
-    : dealii::Subscriptor(), pde_operator(nullptr), scaling_factor_mass(0.0), time(0.0)
+    : dealii::EnableObserverPointer(), pde_operator(nullptr), scaling_factor_mass(0.0), time(0.0)
   {
   }
 
@@ -171,7 +171,7 @@ private:
 };
 
 template<int dim, typename Number>
-class Operator : public dealii::Subscriptor, public Interface::Operator<Number>
+class Operator : public dealii::EnableObserverPointer, public Interface::Operator<Number>
 {
 private:
   typedef float MultigridNumber;

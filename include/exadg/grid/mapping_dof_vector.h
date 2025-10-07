@@ -123,11 +123,9 @@ public:
   {
     if(grid_coordinates.size() != dof_handler.n_dofs())
     {
-      dealii::IndexSet relevant_dofs_grid;
-      dealii::DoFTools::extract_locally_relevant_dofs(dof_handler, relevant_dofs_grid);
       grid_coordinates.reinit(dof_handler.locally_owned_dofs(),
-                              relevant_dofs_grid,
-                              dof_handler.get_communicator());
+                              dealii::DoFTools::extract_locally_relevant_dofs(dof_handler),
+                              dof_handler.get_mpi_communicator());
     }
     else
     {
@@ -221,11 +219,10 @@ public:
     VectorType displacement_vector_ghosted;
     if(dof_handler.n_dofs() > 0 and displacement_vector.size() == dof_handler.n_dofs())
     {
-      dealii::IndexSet locally_relevant_dofs;
-      dealii::DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
       displacement_vector_ghosted.reinit(dof_handler.locally_owned_dofs(),
-                                         locally_relevant_dofs,
-                                         dof_handler.get_communicator());
+                                         dealii::DoFTools::extract_locally_relevant_dofs(
+                                           dof_handler),
+                                         dof_handler.get_mpi_communicator());
       displacement_vector_ghosted.copy_locally_owned_data_from(displacement_vector);
       displacement_vector_ghosted.update_ghost_values();
     }
@@ -255,7 +252,8 @@ public:
     mapping_q_cache->initialize(
       dof_handler.get_triangulation(),
       [&](const typename dealii::Triangulation<dim>::cell_iterator & cell_tria)
-        -> std::vector<dealii::Point<dim>> {
+        -> std::vector<dealii::Point<dim>>
+      {
         unsigned int const scalar_dofs_per_cell =
           dealii::Utilities::pow(mapping_q_cache->get_degree() + 1, dim);
 
@@ -378,12 +376,9 @@ initialize_coarse_mappings_from_mapping_dof_vector(
   // ghosting
   for(unsigned int level = 0; level < n_levels; level++)
   {
-    dealii::IndexSet relevant_dofs;
-    dealii::DoFTools::extract_locally_relevant_level_dofs(dof_handler, level, relevant_dofs);
-
     grid_coordinates_all_levels_ghosted[level].reinit(
       dof_handler.locally_owned_mg_dofs(level),
-      relevant_dofs,
+      dealii::DoFTools::extract_locally_relevant_level_dofs(dof_handler, level),
       grid_coordinates_all_levels[level].get_mpi_communicator());
 
     grid_coordinates_all_levels_ghosted[level].copy_locally_owned_data_from(
@@ -397,7 +392,8 @@ initialize_coarse_mappings_from_mapping_dof_vector(
   mapping_dof_vector_all_levels->get_mapping_q_cache()->initialize(
     dof_handler.get_triangulation(),
     [&](const typename dealii::Triangulation<dim>::cell_iterator & cell_tria)
-      -> std::vector<dealii::Point<dim>> {
+      -> std::vector<dealii::Point<dim>>
+    {
       unsigned int const level = cell_tria->level();
 
       typename dealii::DoFHandler<dim>::cell_iterator cell(&cell_tria->get_triangulation(),
@@ -524,14 +520,12 @@ initialize_coarse_mappings_from_mapping_dof_vector(
 
   // a function that initializes the dof-vector for a given level and dof_handler
   const std::function<void(unsigned int const, VectorType &)> initialize_dof_vector =
-    [&](unsigned int const h_level, VectorType & vector) {
-      dealii::IndexSet locally_relevant_dofs;
-      dealii::DoFTools::extract_locally_relevant_dofs(dof_handlers_all_levels[h_level],
-                                                      locally_relevant_dofs);
-      vector.reinit(dof_handlers_all_levels[h_level].locally_owned_dofs(),
-                    locally_relevant_dofs,
-                    dof_handlers_all_levels[h_level].get_communicator());
-    };
+    [&](unsigned int const h_level, VectorType & vector)
+  {
+    vector.reinit(dof_handlers_all_levels[h_level].locally_owned_dofs(),
+                  dealii::DoFTools::extract_locally_relevant_dofs(dof_handlers_all_levels[h_level]),
+                  dof_handlers_all_levels[h_level].get_mpi_communicator());
+  };
 
   dealii::MGTransferGlobalCoarsening<dim, VectorType> mg_transfer_global_coarsening(
     transfers, initialize_dof_vector);

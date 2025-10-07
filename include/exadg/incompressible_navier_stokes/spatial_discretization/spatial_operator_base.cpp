@@ -20,6 +20,7 @@
  */
 
 // ExaDG
+#include <deal.II/base/enable_observer_pointer.h>
 #include <exadg/functions_and_boundary_conditions/interpolate.h>
 #include <exadg/grid/mapping_dof_vector.h>
 #include <exadg/incompressible_navier_stokes/preconditioners/multigrid_preconditioner_projection.h>
@@ -46,7 +47,7 @@ SpatialOperatorBase<dim, Number>::SpatialOperatorBase(
   Parameters const &                                    parameters_in,
   std::string const &                                   field_in,
   MPI_Comm const &                                      mpi_comm_in)
-  : dealii::Subscriptor(),
+  : dealii::EnableObserverPointer(),
     grid(grid_in),
     mapping(mapping_in),
     multigrid_mappings(multigrid_mappings_in),
@@ -122,9 +123,8 @@ SpatialOperatorBase<dim, Number>::initialize_dof_handler_and_constraints()
     // Periodic boundaries
     // We need to make sure the normal dofs are shared between cells on the periodic boundaries,
     // since these are continuous for HDIV.
-    dealii::IndexSet relevant_dofs;
-    dealii::DoFTools::extract_locally_relevant_dofs(dof_handler_u, relevant_dofs);
-    constraint_u.reinit(relevant_dofs);
+    constraint_u.reinit(dof_handler_u.locally_owned_dofs(),
+                        dealii::DoFTools::extract_locally_relevant_dofs(dof_handler_u));
 
     for(auto const & face : grid->periodic_face_pairs)
       dealii::DoFTools::make_periodicity_constraints(
@@ -1832,7 +1832,7 @@ SpatialOperatorBase<dim, Number>::local_interpolate_stress_bc_boundary_face(
 
         // compute traction acting on structure with normal vector in opposite direction
         // as compared to the fluid domain
-        vector normal = integrator_u.get_normal_vector(q);
+        vector normal = integrator_u.normal_vector(q);
         tensor grad_u = integrator_u.get_gradient(q);
         scalar p      = integrator_p.get_value(q);
 

@@ -40,9 +40,9 @@ add_hanging_node_and_periodicity_constraints(dealii::AffineConstraints<Number> &
                                              Grid<dim> const &                   grid,
                                              dealii::DoFHandler<dim> const &     dof_handler)
 {
-  dealii::IndexSet locally_relevant_dofs;
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
-  affine_constraints.reinit(locally_relevant_dofs);
+  ;
+  affine_constraints.reinit(dof_handler.locally_owned_dofs(),
+                            dealii::DoFTools::extract_locally_relevant_dofs(dof_handler));
 
   // hanging nodes (needs to be done before imposing periodicity constraints
   if(grid.triangulation->has_hanging_nodes())

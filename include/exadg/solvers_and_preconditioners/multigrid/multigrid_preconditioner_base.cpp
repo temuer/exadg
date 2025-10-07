@@ -409,103 +409,105 @@ MultigridPreconditionerBase<dim, Number, MultigridNumber>::
   if(grid->coarse_triangulations.size() > 0 or not(is_hypercube_mesh_without_hanging_nodes))
   {
     // setup dof-handler and constrained dofs for all multigrid levels
-    for_all_levels([&](unsigned int const l) {
-      auto const & level = level_info[l];
-
-      std::shared_ptr<dealii::FiniteElement<dim>> fe = create_finite_element<dim>(
-        get_element_type(*grid->triangulation), level.is_dg(), n_components, level.degree());
-
-      std::shared_ptr<dealii::Triangulation<dim> const> triangulation;
-      if(level.h_level() == level_info.back().h_level()) // fine-level triangulation
+    for_all_levels(
+      [&](unsigned int const l)
       {
-        triangulation = grid->triangulation;
-      }
-      else
-      {
-        AssertThrow(level.h_level() < grid->coarse_triangulations.size(),
-                    dealii::ExcMessage(
-                      "The vector coarse_triangulations seems to have incorrect size."));
+        auto const & level = level_info[l];
 
-        triangulation = grid->coarse_triangulations[level.h_level()];
-      }
+        std::shared_ptr<dealii::FiniteElement<dim>> fe = create_finite_element<dim>(
+          get_element_type(*grid->triangulation), level.is_dg(), n_components, level.degree());
 
-      std::shared_ptr<dealii::DoFHandler<dim>> dof_handler =
-        std::make_shared<dealii::DoFHandler<dim>>(*triangulation);
-
-      dof_handler->distribute_dofs(*fe);
-
-      dof_handlers[l] = dof_handler;
-
-      auto affine_constraints_own = new dealii::AffineConstraints<MultigridNumber>();
-
-      AssertThrow(is_singular == false, dealii::ExcNotImplemented());
-
-      dealii::IndexSet locally_relevant_dofs;
-      dealii::DoFTools::extract_locally_relevant_dofs(*dof_handler, locally_relevant_dofs);
-      affine_constraints_own->reinit(locally_relevant_dofs);
-
-      // hanging nodes (needs to be done before imposing periodicity constraints and boundary
-      // conditions)
-      dealii::DoFTools::make_hanging_node_constraints(*dof_handler, *affine_constraints_own);
-
-      // constraints from periodic boundary conditions
-      if(not(grid->periodic_face_pairs.empty()))
-      {
-        std::vector<
-          dealii::GridTools::PeriodicFacePair<typename dealii::Triangulation<dim>::cell_iterator>>
-          periodic_faces;
+        std::shared_ptr<dealii::Triangulation<dim> const> triangulation;
         if(level.h_level() == level_info.back().h_level()) // fine-level triangulation
         {
-          periodic_faces = grid->periodic_face_pairs;
+          triangulation = grid->triangulation;
         }
         else
         {
-          AssertThrow(
-            grid->coarse_periodic_face_pairs.size() == grid->coarse_triangulations.size(),
-            dealii::ExcMessage(
-              "The size of coarse_periodic_face_pairs differs from the size of coarse_triangulations."));
-
-          AssertThrow(level.h_level() < grid->coarse_periodic_face_pairs.size(),
+          AssertThrow(level.h_level() < grid->coarse_triangulations.size(),
                       dealii::ExcMessage(
-                        "The vector coarse_periodic_face_pairs seems to have incorrect size."));
+                        "The vector coarse_triangulations seems to have incorrect size."));
 
-          periodic_faces = grid->coarse_periodic_face_pairs[level.h_level()];
+          triangulation = grid->coarse_triangulations[level.h_level()];
         }
 
-        // change type of dealii cell iterator
-        std::vector<
-          dealii::GridTools::PeriodicFacePair<typename dealii::DoFHandler<dim>::cell_iterator>>
-          periodic_faces_dof =
-            GridUtilities::transform_periodic_face_pairs_to_dof_cell_iterator(periodic_faces,
-                                                                              *dof_handler);
+        std::shared_ptr<dealii::DoFHandler<dim>> dof_handler =
+          std::make_shared<dealii::DoFHandler<dim>>(*triangulation);
 
-        dealii::DoFTools::make_periodicity_constraints<dim, dim, MultigridNumber>(
-          periodic_faces_dof, *affine_constraints_own);
-      }
+        dof_handler->distribute_dofs(*fe);
 
-      // collect all boundary functions and translate to format understood by
-      // deal.II to cover all boundaries at once
-      dealii::Functions::ZeroFunction<dim, MultigridNumber> zero_function(
-        dof_handler->get_fe().n_components());
+        dof_handlers[l] = dof_handler;
 
-      auto const & mapping_dummy = dealii::get_default_linear_mapping<dim>(*grid->triangulation);
+        auto affine_constraints_own = new dealii::AffineConstraints<MultigridNumber>();
 
-      for(auto & it : dirichlet_bc)
-      {
-        dealii::ComponentMask mask = dealii::ComponentMask();
+        AssertThrow(is_singular == false, dealii::ExcNotImplemented());
 
-        auto it_mask = dirichlet_bc_component_mask.find(it.first);
-        if(it_mask != dirichlet_bc_component_mask.end())
-          mask = it_mask->second;
+        affine_constraints_own->reinit(dof_handler->locally_owned_dofs(),
+                                       dealii::DoFTools::extract_locally_relevant_dofs(
+                                         *dof_handler));
 
-        dealii::VectorTools::interpolate_boundary_values(
-          mapping_dummy, *dof_handler, it.first, zero_function, *affine_constraints_own, mask);
-      }
+        // hanging nodes (needs to be done before imposing periodicity constraints and boundary
+        // conditions)
+        dealii::DoFTools::make_hanging_node_constraints(*dof_handler, *affine_constraints_own);
 
-      affine_constraints_own->close();
+        // constraints from periodic boundary conditions
+        if(not(grid->periodic_face_pairs.empty()))
+        {
+          std::vector<
+            dealii::GridTools::PeriodicFacePair<typename dealii::Triangulation<dim>::cell_iterator>>
+            periodic_faces;
+          if(level.h_level() == level_info.back().h_level()) // fine-level triangulation
+          {
+            periodic_faces = grid->periodic_face_pairs;
+          }
+          else
+          {
+            AssertThrow(
+              grid->coarse_periodic_face_pairs.size() == grid->coarse_triangulations.size(),
+              dealii::ExcMessage(
+                "The size of coarse_periodic_face_pairs differs from the size of coarse_triangulations."));
 
-      constraints[l].reset(affine_constraints_own);
-    });
+            AssertThrow(level.h_level() < grid->coarse_periodic_face_pairs.size(),
+                        dealii::ExcMessage(
+                          "The vector coarse_periodic_face_pairs seems to have incorrect size."));
+
+            periodic_faces = grid->coarse_periodic_face_pairs[level.h_level()];
+          }
+
+          // change type of dealii cell iterator
+          std::vector<
+            dealii::GridTools::PeriodicFacePair<typename dealii::DoFHandler<dim>::cell_iterator>>
+            periodic_faces_dof =
+              GridUtilities::transform_periodic_face_pairs_to_dof_cell_iterator(periodic_faces,
+                                                                                *dof_handler);
+
+          dealii::DoFTools::make_periodicity_constraints<dim, dim, MultigridNumber>(
+            periodic_faces_dof, *affine_constraints_own);
+        }
+
+        // collect all boundary functions and translate to format understood by
+        // deal.II to cover all boundaries at once
+        dealii::Functions::ZeroFunction<dim, MultigridNumber> zero_function(
+          dof_handler->get_fe().n_components());
+
+        auto const & mapping_dummy = dealii::get_default_linear_mapping<dim>(*grid->triangulation);
+
+        for(auto & it : dirichlet_bc)
+        {
+          dealii::ComponentMask mask = dealii::ComponentMask();
+
+          auto it_mask = dirichlet_bc_component_mask.find(it.first);
+          if(it_mask != dirichlet_bc_component_mask.end())
+            mask = it_mask->second;
+
+          dealii::VectorTools::interpolate_boundary_values(
+            mapping_dummy, *dof_handler, it.first, zero_function, *affine_constraints_own, mask);
+        }
+
+        affine_constraints_own->close();
+
+        constraints[l].reset(affine_constraints_own);
+      });
   }
   else
   {
@@ -563,25 +565,29 @@ MultigridPreconditionerBase<dim, Number, MultigridNumber>::
 
     // populate dof-handler and constrained dofs of a certain p-levels to all multigrid levels with
     // the same FE / DoFHandler
-    for_all_levels([&](unsigned int const level) {
-      auto p_level            = level_info[level].dof_handler_id();
-      dof_handlers[level]     = map_dofhandlers[p_level];
-      constrained_dofs[level] = map_constrained_dofs[p_level];
-    });
+    for_all_levels(
+      [&](unsigned int const level)
+      {
+        auto p_level            = level_info[level].dof_handler_id();
+        dof_handlers[level]     = map_dofhandlers[p_level];
+        constrained_dofs[level] = map_constrained_dofs[p_level];
+      });
 
-    for_all_levels([&](unsigned int const level) {
-      auto affine_constraints_own = new dealii::AffineConstraints<MultigridNumber>;
+    for_all_levels(
+      [&](unsigned int const level)
+      {
+        auto affine_constraints_own = new dealii::AffineConstraints<MultigridNumber>;
 
-      ConstraintUtil::add_constraints<dim>(level_info[level].is_dg(),
-                                           is_singular,
-                                           *dof_handlers[level],
-                                           *affine_constraints_own,
-                                           *constrained_dofs[level],
-                                           grid->periodic_face_pairs,
-                                           level_info[level].h_level());
+        ConstraintUtil::add_constraints<dim>(level_info[level].is_dg(),
+                                             is_singular,
+                                             *dof_handlers[level],
+                                             *affine_constraints_own,
+                                             *constrained_dofs[level],
+                                             grid->periodic_face_pairs,
+                                             level_info[level].h_level());
 
-      constraints[level].reset(affine_constraints_own);
-    });
+        constraints[level].reset(affine_constraints_own);
+      });
   }
 }
 
@@ -592,29 +598,31 @@ MultigridPreconditionerBase<dim, Number, MultigridNumber>::initialize_matrix_fre
   matrix_free_data_objects.resize(0, get_number_of_levels() - 1);
   matrix_free_objects.resize(0, get_number_of_levels() - 1);
 
-  for_all_levels([&](unsigned int const level) {
-    matrix_free_data_objects[level] = std::make_shared<MatrixFreeData<dim, MultigridNumber>>();
-    fill_matrix_free_data(*matrix_free_data_objects[level],
-                          level,
-                          level_info[level].dealii_tria_level());
+  for_all_levels(
+    [&](unsigned int const level)
+    {
+      matrix_free_data_objects[level] = std::make_shared<MatrixFreeData<dim, MultigridNumber>>();
+      fill_matrix_free_data(*matrix_free_data_objects[level],
+                            level,
+                            level_info[level].dealii_tria_level());
 
-    matrix_free_objects[level] = std::make_shared<dealii::MatrixFree<dim, MultigridNumber>>();
+      matrix_free_objects[level] = std::make_shared<dealii::MatrixFree<dim, MultigridNumber>>();
 
-    matrix_free_objects[level]->reinit(get_mapping(level_info[level].h_level()),
-                                       matrix_free_data_objects[level]->get_dof_handler_vector(),
-                                       matrix_free_data_objects[level]->get_constraint_vector(),
-                                       matrix_free_data_objects[level]->get_quadrature_vector(),
-                                       matrix_free_data_objects[level]->data);
-  });
+      matrix_free_objects[level]->reinit(get_mapping(level_info[level].h_level()),
+                                         matrix_free_data_objects[level]->get_dof_handler_vector(),
+                                         matrix_free_data_objects[level]->get_constraint_vector(),
+                                         matrix_free_data_objects[level]->get_quadrature_vector(),
+                                         matrix_free_data_objects[level]->data);
+    });
 }
 
 template<int dim, typename Number, typename MultigridNumber>
 void
 MultigridPreconditionerBase<dim, Number, MultigridNumber>::update_matrix_free_objects()
 {
-  for_all_levels([&](unsigned int const level) {
-    matrix_free_objects[level]->update_mapping(get_mapping(level_info[level].h_level()));
-  });
+  for_all_levels(
+    [&](unsigned int const level)
+    { matrix_free_objects[level]->update_mapping(get_mapping(level_info[level].h_level())); });
 }
 
 template<int dim, typename Number, typename MultigridNumber>
@@ -623,8 +631,8 @@ MultigridPreconditionerBase<dim, Number, MultigridNumber>::initialize_operators(
 {
   this->operators.resize(0, this->get_number_of_levels() - 1);
 
-  for_all_levels(
-    [&](unsigned int const level) { operators[level] = this->initialize_operator(level); });
+  for_all_levels([&](unsigned int const level)
+                 { operators[level] = this->initialize_operator(level); });
 }
 
 template<int dim, typename Number, typename MultigridNumber>
@@ -652,9 +660,9 @@ MultigridPreconditionerBase<dim, Number, MultigridNumber>::initialize_smoothers(
   if(get_number_of_levels() >= 2)
     this->smoothers.resize(1, get_number_of_levels() - 1);
 
-  for_all_smoothing_levels([&](unsigned int const level) {
-    this->initialize_smoother(*this->operators[level], level, initialize_preconditioner);
-  });
+  for_all_smoothing_levels(
+    [&](unsigned int const level)
+    { this->initialize_smoother(*this->operators[level], level, initialize_preconditioner); });
 }
 
 template<int dim, typename Number, typename MultigridNumber>

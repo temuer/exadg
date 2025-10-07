@@ -47,10 +47,10 @@ AlveolarTissue<dim, Number>::AlveolarTissue(dealii::MatrixFree<dim, Number> cons
   surfactant_model_coefficients.reinit(matrix_free.n_boundary_face_batches(),
                                        matrix_free.get_n_q_points_face(quad_index));
 
-  surfactant_model_coefficients.fill(std::array<scalar, 2>{
+  surfactant_model_coefficients.fill(std::array<scalar, 2>{{
     dealii::make_vectorized_array<Number>(0.0),
     dealii::make_vectorized_array<Number>(0.0),
-  });
+  }});
 }
 
 template<int dim, typename Number>

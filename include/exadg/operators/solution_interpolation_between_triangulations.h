@@ -144,8 +144,7 @@ private:
           }
           else
           {
-            component_dof_values[i] =
-              std::move(dealii::Vector<double>(ptr->begin_raw(), ptr->end_raw()));
+            component_dof_values[i] = dealii::Vector<double>(ptr->begin_raw(), ptr->end_raw());
           }
 
           ++ptr;
@@ -160,9 +159,9 @@ private:
     }
   }
 
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_dst;
-  dealii::SmartPointer<dealii::DoFHandler<dim> const> dof_handler_src;
-  dealii::Utilities::MPI::RemotePointEvaluation<dim>  rpe;
+  dealii::ObserverPointer<dealii::DoFHandler<dim> const> dof_handler_dst;
+  dealii::ObserverPointer<dealii::DoFHandler<dim> const> dof_handler_src;
+  dealii::Utilities::MPI::RemotePointEvaluation<dim>     rpe;
 };
 
 } // namespace ExaDG

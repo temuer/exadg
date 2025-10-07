@@ -101,7 +101,7 @@ PostProcessor<dim, Number>::do_postprocessing(VectorType const &     solution,
    */
   if(output_generator.time_control.needs_evaluation(time, time_step_number))
   {
-    std::vector<dealii::SmartPointer<SolutionField<dim, Number>>> additional_fields_vtu;
+    std::vector<dealii::ObserverPointer<SolutionField<dim, Number>>> additional_fields_vtu;
 
     if(pp_data.output_data.write_pressure)
     {
@@ -200,12 +200,10 @@ PostProcessor<dim, Number>::initialize_derived_fields()
     pressure.type              = SolutionFieldType::scalar;
     pressure.name              = "pressure";
     pressure.dof_handler       = &navier_stokes_operator->get_dof_handler_scalar();
-    pressure.initialize_vector = [&](VectorType & dst) {
-      navier_stokes_operator->initialize_dof_vector_scalar(dst);
-    };
-    pressure.recompute_solution_field = [&](VectorType & dst, VectorType const & src) {
-      navier_stokes_operator->compute_pressure(dst, src);
-    };
+    pressure.initialize_vector = [&](VectorType & dst)
+    { navier_stokes_operator->initialize_dof_vector_scalar(dst); };
+    pressure.recompute_solution_field = [&](VectorType & dst, VectorType const & src)
+    { navier_stokes_operator->compute_pressure(dst, src); };
 
     pressure.reinit();
   }
@@ -220,12 +218,10 @@ PostProcessor<dim, Number>::initialize_derived_fields()
     velocity.type              = SolutionFieldType::vector;
     velocity.name              = "velocity";
     velocity.dof_handler       = &navier_stokes_operator->get_dof_handler_vector();
-    velocity.initialize_vector = [&](VectorType & dst) {
-      navier_stokes_operator->initialize_dof_vector_dim_components(dst);
-    };
-    velocity.recompute_solution_field = [&](VectorType & dst, VectorType const & src) {
-      navier_stokes_operator->compute_velocity(dst, src);
-    };
+    velocity.initialize_vector = [&](VectorType & dst)
+    { navier_stokes_operator->initialize_dof_vector_dim_components(dst); };
+    velocity.recompute_solution_field = [&](VectorType & dst, VectorType const & src)
+    { navier_stokes_operator->compute_velocity(dst, src); };
 
     velocity.reinit();
   }
@@ -236,12 +232,10 @@ PostProcessor<dim, Number>::initialize_derived_fields()
     vorticity.type              = SolutionFieldType::vector;
     vorticity.name              = "vorticity";
     vorticity.dof_handler       = &navier_stokes_operator->get_dof_handler_vector();
-    vorticity.initialize_vector = [&](VectorType & dst) {
-      navier_stokes_operator->initialize_dof_vector_dim_components(dst);
-    };
-    vorticity.recompute_solution_field = [&](VectorType & dst, VectorType const & src) {
-      navier_stokes_operator->compute_vorticity(dst, src);
-    };
+    vorticity.initialize_vector = [&](VectorType & dst)
+    { navier_stokes_operator->initialize_dof_vector_dim_components(dst); };
+    vorticity.recompute_solution_field = [&](VectorType & dst, VectorType const & src)
+    { navier_stokes_operator->compute_vorticity(dst, src); };
 
     vorticity.reinit();
   }
@@ -252,12 +246,10 @@ PostProcessor<dim, Number>::initialize_derived_fields()
     divergence.type              = SolutionFieldType::scalar;
     divergence.name              = "velocity_divergence";
     divergence.dof_handler       = &navier_stokes_operator->get_dof_handler_scalar();
-    divergence.initialize_vector = [&](VectorType & dst) {
-      navier_stokes_operator->initialize_dof_vector_scalar(dst);
-    };
-    divergence.recompute_solution_field = [&](VectorType & dst, VectorType const & src) {
-      navier_stokes_operator->compute_divergence(dst, src);
-    };
+    divergence.initialize_vector = [&](VectorType & dst)
+    { navier_stokes_operator->initialize_dof_vector_scalar(dst); };
+    divergence.recompute_solution_field = [&](VectorType & dst, VectorType const & src)
+    { navier_stokes_operator->compute_divergence(dst, src); };
 
     divergence.reinit();
   }
@@ -268,12 +260,10 @@ PostProcessor<dim, Number>::initialize_derived_fields()
     shear_rate.type              = SolutionFieldType::scalar;
     shear_rate.name              = "shear_rate";
     shear_rate.dof_handler       = &navier_stokes_operator->get_dof_handler_scalar();
-    shear_rate.initialize_vector = [&](VectorType & dst) {
-      navier_stokes_operator->initialize_dof_vector_scalar(dst);
-    };
-    shear_rate.recompute_solution_field = [&](VectorType & dst, VectorType const & src) {
-      navier_stokes_operator->compute_shear_rate(dst, src);
-    };
+    shear_rate.initialize_vector = [&](VectorType & dst)
+    { navier_stokes_operator->initialize_dof_vector_scalar(dst); };
+    shear_rate.recompute_solution_field = [&](VectorType & dst, VectorType const & src)
+    { navier_stokes_operator->compute_shear_rate(dst, src); };
 
     shear_rate.reinit();
   }
@@ -284,12 +274,10 @@ PostProcessor<dim, Number>::initialize_derived_fields()
     temperature.type              = SolutionFieldType::scalar;
     temperature.name              = "temperature";
     temperature.dof_handler       = &navier_stokes_operator->get_dof_handler_scalar();
-    temperature.initialize_vector = [&](VectorType & dst) {
-      navier_stokes_operator->initialize_dof_vector_scalar(dst);
-    };
-    temperature.recompute_solution_field = [&](VectorType & dst, VectorType const & src) {
-      navier_stokes_operator->compute_temperature(dst, src);
-    };
+    temperature.initialize_vector = [&](VectorType & dst)
+    { navier_stokes_operator->initialize_dof_vector_scalar(dst); };
+    temperature.recompute_solution_field = [&](VectorType & dst, VectorType const & src)
+    { navier_stokes_operator->compute_temperature(dst, src); };
 
     temperature.reinit();
   }

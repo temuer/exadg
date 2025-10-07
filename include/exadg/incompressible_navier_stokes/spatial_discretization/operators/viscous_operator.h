@@ -435,7 +435,7 @@ public:
                   dealii::ExcMessage("Specified formulation of viscous term is not implemented."));
     }
 
-    vector normal_gradient = gradient * integrator.get_normal_vector(q);
+    vector normal_gradient = gradient * integrator.normal_vector(q);
 
     return normal_gradient;
   }

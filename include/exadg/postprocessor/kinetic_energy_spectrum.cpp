@@ -372,7 +372,7 @@ apply_taylor_green_symmetry(dealii::DoFHandler<dim> const & dof_handler_symm,
   // determine some useful constants
   auto const & fe = dof_handler.get_fe();
 
-  MPI_Comm const comm = dof_handler.get_communicator();
+  MPI_Comm const comm = dof_handler.get_mpi_communicator();
 
   // determine which process has which index (lex numbering) and wants which
   dealii::IndexSet range_has_lex(dof_handler_symm.n_dofs());  // has in symm system
@@ -385,7 +385,8 @@ apply_taylor_green_symmetry(dealii::DoFHandler<dim> const & dof_handler_symm,
     map_lex_to_cell_full;
 
   {
-    auto norm_point_to_lex = [&](dealii::Point<dim> const c) {
+    auto norm_point_to_lex = [&](dealii::Point<dim> const c)
+    {
       // convert normalized point [0, 1] to lex
       if(dim == 2)
         return static_cast<std::size_t>(std::floor(c[0]) + n_cells_1d * std::floor(c[1]));
@@ -557,12 +558,11 @@ void
 initialize_dof_vector(dealii::LinearAlgebra::distributed::Vector<Number> & vec,
                       const MeshType &                                     dof_handler)
 {
-  dealii::IndexSet locally_relevant_dofs;
-  dealii::DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
+  MPI_Comm const comm = dof_handler.get_mpi_communicator();
 
-  MPI_Comm const comm = dof_handler.get_communicator();
-
-  vec.reinit(dof_handler.locally_owned_dofs(), locally_relevant_dofs, comm);
+  vec.reinit(dof_handler.locally_owned_dofs(),
+             dealii::DoFTools::extract_locally_relevant_dofs(dof_handler),
+             comm);
 }
 
 template<int dim, typename Number>

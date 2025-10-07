@@ -168,7 +168,7 @@ create_subcommunicator(dealii::DoFHandler<dim, spacedim> const & dof_handler)
     if(cell->is_locally_owned())
       ++n_locally_owned_cells;
 
-  MPI_Comm const mpi_comm = dof_handler.get_communicator();
+  MPI_Comm const mpi_comm = dof_handler.get_mpi_communicator();
 
   // In case some of the MPI ranks do not have cells, we create a
   // sub-communicator to exclude all those processes from the MPI
@@ -179,7 +179,8 @@ create_subcommunicator(dealii::DoFHandler<dim, spacedim> const & dof_handler)
   if(dealii::Utilities::MPI::min(n_locally_owned_cells, mpi_comm) == 0)
   {
     std::unique_ptr<MPI_Comm, void (*)(MPI_Comm *)> subcommunicator(new MPI_Comm,
-                                                                    [](MPI_Comm * comm) {
+                                                                    [](MPI_Comm * comm)
+                                                                    {
                                                                       MPI_Comm_free(comm);
                                                                       delete comm;
                                                                     });
@@ -192,9 +193,9 @@ create_subcommunicator(dealii::DoFHandler<dim, spacedim> const & dof_handler)
   }
   else
   {
-    std::unique_ptr<MPI_Comm, void (*)(MPI_Comm *)> communicator(new MPI_Comm, [](MPI_Comm * comm) {
-      delete comm;
-    });
+    std::unique_ptr<MPI_Comm, void (*)(MPI_Comm *)> communicator(new MPI_Comm,
+                                                                 [](MPI_Comm * comm)
+                                                                 { delete comm; });
     *communicator = mpi_comm;
 
     return communicator;
@@ -232,7 +233,7 @@ public:
   {
     // initialize system matrix
     pde_operator.init_system_matrix(system_matrix,
-                                    op.get_matrix_free().get_dof_handler().get_communicator());
+                                    op.get_matrix_free().get_dof_handler().get_mpi_communicator());
 
     if(initialize)
     {
@@ -538,9 +539,8 @@ public:
                             petsc_vector_dst,
                             petsc_vector_src,
                             [&](dealii::PETScWrappers::VectorBase &       petsc_dst,
-                                dealii::PETScWrappers::VectorBase const & petsc_src) {
-                              amg.vmult(petsc_dst, petsc_src);
-                            });
+                                dealii::PETScWrappers::VectorBase const & petsc_src)
+                            { amg.vmult(petsc_dst, petsc_src); });
   }
 
   void
@@ -553,7 +553,8 @@ public:
                           src,
                           system_matrix.get_mpi_communicator(),
                           [&](dealii::PETScWrappers::VectorBase &       petsc_dst,
-                              dealii::PETScWrappers::VectorBase const & petsc_src) {
+                              dealii::PETScWrappers::VectorBase const & petsc_src)
+                          {
                             dealii::ReductionControl solver_control(solver_data.max_iter,
                                                                     solver_data.abs_tol,
                                                                     solver_data.rel_tol);
@@ -690,9 +691,8 @@ public:
         dst,
         src,
         [&](dealii::LinearAlgebra::distributed::Vector<double> &       dst_double,
-            dealii::LinearAlgebra::distributed::Vector<double> const & src_double) {
-          preconditioner_ml->vmult(dst_double, src_double);
-        });
+            dealii::LinearAlgebra::distributed::Vector<double> const & src_double)
+        { preconditioner_ml->vmult(dst_double, src_double); });
 #else
       AssertThrow(false, dealii::ExcMessage("deal.II is not compiled with Trilinos!"));
 #endif
@@ -733,7 +733,8 @@ public:
         dst,
         src,
         [&](dealii::LinearAlgebra::distributed::Vector<double> &       dst_double,
-            dealii::LinearAlgebra::distributed::Vector<double> const & src_double) {
+            dealii::LinearAlgebra::distributed::Vector<double> const & src_double)
+        {
           preconditioner->apply_krylov_solver_with_amg_preconditioner(dst_double,
                                                                       src_double,
                                                                       solver_type,

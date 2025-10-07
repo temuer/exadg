@@ -35,7 +35,7 @@ enum class SolutionFieldType
 };
 
 template<int dim, typename Number>
-class SolutionField : public dealii::Subscriptor
+class SolutionField : public dealii::EnableObserverPointer
 {
 public:
   using VectorType = dealii::LinearAlgebra::distributed::Vector<Number>;
