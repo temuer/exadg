@@ -90,6 +90,12 @@ public:
                              bool const         update_mapping,
                              bool const         update_matrix_if_necessary) const;
 
+  void
+  set_time_step_size(double const time_step_size_in) const
+  {
+    time_step_size = time_step_size_in;
+  }
+
   /**
    * Set the mapping pointer for the undeformed mapping.
    */
@@ -283,6 +289,8 @@ private:
   mutable dealii::MatrixFree<dim, Number>                matrix_free_spatial;
   mutable std::shared_ptr<MappingDoFVector<dim, Number>> mapping_spatial;
   mutable std::shared_ptr<dealii::Mapping<dim> const>    mapping_undeformed;
+
+  mutable double time_step_size;
 };
 
 } // namespace Structure

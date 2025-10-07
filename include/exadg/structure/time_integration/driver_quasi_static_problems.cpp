@@ -275,6 +275,7 @@ DriverQuasiStatic<dim, Number>::solve_step(double const load_factor,
                                                   0.0 /* no acceleration term */,
                                                   0.0 /* no damping term */,
                                                   load_factor /* = time */,
+                                                  0.0 /* time step size */,
                                                   update_preconditioner);
 
   unsigned int const N_iter_nonlinear = std::get<0>(iter);

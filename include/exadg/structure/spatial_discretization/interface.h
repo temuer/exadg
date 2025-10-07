@@ -71,6 +71,7 @@ public:
                   double const       scaling_factor_acceleration,
                   double const       scaling_factor_velocity,
                   double const       time,
+                  double const       time_step_size,
                   bool const         update_preconditioner) const = 0;
 
   virtual void

@@ -19,9 +19,13 @@
  *  ______________________________________________________________________
  */
 
+#include <deal.II/base/exceptions.h>
+#include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/base/vectorization.h>
 #include <exadg/structure/spatial_discretization/operators/boundary_conditions.h>
 #include <exadg/structure/spatial_discretization/operators/continuum_mechanics.h>
 #include <exadg/structure/spatial_discretization/operators/nonlinear_operator.h>
+#include "exadg/structure/material/library/alveolar_tissue.h"
 
 namespace ExaDG
 {
@@ -250,7 +254,8 @@ NonLinearOperator<dim, Number>::add_diagonal(VectorType & diagonal) const
       compute_diagonal<dim, -1, 0, dim /* n_components */, Number, dealii::VectorizedArray<Number>>(
         this->matrix_free_spatial,
         diagonal,
-        [&](auto & integrator) -> void {
+        [&](auto & integrator) -> void
+        {
           // TODO: this is currently done for every column, but would only be necessary
           // once per cell
           this->reinit_cell_derived(integrator, integrator.get_current_cell_index());
@@ -471,10 +476,15 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 {
   BoundaryType boundary_type = this->operator_data.bc->get_boundary_type(boundary_id);
 
+  AlveolarTissue<dim, Number> * material{
+    dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get())};
+  // If material is alveolar tissue, then we will go into the surface tension contribution.
+
   for(unsigned int q = 0; q < integrator.n_q_points; ++q)
   {
     auto traction = calculate_neumann_value<dim, Number>(
       q, integrator, boundary_type, boundary_id, this->operator_data.bc, this->time);
+
 
     if(this->operator_data.pull_back_traction)
     {
@@ -488,6 +498,40 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
     }
 
     integrator.submit_value(-traction, q);
+
+    if(material != nullptr)
+    {
+      tensor const F      = compute_F(integrator.get_gradient(q));
+      tensor const F_inv  = dealii::invert(F);
+      vector const N      = integrator.get_normal_vector(q);
+      vector const n_star = dealii::determinant(F) * dealii::transpose(dealii::invert(F)) * N;
+      scalar const da_dA  = n_star.norm();
+      vector const n      = n_star / da_dA;
+
+      auto const proj{std::invoke(
+        [](vector const & n) -> symmetric_tensor
+        {
+          symmetric_tensor proj{};
+          for(int d1{0}; d1 < dim; d1++)
+          {
+            proj[d1][d1] = 1.0 - n[d1] * n[d1];
+            for(int d2{d1 + 1}; d2 < dim; d2++)
+            {
+              proj[d1][d2] = -n[d1] * n[d2];
+            }
+          }
+          return proj;
+        },
+        n)};
+
+      scalar const surface_tension =
+        material->surface_tension(da_dA, time_step_size, integrator.get_current_cell_index(), q);
+
+      // This material must be updated after convergence.
+      integrator.submit_gradient((surface_tension * da_dA) * dealii::transpose(F_inv * proj), q);
+
+      // Note that this has not been linearized (yet).
+    }
   }
 }
 

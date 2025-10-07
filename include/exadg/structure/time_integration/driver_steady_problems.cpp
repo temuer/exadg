@@ -112,6 +112,7 @@ DriverSteady<dim, Number>::do_solve()
                                                     0.0 /* no acceleration term */,
                                                     0.0 /* no damping term */,
                                                     0.0 /* time */,
+                                                    0.0 /* time step size */,
                                                     param.update_preconditioner);
 
     unsigned int const N_iter_nonlinear = std::get<0>(iter);

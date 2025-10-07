@@ -821,11 +821,12 @@ Operator<dim, Number>::evaluate_nonlinear_residual(VectorType &       dst,
                                                    VectorType const & src,
                                                    VectorType const & const_vector,
                                                    double const       factor,
-                                                   double const       time) const
+                                                   double const       time,
+                                                   double const       time_step_size) const
 {
   // elasticity operator: make sure that constrained degrees of freedom have been set correctly
   // before evaluating the elasticity operator.
-  update_elasticity_operator(factor, time);
+  update_elasticity_operator(factor, time, time_step_size);
 
   // update linearization vector for interpolation and update mapping
   // if we integrate in the spatial configuration
@@ -882,9 +883,10 @@ void
 Operator<dim, Number>::evaluate_elasticity_operator(VectorType &       dst,
                                                     VectorType const & src,
                                                     double const       factor,
-                                                    double const       time) const
+                                                    double const       time,
+                                                    double const       time_step_size) const
 {
-  update_elasticity_operator(factor, time);
+  update_elasticity_operator(factor, time, time_step_size);
 
   if(param.large_deformation)
   {
@@ -906,12 +908,15 @@ Operator<dim, Number>::evaluate_elasticity_operator(VectorType &       dst,
 
 template<int dim, typename Number>
 void
-Operator<dim, Number>::update_elasticity_operator(double const factor, double const time) const
+Operator<dim, Number>::update_elasticity_operator(double const factor,
+                                                  double const time,
+                                                  double const time_step_size) const
 {
   if(param.large_deformation)
   {
     elasticity_operator_nonlinear.set_scaling_factor_mass_operator(factor);
     elasticity_operator_nonlinear.set_time(time);
+    elasticity_operator_nonlinear.set_time_step_size(time_step_size);
   }
   else
   {
@@ -941,14 +946,15 @@ Operator<dim, Number>::solve_nonlinear(VectorType &       sol,
                                        double const       scaling_factor_acceleration,
                                        double const       scaling_factor_velocity,
                                        double const       time,
+                                       double const       time_step_size,
                                        bool const         update_preconditioner) const
 {
   // update operators
   double const scaling_factor_mass =
     compute_scaling_factor_mass(scaling_factor_acceleration, scaling_factor_velocity);
-  residual_operator.update(const_vector, scaling_factor_mass, time);
 
-  linearized_operator.update(scaling_factor_mass, time);
+  residual_operator.update(const_vector, scaling_factor_mass, time, time_step_size);
+  linearized_operator.update(scaling_factor_mass, time, time_step_size);
 
   // set inhomogeneous Dirichlet values in order to evaluate the nonlinear residual correctly
   elasticity_operator_nonlinear.set_time(time);
@@ -1011,7 +1017,9 @@ Operator<dim, Number>::solve_linear(VectorType &       sol,
   double const scaling_factor_mass =
     compute_scaling_factor_mass(scaling_factor_acceleration, scaling_factor_velocity);
 
-  update_elasticity_operator(scaling_factor_mass, time);
+  update_elasticity_operator(scaling_factor_mass,
+                             time,
+                             0.0 /* time step size is irrelevant for the linear problem */);
   assemble_matrix_if_necessary_for_linear_elasticity_operator();
 
   linear_solver->update_preconditioner(update_preconditioner);

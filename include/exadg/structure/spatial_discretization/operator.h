@@ -75,11 +75,15 @@ public:
   }
 
   void
-  update(VectorType const & const_vector, double const scaling_factor_mass, double const time)
+  update(VectorType const & const_vector,
+         double const       scaling_factor_mass,
+         double const       time,
+         double const       time_step_size)
   {
     this->const_vector        = &const_vector;
     this->scaling_factor_mass = scaling_factor_mass;
     this->time                = time;
+    this->time_step_size      = time_step_size;
   }
 
   /*
@@ -89,7 +93,8 @@ public:
   void
   evaluate_residual(VectorType & dst, VectorType const & src) const
   {
-    pde_operator->evaluate_nonlinear_residual(dst, src, *const_vector, scaling_factor_mass, time);
+    pde_operator->evaluate_nonlinear_residual(
+      dst, src, *const_vector, scaling_factor_mass, time, time_step_size);
   }
 
 private:
@@ -99,6 +104,7 @@ private:
 
   double scaling_factor_mass;
   double time;
+  double time_step_size;
 };
 
 /*
@@ -137,12 +143,13 @@ public:
   }
 
   void
-  update(double const scaling_factor_mass, double const time)
+  update(double const scaling_factor_mass, double const time, double const time_step_size)
   {
     this->scaling_factor_mass = scaling_factor_mass;
     this->time                = time;
+    this->time_step_size      = time_step_size;
 
-    pde_operator->update_elasticity_operator(scaling_factor_mass, time);
+    pde_operator->update_elasticity_operator(scaling_factor_mass, time, time_step_size);
   }
 
   /*
@@ -160,6 +167,7 @@ private:
 
   double scaling_factor_mass;
   double time;
+  double time_step_size;
 };
 
 template<int dim, typename Number>
@@ -243,7 +251,8 @@ public:
                               VectorType const & src,
                               VectorType const & const_vector,
                               double const       factor,
-                              double const       time) const;
+                              double const       time,
+                              double const       time_step_size) const;
 
   void
   set_solution_linearization(VectorType const & vector) const;
@@ -255,10 +264,13 @@ public:
   evaluate_elasticity_operator(VectorType &       dst,
                                VectorType const & src,
                                double const       factor,
-                               double const       time) const;
+                               double const       time,
+                               double const       time_step_size) const;
 
   void
-  update_elasticity_operator(double const factor, double const time) const;
+  update_elasticity_operator(double const factor,
+                             double const time,
+                             double const time_step_size) const;
 
   void
   apply_elasticity_operator(VectorType & dst, VectorType const & src) const;
@@ -274,6 +286,7 @@ public:
                   double const       scaling_factor_acceleration,
                   double const       scaling_factor_velocity,
                   double const       time,
+                  double const       time_step_size,
                   bool const         update_preconditioner) const final;
 
   /*

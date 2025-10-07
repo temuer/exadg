@@ -112,12 +112,14 @@ public:
         this->param.update_preconditioner &&
         time_step_number % this->param.update_preconditioner_every_time_steps == 0;
 
-      auto const iter = pde_operator->solve_nonlinear(displacement,
-                                                      const_vector,
-                                                      0.0 /* no acceleration term */,
-                                                      0.0 /* no damping term */,
-                                                      time,
-                                                      update_preconditioner);
+      auto const iter =
+        pde_operator->solve_nonlinear(displacement,
+                                      const_vector,
+                                      0.0 /* no acceleration term */,
+                                      0.0 /* no damping term */,
+                                      time,
+                                      0.0 /* time step size is irrelevant for this problem */,
+                                      update_preconditioner);
 
       iterations.first += 1;
       std::get<0>(iterations.second) += std::get<0>(iter);

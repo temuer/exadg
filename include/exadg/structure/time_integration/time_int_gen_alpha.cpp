@@ -164,6 +164,7 @@ TimeIntGenAlpha<dim, Number>::do_timestep_solve()
                                                     this->get_scaling_factor_acceleration(),
                                                     this->get_scaling_factor_velocity(),
                                                     this->get_mid_time(),
+                                                    this->get_time_step_size(),
                                                     update_preconditioner);
 
     iterations.first += 1;
