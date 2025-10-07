@@ -24,6 +24,7 @@
 
 // C/C++
 #include <map>
+#include <memory>
 
 // deal.II
 #include <deal.II/base/types.h>

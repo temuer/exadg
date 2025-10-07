@@ -19,6 +19,7 @@
  *  ______________________________________________________________________
  */
 
+#include <deal.II/lac/solver_control.h>
 #include <exadg/structure/postprocessor/postprocessor_base.h>
 #include <exadg/structure/spatial_discretization/interface.h>
 #include <exadg/structure/time_integration/driver_quasi_static_problems.h>
@@ -168,7 +169,7 @@ DriverQuasiStatic<dim, Number>::do_solve()
         iter    = solve_step(load_factor + load_increment, update_preconditioner);
         success = true;
       }
-      catch(std::exception & exc)
+      catch(dealii::SolverControl::NoConvergence & exc)
       {
         pcout << "  Exception thrown when solving the current load step:" << std::endl
               << std::endl
@@ -185,11 +186,6 @@ DriverQuasiStatic<dim, Number>::do_solve()
               << "  Could not solve non-linear problem. Reduce load increment to " << load_increment
               << "." << std::endl
               << std::flush;
-      }
-      catch(...)
-      {
-        AssertThrow(false,
-                    dealii::ExcMessage("Unknown exception thrown within current load step solve."));
       }
     }
 

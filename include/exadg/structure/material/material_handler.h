@@ -490,6 +490,8 @@ public:
     for(unsigned int v = 1; v < matrix_free.n_active_entries_per_cell_batch(cell); ++v)
       AssertThrow(mid == matrix_free.get_cell_iterator(cell, v)->material_id(),
                   dealii::ExcMessage("You have to categorize cells according to their materials!"));
+    material = material_map.at(mid);
+    return;
 #endif
 
     material = material_map[mid];
