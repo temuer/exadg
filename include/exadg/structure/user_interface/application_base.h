@@ -28,6 +28,7 @@
 
 // ExaDG
 #include <exadg/grid/grid.h>
+#include <exadg/grid/grid_parameters.h>
 #include <exadg/grid/grid_utilities.h>
 #include <exadg/postprocessor/output_parameters.h>
 #include <exadg/structure/material/library/st_venant_kirchhoff.h>
@@ -49,6 +50,7 @@ public:
   add_parameters(dealii::ParameterHandler & prm)
   {
     output_parameters.add_parameters(prm);
+    grid_parameters.add_parameters(prm);
   }
 
   ApplicationBase(std::string parameter_file, MPI_Comm const & comm)
@@ -165,6 +167,7 @@ protected:
   unsigned int n_subdivisions_1d_hypercube;
 
   OutputParameters output_parameters;
+  GridParameters   grid_parameters;
 
 private:
   virtual void
