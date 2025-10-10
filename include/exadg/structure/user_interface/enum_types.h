@@ -22,9 +22,6 @@
 #ifndef INCLUDE_EXADG_STRUCTURE_USER_INTERFACE_ENUM_TYPES_H_
 #define INCLUDE_EXADG_STRUCTURE_USER_INTERFACE_ENUM_TYPES_H_
 
-// C/C++
-#include <string>
-
 namespace ExaDG
 {
 namespace Structure
@@ -59,7 +56,8 @@ enum class MaterialType
   StVenantKirchhoff,
   IncompressibleNeoHookean,
   CompressibleNeoHookean,
-  IncompressibleFibrousTissue
+  IncompressibleFibrousTissue,
+  AlveolarTissue
 };
 
 /**************************************************************************************/

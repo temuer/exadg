@@ -32,6 +32,7 @@
 #include <exadg/matrix_free/integrators.h>
 #include <exadg/operators/variable_coefficients.h>
 #include <exadg/structure/material/material.h>
+#include "exadg/structure/user_interface/enum_types.h"
 
 namespace ExaDG
 {
@@ -41,6 +42,8 @@ template<int dim>
 struct AlveolarTissueData : public MaterialData
 {
   using VectorType = dealii::LinearAlgebra::distributed::Vector<float>;
+
+  AlveolarTissueData(MaterialType const & type) : MaterialData(type){};
 
   AlveolarTissueData(MaterialType const &            type,
                      double const &                  shear_modulus,
@@ -84,33 +87,33 @@ struct AlveolarTissueData : public MaterialData
   }
 
   // Ground substance
-  double shear_modulus;
+  double shear_modulus{0.0};
 
   // Fiber
-  double fiber_k_1;
-  double fiber_k_2;
+  double fiber_k_1{0.0};
+  double fiber_k_2{0.0};
 
   // Incompressibility
-  double incompressibility_penalty;
-  double incompressibility_exponent;
+  double incompressibility_penalty{0.0};
+  double incompressibility_exponent{1.0};
 
   // Surfactant
-  double surfactant_m_1;
-  double surfactant_m_2;
-  double surfactant_k_1;
-  double surfactant_k_2;
-  double surfactant_c;
-  double surfactant_concentration_eq;
-  double surfactant_concentration_max;
-  double surface_tension_ref;
-  double surface_tension_eq;
-  double surface_tension_min;
+  double surfactant_m_1{0.0};
+  double surfactant_m_2{0.0};
+  double surfactant_k_1{0.0};
+  double surfactant_k_2{0.0};
+  double surfactant_c{0.0};
+  double surfactant_concentration_eq{0.0};
+  double surfactant_concentration_max{0.0};
+  double surface_tension_ref{0.0};
+  double surface_tension_eq{0.0};
+  double surface_tension_min{0.0};
 
-  std::vector<unsigned int> degree_per_level;
+  std::vector<unsigned int> degree_per_level{};
 
-  double point_tolerance;
+  double point_tolerance{0.0};
 
-  Type2D type_two_dim;
+  Type2D type_two_dim{Type2D::Undefined};
 };
 
 /*
