@@ -23,9 +23,11 @@
 #define INCLUDE_EXADG_STRUCTURE_MATERIAL_MATERIAL_HANDLER_H_
 
 // deal.II
+#include <deal.II/base/exceptions.h>
 #include <deal.II/matrix_free/matrix_free.h>
 
 // ExaDG
+#include <exadg/structure/material/library/alveolar_tissue.h>
 #include <exadg/structure/material/library/compressible_neo_hookean.h>
 #include <exadg/structure/material/library/incompressible_fibrous_tissue.h>
 #include <exadg/structure/material/library/incompressible_neo_hookean.h>
@@ -470,6 +472,20 @@ public:
             AssertThrow(check_type == 0,
                         dealii::ExcMessage("Templates only for check_type == 0 implemented."));
           }
+          break;
+        }
+        case MaterialType::AlveolarTissue:
+        {
+          AssertThrow(
+            check_type == 0 && stable_formulation == false && cache_level == 0,
+            dealii::ExcMessage(
+              "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
+
+          auto data_AlverolarTissue = std::static_pointer_cast<AlveolarTissueData<dim>>(data);
+
+          material_map.insert(Pair(id,
+                                   std::make_shared<AlveolarTissue<dim, Number>>(
+                                     matrix_free, dof_index, quad_index, *data_AlverolarTissue)));
           break;
         }
         default:
