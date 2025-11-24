@@ -129,10 +129,10 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   symmetric_tensor const C_inv = dealii::invert(C);
   scalar const           I_1   = dealii::trace(C);
 
-  scalar const Jpow_two_thirds = std::pow(J, static_cast<Number>(TWO_THIRDS));
+  scalar const Jpow_minus_two_thirds = std::pow(J, static_cast<Number>(-TWO_THIRDS));
 
   // Ground substance
-  symmetric_tensor S = (data.shear_modulus / Jpow_two_thirds) *
+  symmetric_tensor S = (data.shear_modulus * Jpow_minus_two_thirds) *
                        (get_identity_symmetric_tensor<dim, Number>() - ONE_THIRD * I_1 * C_inv);
 
   // Incompressibility penalty
@@ -218,7 +218,7 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivati
 
   Du_S += 2.0 * data.incompressibility_penalty * data.incompressibility_exponent *
           (Jpow_two_exponent - 1.0 / Jpow_two_exponent) *
-          (Du_C_inv + data.incompressibility_exponent * Du_J_over_J * C_inv);
+          (Du_C_inv + 2.0 * data.incompressibility_exponent * Du_J_over_J * C_inv);
 
   // TODO! -> SIMDComparison
   // Fibers (serialize due to the conditional)
