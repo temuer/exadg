@@ -198,50 +198,53 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivati
   scalar const           Du_I_1   = 2.0 * dealii::trace(dealii::transpose(F) * gradient_increment);
   tensor const           Du_F_inv = -F_inv * gradient_increment * F_inv;
   symmetric_tensor const Du_C_inv = compute_H_plus_HT(Du_F_inv * dealii::transpose(F_inv));
-
-  // TODO! ask about this.
-  scalar const Du_J_over_J = dealii::trace(gradient_increment * F_inv);
+  scalar const           Du_J_over_J = dealii::trace(gradient_increment * F_inv);
 
   scalar const Jpow_minus_two_thirds = std::pow(J, static_cast<Number>(-TWO_THIRDS));
 
+  symmetric_tensor Du_S;
+
   // Ground substance
-  symmetric_tensor Du_S{-TWO_THIRDS * data.shear_modulus * Jpow_minus_two_thirds * Du_J_over_J *
-                          get_identity_symmetric_tensor<dim, Number>() -
-                        ONE_THIRD * data.shear_modulus * Jpow_minus_two_thirds * I_1 * Du_C_inv +
-                        Du_J_over_J * TWO_NINTHS * data.shear_modulus * Jpow_minus_two_thirds *
-                          I_1 * C_inv -
-                        ONE_THIRD * data.shear_modulus * Jpow_minus_two_thirds * Du_I_1 * C_inv};
+  {
+    scalar const tmp = ONE_THIRD * data.shear_modulus * Jpow_minus_two_thirds;
+
+    // J term
+    Du_S += -2.0 * tmp * Du_J_over_J *
+            (get_identity_symmetric_tensor<dim, Number>() - ONE_THIRD * I_1 * C_inv);
+
+    // I_1 term
+    Du_S += -tmp * Du_I_1 * C_inv;
+
+    // C_inv term
+    Du_S += -tmp * I_1 * Du_C_inv;
+  }
 
   // Incompressibility penalty
-  scalar const Jpow_two_exponent =
-    std::pow(J, static_cast<Number>(2.0 * data.incompressibility_exponent));
-
-  Du_S += 2.0 * data.incompressibility_penalty * data.incompressibility_exponent *
-          (Jpow_two_exponent - 1.0 / Jpow_two_exponent) *
-          (Du_C_inv + 2.0 * data.incompressibility_exponent * Du_J_over_J * C_inv);
-
-  // TODO! -> SIMDComparison
-  // Fibers (serialize due to the conditional)
-  for(std::size_t v{0}; v < scalar::size(); v++)
   {
-    Number const I_1_v{I_1[v]};
+    scalar const tmp = std::pow(J, static_cast<Number>(2.0 * data.incompressibility_exponent));
 
-    // Conditional
-    if(I_1_v < 3.0)
-    {
-      continue;
-    }
+    // J term
+    Du_S += 4.0 * data.incompressibility_penalty * data.incompressibility_exponent *
+            data.incompressibility_exponent * (tmp + 1.0 / tmp) * Du_J_over_J * C_inv;
 
-    Number const vol_strain{static_cast<Number>(ONE_THIRD * I_1_v - 1.0)};
-    Number const k2_times_vol_strain_pow2{static_cast<Number>(data.fiber_k_2) * vol_strain *
-                                          vol_strain};
+    // C_inv term
+    Du_S += 2.0 * data.incompressibility_penalty * data.incompressibility_exponent *
+            (tmp - 1.0 / tmp) * Du_C_inv;
+  }
 
-    // Update diagonal entries
-    for(int d{0}; d < dim; d++)
-    {
-      Du_S[d][d][v] += TWO_NINTHS * data.fiber_k_1 * std::exp(k2_times_vol_strain_pow2) *
-                       (1.0 + 2.0 * k2_times_vol_strain_pow2);
-    }
+
+  scalar const fiber_mask = dealii::compare_and_apply_mask<dealii::SIMDComparison::less_than>(
+    I_1,
+    dealii::make_vectorized_array<Number>(3.0),
+    dealii::make_vectorized_array<Number>(1.0),
+    dealii::make_vectorized_array<Number>(0.0));
+
+  scalar const vol_strain = ONE_THIRD * I_1 - 1.0;
+  scalar const tmp        = data.fiber_k_2 * vol_strain * vol_strain;
+
+  for(int d{0}; d < dim; d++)
+  {
+    Du_S[d][d] += fiber_mask * TWO_NINTHS * data.fiber_k_1 * std::exp(tmp) * (1.0 + 2.0 * tmp);
   }
 
   return Du_S;
@@ -262,10 +265,6 @@ AlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_d
                                                    unsigned int const cell,
                                                    unsigned int const q) const -> symmetric_tensor
 {
-  // tensor const           F{dealii::Physics::Elasticity::Kinematics::F(gradient_displacement)};
-  // symmetric_tensor const S{second_piola_kirchhoff_stress_eval(gradient_displacement, cell, q)};
-  // return compute_push_forward(S, F);
-
   AssertThrow(false,
               dealii::ExcMessage("This material does not (yet) support spatial integration."));
 
