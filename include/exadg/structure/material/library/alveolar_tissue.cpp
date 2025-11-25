@@ -122,6 +122,9 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
 {
+  (void)cell;
+  (void)q;
+
   tensor const F = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
   scalar const J = dealii::determinant(F);
 
@@ -172,6 +175,9 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int const ce
                                                            unsigned int const q) const
   -> symmetric_tensor
 {
+  (void)cell;
+  (void)q;
+
   AssertThrow(false,
               dealii::ExcMessage("This function implements loading a stored stress tensor, but "
                                  "this material does not store tensorial quantities."));
@@ -187,6 +193,9 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivati
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
 {
+  (void)cell;
+  (void)q;
+
   tensor const F     = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
   scalar const J     = dealii::determinant(F);
   tensor const F_inv = dealii::invert(F);
@@ -265,6 +274,10 @@ AlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_d
                                                    unsigned int const cell,
                                                    unsigned int const q) const -> symmetric_tensor
 {
+  (void)gradient_displacement;
+  (void)cell;
+  (void)q;
+
   AssertThrow(false,
               dealii::ExcMessage("This material does not (yet) support spatial integration."));
 
@@ -276,6 +289,9 @@ auto
 AlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell, unsigned int const q) const
   -> symmetric_tensor
 {
+  (void)cell;
+  (void)q;
+
   AssertThrow(false,
               dealii::ExcMessage("This function implements loading a stored stress tensor, but "
                                  "this material does not store tensorial quantities."));
@@ -291,6 +307,11 @@ AlveolarTissue<dim, Number>::contract_with_J_times_C(
   unsigned int const       cell,
   unsigned int const       q) const -> symmetric_tensor
 {
+  (void)symmetric_gradient_increment;
+  (void)gradient_displacement;
+  (void)cell;
+  (void)q;
+
   AssertThrow(false,
               dealii::ExcMessage("This material does not (yet) support spatial integration."));
 
@@ -305,6 +326,10 @@ AlveolarTissue<dim, Number>::contract_with_J_times_C(
   unsigned int const       cell,
   unsigned int const       q) const -> symmetric_tensor
 {
+  (void)symmetric_gradient_increment;
+  (void)cell;
+  (void)q;
+
   AssertThrow(false,
               dealii::ExcMessage("This function cannot be called with `non-caching` material."));
 
@@ -318,6 +343,9 @@ AlveolarTissue<dim, Number>::do_set_cell_linearization_data(
   std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
   unsigned int const                                                         cell) const -> void
 {
+  (void)integrator_lin;
+  (void)cell;
+
   AssertThrow(false, dealii::ExcMessage("This material does not support caching."));
 
   return;
@@ -328,6 +356,9 @@ auto
 AlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned int const q) const
   -> scalar
 {
+  (void)cell;
+  (void)q;
+
   AssertThrow(false, dealii::ExcMessage("Cannot access precomputed one_over_J."));
 
   return dealii::make_vectorized_array(std::numeric_limits<Number>::quiet_NaN());
@@ -338,6 +369,9 @@ auto
 AlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
                                                    unsigned int const q) const -> tensor
 {
+  (void)cell;
+  (void)q;
+
   AssertThrow(false, dealii::ExcMessage("Cannot access precomputed deformation gradient."));
 
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_tensor<dim, Number>());

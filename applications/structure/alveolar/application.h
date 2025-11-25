@@ -284,8 +284,8 @@ private:
     constexpr double E             = 6.75;
     constexpr double nu            = 0.49;
     constexpr double shear_modulus = 0.5 * (E / (1.0 + nu));
-    constexpr double lambda        = E * nu / (1.0 + nu) / (1.0 - 2.0 * nu);
-    constexpr double bulk_modulus  = ONE_THIRD * (E / (1.0 - 2.0 * nu));
+    // constexpr double lambda        = E * nu / (1.0 + nu) / (1.0 - 2.0 * nu);
+    // constexpr double bulk_modulus  = ONE_THIRD * (E / (1.0 - 2.0 * nu));
 
     // auto material = std::make_shared<CompressibleNeoHookeanData<dim>>(
     //   MaterialType::CompressibleNeoHookean, shear_modulus, lambda, Type2D::Undefined);
