@@ -72,28 +72,21 @@ AlveolarTissue<dim, Number>::surface_tension(scalar const &     da_dA,
     if(relative_concentration_old < 1.0)
     // Regime 1
     {
-      Number const inv_delta_t = 1.0f / static_cast<Number>(time_step_size);
-      Number const k1_C =
-        static_cast<Number>(data.surfactant_k_1) * static_cast<Number>(data.surfactant_c);
-      Number const k2               = static_cast<Number>(data.surfactant_k_2);
-      Number const concentration_eq = static_cast<Number>(data.surfactant_concentration_eq);
+      Number const inv_delta_t = 1.0 / time_step_size;
+      Number const k1_C        = data.surfactant_k_1 * data.surfactant_c;
+      Number const k2          = data.surfactant_k_2;
 
       Number const relative_concentration_new =
-        (relative_concentration_old * da_dA_old * inv_delta_t +
-         da_dA[v] * concentration_eq * k1_C) /
-        da_dA[v] * (inv_delta_t + k1_C + k2);
+        ((relative_concentration_old * da_dA_old * inv_delta_t) + (da_dA[v] * k1_C)) /
+        (da_dA[v] * (inv_delta_t + k1_C + k2));
 
-      gamma[v] = data.surface_tension_ref - data.surfactant_m_1 * relative_concentration_new /
-                                              data.surfactant_concentration_eq;
+      gamma[v] = data.surface_tension_ref - data.surfactant_m_1 * relative_concentration_new;
     }
-    else if(relative_concentration_old <
-            (data.surfactant_concentration_max / data.surfactant_concentration_eq))
+    else if(relative_concentration_old < data.relative_surfactant_concentration_max)
     // Regime 2
     {
       Number const relative_concentration_new = relative_concentration_old * da_dA_old / da_dA[v];
-      gamma[v] =
-        data.surface_tension_eq -
-        data.surfactant_m_2 * (relative_concentration_new / data.surfactant_concentration_eq - 1.0);
+      gamma[v] = data.surface_tension_eq - data.surfactant_m_2 * (relative_concentration_new - 1.0);
     }
     else
     // Regime 3
@@ -146,25 +139,21 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
        (Jpow_two_exponent - 1.0 / Jpow_two_exponent) * C_inv;
 
   // Fibers (serialize due to the conditional)
-  for(std::size_t v{0}; v < scalar::size(); v++)
+  scalar const fiber_mask = dealii::compare_and_apply_mask<dealii::SIMDComparison::less_than>(
+    I_1,
+    dealii::make_vectorized_array<Number>(3.0),
+    dealii::make_vectorized_array<Number>(1.0),
+    dealii::make_vectorized_array<Number>(0.0));
+
+  scalar const vol_strain = ONE_THIRD * I_1 - 1.0;
+
+  // Update diagonal entries
+  for(int d{0}; d < dim; d++)
   {
-    Number const I_1_v{I_1[v]};
-
-    // Conditional
-    if(I_1_v < 3.0)
-    {
-      continue;
-    }
-
-    Number const vol_strain = static_cast<Number>(ONE_THIRD * I_1_v - 1.0);
-
-    // Update diagonal entries
-    for(int d{0}; d < dim; d++)
-    {
-      S[d][d][v] += ONE_THIRD * 2.0 * data.fiber_k_1 * vol_strain *
-                    std::exp(data.fiber_k_2 * vol_strain * vol_strain);
-    }
+    S[d][d] += fiber_mask * TWO_THIRDS * data.fiber_k_1 * vol_strain *
+               std::exp(data.fiber_k_2 * vol_strain * vol_strain);
   }
+
 
   return S;
 }

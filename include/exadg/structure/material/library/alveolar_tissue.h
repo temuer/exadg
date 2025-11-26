@@ -56,8 +56,7 @@ struct AlveolarTissueData : public MaterialData
                      double const &                  surfactant_k_1,
                      double const &                  surfactant_k_2,
                      double const &                  surfactant_c,
-                     double const &                  surfactant_concentration_eq,
-                     double const &                  surfactant_concentration_max,
+                     double const &                  relative_surfactant_concentration_max,
                      double const &                  surface_tension_ref,
                      double const &                  surface_tension_eq,
                      double const &                  surface_tension_min,
@@ -75,8 +74,7 @@ struct AlveolarTissueData : public MaterialData
       surfactant_k_1(surfactant_k_1),
       surfactant_k_2(surfactant_k_2),
       surfactant_c(surfactant_c),
-      surfactant_concentration_eq(surfactant_concentration_eq),
-      surfactant_concentration_max(surfactant_concentration_max),
+      relative_surfactant_concentration_max(relative_surfactant_concentration_max),
       surface_tension_ref(surface_tension_ref),
       surface_tension_eq(surface_tension_eq),
       surface_tension_min(surface_tension_min),
@@ -103,8 +101,7 @@ struct AlveolarTissueData : public MaterialData
   double surfactant_k_1{0.0};
   double surfactant_k_2{0.0};
   double surfactant_c{0.0};
-  double surfactant_concentration_eq{0.0};
-  double surfactant_concentration_max{0.0};
+  double relative_surfactant_concentration_max{1.0};
   double surface_tension_ref{0.0};
   double surface_tension_eq{0.0};
   double surface_tension_min{0.0};

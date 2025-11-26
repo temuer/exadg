@@ -302,16 +302,15 @@ private:
     material->incompressibility_penalty  = 1.0;
     material->incompressibility_exponent = 1.0;
     // Surfactant
-    material->surfactant_m_1               = 0.0; // 50 dyn / cm
-    material->surfactant_m_2               = 0.0; // 6.666... dyn / cm
-    material->surfactant_k_1               = 0.0; // 160 cm3 / mg / s
-    material->surfactant_k_2               = 0.0; // 0.015 1 / s
-    material->surfactant_c                 = 0.0; // 0.0073 mg / ml
-    material->surfactant_concentration_eq  = 0.0;
-    material->surfactant_concentration_max = 0.0;
-    material->surface_tension_ref          = 0.0; // 70 dyn / cm
-    material->surface_tension_eq           = 0.0; // 22.2
-    material->surface_tension_min          = 0.0; // 2.0
+    material->surfactant_m_1                        = 0.0; // 50 dyn / cm
+    material->surfactant_m_2                        = 0.0; // 6.666... dyn / cm
+    material->surfactant_k_1                        = 0.0; // 160 cm3 / mg / s
+    material->surfactant_k_2                        = 0.0; // 0.015 1 / s
+    material->surfactant_c                          = 0.0; // 0.0073 mg / ml
+    material->relative_surfactant_concentration_max = 0.0;
+    material->surface_tension_ref                   = 0.0; // 70 dyn / cm
+    material->surface_tension_eq                    = 0.0; // 22.2
+    material->surface_tension_min                   = 0.0; // 2.0
 
     using Pair = std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>>;
     this->material_descriptor->insert(Pair(10, material));
