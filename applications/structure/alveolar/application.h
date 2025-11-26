@@ -182,27 +182,27 @@ private:
           {
             continue;
           }
-          if(std::abs(face->center()[0] - 0.0) < 0.0015)
+          if(std::abs(face->center()[0] - 719.84002685546875) < 0.0015)
           { // LEFT BOUNDARY
             face->set_all_boundary_ids(1);
           }
-          else if(std::abs(face->center()[0] - 0.2) < 0.0015)
+          else if(std::abs(face->center()[0] - 960.15997314453125) < 0.0015)
           { // RIGHT BOUNDARY
             face->set_all_boundary_ids(2);
           }
-          else if(std::abs(face->center()[1]) < 0.0015)
+          else if(std::abs(face->center()[1] - 719.84002685546875) < 0.0015)
           { // BACK BOUNDARY
             face->set_all_boundary_ids(3);
           }
-          else if(std::abs(face->center()[1] - 0.2) < 0.0015)
+          else if(std::abs(face->center()[1] - 960.15997314453125) < 0.0015)
           { // FRONT
             face->set_all_boundary_ids(4);
           }
-          else if(std::abs(face->center()[2]) < 0.0015)
+          else if(std::abs(face->center()[2] - -0.15999603271484375) < 0.0015)
           { // BOTTOM
             face->set_all_boundary_ids(5);
           }
-          else if(std::abs(face->center()[2] - 0.202) < 0.0015)
+          else if(std::abs(face->center()[2] - 240.1599884033203125) < 0.0015)
           { // TOP
             face->set_all_boundary_ids(6);
           }
@@ -264,7 +264,7 @@ private:
     this->boundary_descriptor->dirichlet_bc.insert(
       pair(6,
            std::make_shared<DisplacementDBC<dim>>(
-             1.e-3, this->param.problem_type == ProblemType::QuasiStatic)));
+             10, this->param.problem_type == ProblemType::QuasiStatic)));
 
     this->boundary_descriptor->dirichlet_bc_initial_acceleration.insert(
       pair(6, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
@@ -276,44 +276,36 @@ private:
   void
   set_material_descriptor() final
   {
-    // auto material = std::make_shared<CompressibleNeoHookeanData<dim>>(
-    //   MaterialType::CompressibleNeoHookean, 0.5e6 /*mu*/, 2.0e6 /*lambda*/, Type2D::Undefined);
-
-    // Material according to Rausch et al.
-    // Neo-Hookean Material with E = 6.75 kPa and Poisson-Number = 0.49.
-    constexpr double E             = 6.75;
-    constexpr double nu            = 0.49;
-    constexpr double shear_modulus = 0.5 * (E / (1.0 + nu));
-    // constexpr double lambda        = E * nu / (1.0 + nu) / (1.0 - 2.0 * nu);
-    // constexpr double bulk_modulus  = ONE_THIRD * (E / (1.0 - 2.0 * nu));
-
-    // auto material = std::make_shared<CompressibleNeoHookeanData<dim>>(
-    //   MaterialType::CompressibleNeoHookean, shear_modulus, lambda, Type2D::Undefined);
-    // auto material = std::make_shared<IncompressibleNeoHookean<dim>>(
-    //   MaterialType::IncompressibleNeoHookean, shear_modulus, bulk_modulus, Type2D::Undefined);
-
     auto material = std::make_shared<AlveolarTissueData<dim>>(MaterialType::AlveolarTissue);
     // Ground substance
-    material->shear_modulus = shear_modulus;
+    material->shear_modulus = 2.0e-3; // kg / s2 / microm = 2 kPa (Wiechert)
     // Fiber
-    material->fiber_k_1 = 0.0;
-    material->fiber_k_2 = 0.0;
+    material->fiber_k_1 = 13.5e-3; // kg / s2 / microm = 13.5 kPa (Wiechert)
+    material->fiber_k_2 = 76.5;    // 76.5 (Wiechert)
     // Incompressibility
-    material->incompressibility_penalty  = 1.0;
-    material->incompressibility_exponent = 1.0;
+    material->incompressibility_penalty  = 0.0; // kg / s2 / microm != 10 kPa (Wiechert)
+    material->incompressibility_exponent = 1.0; // 1 (Wiechert)
+
     // Surfactant
-    material->surfactant_m_1                        = 0.0; // 50 dyn / cm
-    material->surfactant_m_2                        = 0.0; // 6.666... dyn / cm
-    material->surfactant_k_1                        = 0.0; // 160 cm3 / mg / s
-    material->surfactant_k_2                        = 0.0; // 0.015 1 / s
-    material->surfactant_c                          = 0.0; // 0.0073 mg / ml
-    material->relative_surfactant_concentration_max = 0.0;
-    material->surface_tension_ref                   = 0.0; // 70 dyn / cm
-    material->surface_tension_eq                    = 0.0; // 22.2
-    material->surface_tension_min                   = 0.0; // 2.0
+    material->surface_tension_ref = 0.0; // 70 dyn / cm (water)
+    material->surface_tension_eq  = 0.0; // 22.2 dyn / cm (Denny and Schroter)
+    material->surface_tension_min = 0.0; // 2.0 dyn / cm (Denny and Schroter)
+
+    material->surfactant_m_1 =
+      material->surface_tension_ref - material->surface_tension_eq; // (first isotherm)
+
+    material->surfactant_m_2 = 0.0; // 81.3... dyn / cm (Otis, graphically)
+
+    material->relative_surfactant_concentration_max =
+      1.0 + (material->surface_tension_eq - material->surface_tension_min) /
+              material->surfactant_m_2; // (second isotherm)
+
+    material->surfactant_k_1 = 0.0; // 160 cm3 / mg / s (Denny and Schroter)
+    material->surfactant_k_2 = 0.0; // 0.015 1 / s (Denny and Schroter)
+    material->surfactant_c   = 0.0; // 0.0073 mg / ml (Denny and Schroter)
 
     using Pair = std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>>;
-    this->material_descriptor->insert(Pair(10, material));
+    this->material_descriptor->insert(Pair(1, material));
   }
 
   void
