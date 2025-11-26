@@ -499,7 +499,9 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 
     integrator.submit_value(-traction, q);
 
-    if(material != nullptr)
+    // TODO! activate this once gradients aare calculated
+    // if(material != nullptr)
+    if constexpr(false)
     {
       tensor const F      = compute_F(integrator.get_gradient(q));
       tensor const F_inv  = dealii::invert(F);
