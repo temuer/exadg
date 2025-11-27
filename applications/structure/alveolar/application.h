@@ -182,27 +182,27 @@ private:
           {
             continue;
           }
-          if(std::abs(face->center()[0] - 719.84002685546875) < 0.0015)
+          if(std::abs(face->center()[0] - 719.84002685546875) < 1.0e-3)
           { // LEFT BOUNDARY
             face->set_all_boundary_ids(1);
           }
-          else if(std::abs(face->center()[0] - 960.15997314453125) < 0.0015)
+          else if(std::abs(face->center()[0] - 960.15997314453125) < 1.0e-3)
           { // RIGHT BOUNDARY
             face->set_all_boundary_ids(2);
           }
-          else if(std::abs(face->center()[1] - 719.84002685546875) < 0.0015)
+          else if(std::abs(face->center()[1] - 719.84002685546875) < 1.0e-3)
           { // BACK BOUNDARY
             face->set_all_boundary_ids(3);
           }
-          else if(std::abs(face->center()[1] - 960.15997314453125) < 0.0015)
+          else if(std::abs(face->center()[1] - 960.15997314453125) < 1.0e-3)
           { // FRONT
             face->set_all_boundary_ids(4);
           }
-          else if(std::abs(face->center()[2] - -0.15999603271484375) < 0.0015)
+          else if(std::abs(face->center()[2] - -0.15999603271484375) < 1.0e-3)
           { // BOTTOM
             face->set_all_boundary_ids(5);
           }
-          else if(std::abs(face->center()[2] - 240.1599884033203125) < 0.0015)
+          else if(std::abs(face->center()[2] - 240.1599884033203125) < 1.0e-3)
           { // TOP
             face->set_all_boundary_ids(6);
           }
@@ -235,9 +235,8 @@ private:
   void
   set_boundary_descriptor() final
   {
-    typedef typename std::pair<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>>
-                                                                                  pair;
-    typedef typename std::pair<dealii::types::boundary_id, dealii::ComponentMask> pair_mask;
+    using pair      = std::pair<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>>;
+    using pair_mask = std::pair<dealii::types::boundary_id, dealii::ComponentMask>;
 
     // free boundaries
     this->boundary_descriptor->neumann_bc.insert(
