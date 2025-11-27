@@ -142,18 +142,18 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   scalar const fiber_mask = dealii::compare_and_apply_mask<dealii::SIMDComparison::less_than>(
     I_1,
     dealii::make_vectorized_array<Number>(3.0),
-    dealii::make_vectorized_array<Number>(1.0),
-    dealii::make_vectorized_array<Number>(0.0));
+    dealii::make_vectorized_array<Number>(0.0),
+    dealii::make_vectorized_array<Number>(1.0));
 
-  scalar const vol_strain = ONE_THIRD * I_1 - 1.0;
+  scalar const vol_strain   = ONE_THIRD * I_1 - 1.0;
+  scalar const fiber_stress = fiber_mask * TWO_THIRDS * data.fiber_k_1 * vol_strain *
+                              std::exp(data.fiber_k_2 * vol_strain * vol_strain);
 
   // Update diagonal entries
   for(int d{0}; d < dim; d++)
   {
-    S[d][d] += fiber_mask * TWO_THIRDS * data.fiber_k_1 * vol_strain *
-               std::exp(data.fiber_k_2 * vol_strain * vol_strain);
+    S[d][d] += fiber_stress;
   }
-
 
   return S;
 }
@@ -234,15 +234,18 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivati
   scalar const fiber_mask = dealii::compare_and_apply_mask<dealii::SIMDComparison::less_than>(
     I_1,
     dealii::make_vectorized_array<Number>(3.0),
-    dealii::make_vectorized_array<Number>(1.0),
-    dealii::make_vectorized_array<Number>(0.0));
+    dealii::make_vectorized_array<Number>(0.0),
+    dealii::make_vectorized_array<Number>(1.0));
 
   scalar const vol_strain = ONE_THIRD * I_1 - 1.0;
   scalar const tmp        = data.fiber_k_2 * vol_strain * vol_strain;
 
+  scalar const fiber_stress_increment =
+    fiber_mask * TWO_NINTHS * data.fiber_k_1 * std::exp(tmp) * (1.0 + 2.0 * tmp);
+
   for(int d{0}; d < dim; d++)
   {
-    Du_S[d][d] += fiber_mask * TWO_NINTHS * data.fiber_k_1 * std::exp(tmp) * (1.0 + 2.0 * tmp);
+    Du_S[d][d] += fiber_stress_increment;
   }
 
   return Du_S;
