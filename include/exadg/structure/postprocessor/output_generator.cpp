@@ -20,9 +20,13 @@
  */
 
 // deal.II
+#include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/fe/fe_update_flags.h>
 #include <deal.II/grid/grid_out.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/data_out_dof_data.h>
+#include <deal.II/numerics/data_postprocessor.h>
+#include <deal.II/physics/elasticity/kinematics.h>
 
 // ExaDG
 #include <exadg/postprocessor/write_output.h>
@@ -33,6 +37,50 @@ namespace ExaDG
 {
 namespace Structure
 {
+template<int dim>
+class PrincipalStrainsPostprocessor : public dealii::DataPostprocessorVector<dim>
+{
+public:
+  PrincipalStrainsPostprocessor()
+    : dealii::DataPostprocessorVector<dim>("principal_strain", dealii::update_gradients)
+  {
+  }
+
+  virtual void
+  evaluate_vector_field(dealii::DataPostprocessorInputs::Vector<dim> const & input_data,
+                        std::vector<dealii::Vector<double>> & computed_quantities) const override
+  {
+    AssertDimension(input_data.solution_gradients.size(), computed_quantities.size());
+
+    for(unsigned int p = 0; p < input_data.solution_gradients.size(); ++p)
+    {
+      AssertDimension(computed_quantities[p].size(), dim);
+
+      dealii::Tensor<2, dim> Grad_U;
+
+      for(int d1 = 0; d1 < dim; d1++)
+      {
+        for(int d2 = 0; d2 < dim; d2++)
+        {
+          Grad_U[d1][d2] = input_data.solution_gradients[p][d1][d2];
+        }
+      }
+
+
+      dealii::Tensor<2, dim> const          F = dealii::Physics::Elasticity::Kinematics::F(Grad_U);
+      dealii::SymmetricTensor<2, dim> const euler_almansi_strains =
+        dealii::Physics::Elasticity::Kinematics::e(F);
+
+      std::array<double, dim> const eigenvalues = dealii::eigenvalues(euler_almansi_strains);
+
+      for(int d = 0; d < dim; d++)
+      {
+        computed_quantities[p][d] = eigenvalues[d];
+      }
+    }
+  }
+};
+
 template<int dim, typename VectorType>
 void
 write_output(OutputDataBase const &          output_data,
@@ -53,6 +101,9 @@ write_output(OutputDataBase const &          output_data,
     component_interpretation(dim, dealii::DataComponentInterpretation::component_is_part_of_vector);
 
   data_out.add_data_vector(dof_handler, solution_vector, names, component_interpretation);
+
+  PrincipalStrainsPostprocessor<dim> principal_euler_almansi_strains;
+  data_out.add_data_vector(dof_handler, solution_vector, principal_euler_almansi_strains);
 
   data_out.build_patches(mapping, output_data.degree, dealii::DataOut<dim>::curved_inner_cells);
 
