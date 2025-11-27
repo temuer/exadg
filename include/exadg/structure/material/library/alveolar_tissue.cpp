@@ -241,7 +241,7 @@ AlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivati
   scalar const tmp        = data.fiber_k_2 * vol_strain * vol_strain;
 
   scalar const fiber_stress_increment =
-    fiber_mask * TWO_NINTHS * data.fiber_k_1 * std::exp(tmp) * (1.0 + 2.0 * tmp);
+    fiber_mask * TWO_NINTHS * data.fiber_k_1 * std::exp(tmp) * (1.0 + 2.0 * tmp) * Du_I_1;
 
   for(int d{0}; d < dim; d++)
   {
