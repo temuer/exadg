@@ -120,7 +120,7 @@ private:
     // SOLVER
     this->param.newton_solver_data = Newton::SolverData(20, 1.e-4, 1.e-6);
     this->param.solver             = Solver::CG;
-    this->param.solver_data        = SolverData(1e3, 1.e-4, 1.e-4, 30);
+    this->param.solver_data        = SolverData(30, 1.e-4, 1.e-4, 30);
 
     // PERCONDITIONER
     this->param.update_preconditioner                         = true;
@@ -282,8 +282,8 @@ private:
     material->fiber_k_1 = 13.5e-3; // kg / s2 / microm = 13.5 kPa (Wiechert)
     material->fiber_k_2 = 76.5;    // 76.5 (Wiechert)
     // Incompressibility
-    material->incompressibility_penalty  = 0.0; // kg / s2 / microm != 10 kPa (Wiechert)
-    material->incompressibility_exponent = 1.0; // 1 (Wiechert)
+    material->incompressibility_penalty  = 10.0e-3; // kg / s2 / microm != 10 kPa (Wiechert)
+    material->incompressibility_exponent = 1.0;     // 1 (Wiechert)
 
     // Surfactant
     material->surface_tension_ref = 0.0; // 70 dyn / cm (water)
