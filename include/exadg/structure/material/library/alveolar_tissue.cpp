@@ -60,10 +60,15 @@ AlveolarTissue<dim, Number>::surface_tension(scalar const &     da_dA,
                                              unsigned int const boundary_face,
                                              unsigned int const q) const -> scalar
 {
-  std::array<scalar, 2> const & coeffs{surfactant_model_coefficients[boundary_face][q]};
+  // Static or quasi-static case
+  if(time_step_size == 0.0)
+  {
+    return dealii::make_vectorized_array<Number>(data.surface_tension_min);
+  }
 
   scalar gamma = dealii::make_vectorized_array<Number>(0.0);
 
+  std::array<scalar, 2> const & coeffs{surfactant_model_coefficients[boundary_face][q]};
   for(std::size_t v{0}; v < scalar::size(); v++)
   {
     Number const relative_concentration_old = coeffs[0][v];

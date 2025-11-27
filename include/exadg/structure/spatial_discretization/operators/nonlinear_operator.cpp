@@ -454,10 +454,9 @@ NonLinearOperator<dim, Number>::boundary_face_loop_nonlinear(
     // the displacement gradient to obtain the surface area ratio da/dA.
     // We write the integrator flags explicitly in this case since they
     // depend on the parameter pull_back_traction.
-    if(this->operator_data.pull_back_traction)
-    {
-      integrator_m_inhom.gather_evaluate(src, dealii::EvaluationFlags::gradients);
-    }
+
+    //! TODO Just always evaluate the gradients.. to be solved later
+    integrator_m_inhom.gather_evaluate(src, dealii::EvaluationFlags::gradients);
 
     do_boundary_integral_continuous(integrator_m_inhom, matrix_free.get_boundary_id(face));
 
@@ -500,8 +499,7 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
     integrator.submit_value(-traction, q);
 
     // TODO! activate this once gradients aare calculated
-    // if(material != nullptr)
-    if constexpr(false)
+    if(material != nullptr)
     {
       tensor const F      = compute_F(integrator.get_gradient(q));
       tensor const F_inv  = dealii::invert(F);
