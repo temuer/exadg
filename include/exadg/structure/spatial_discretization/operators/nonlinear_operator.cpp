@@ -475,9 +475,6 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 {
   BoundaryType boundary_type = this->operator_data.bc->get_boundary_type(boundary_id);
 
-  AlveolarTissue<dim, Number> * material{
-    dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get())};
-  // If material is alveolar tissue, then we will go into the surface tension contribution.
 
   for(unsigned int q = 0; q < integrator.n_q_points; ++q)
   {
@@ -498,13 +495,15 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 
     integrator.submit_value(-traction, q);
 
-    // TODO! activate this once gradients aare calculated
-    if(material != nullptr)
+    // If material is alveolar tissue, then we will go into the surface tension contribution.
+    if(AlveolarTissue<dim, Number> * material =
+         dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get());
+       material != nullptr)
     {
       tensor const F      = compute_F(integrator.get_gradient(q));
       tensor const F_inv  = dealii::invert(F);
       vector const N      = integrator.normal_vector(q);
-      vector const n_star = dealii::determinant(F) * dealii::transpose(dealii::invert(F)) * N;
+      vector const n_star = dealii::determinant(F) * dealii::transpose(F_inv) * N;
       scalar const da_dA  = n_star.norm();
       vector const n      = n_star / da_dA;
 

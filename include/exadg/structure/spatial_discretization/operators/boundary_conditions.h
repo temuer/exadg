@@ -24,6 +24,7 @@
 #include <exadg/functions_and_boundary_conditions/evaluate_functions.h>
 #include <exadg/matrix_free/integrators.h>
 #include <exadg/structure/user_interface/boundary_descriptor.h>
+#include "exadg/functions_and_boundary_conditions/function_with_normal.h"
 
 namespace ExaDG
 {
@@ -49,7 +50,19 @@ inline DEAL_II_ALWAYS_INLINE //
     auto bc       = boundary_descriptor->neumann_bc.find(boundary_id)->second;
     auto q_points = integrator.quadrature_point(q);
 
-    traction = FunctionEvaluator<1, dim, Number>::value(*bc, q_points, time);
+    auto bc_with_normal{dynamic_cast<FunctionWithNormal<dim> *>(bc.get())};
+
+    if(bc_with_normal != nullptr)
+    {
+      traction = FunctionEvaluator<1, dim, Number>::value(*bc_with_normal,
+                                                          q_points,
+                                                          integrator.normal_vector(q),
+                                                          time);
+    }
+    else
+    {
+      traction = FunctionEvaluator<1, dim, Number>::value(*bc, q_points, time);
+    }
   }
   else if(boundary_type == BoundaryType::NeumannCached)
   {

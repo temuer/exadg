@@ -29,20 +29,44 @@
 #include <deal.II/grid/tria.h>
 #include <exadg/functions_and_boundary_conditions/function_with_normal.h>
 #include <exadg/grid/grid.h>
+#include <exadg/grid/grid_data.h>
+#include <exadg/structure/material/library/alveolar_tissue.h>
+#include <exadg/structure/postprocessor/postprocessor.h>
 #include <exadg/structure/user_interface/application_base.h>
 #include <exadg/structure/user_interface/enum_types.h>
 #include <exadg/structure/user_interface/parameters.h>
 #include <memory>
 #include <string>
-#include "exadg/grid/grid_data.h"
-#include "exadg/structure/material/library/alveolar_tissue.h"
-#include "exadg/structure/postprocessor/postprocessor.h"
-#include "exadg/structure/spatial_discretization/operators/continuum_mechanics.h"
 
 namespace ExaDG
 {
 namespace Structure
 {
+template<int dim>
+class HydrostaticPressureNBC : public FunctionWithNormal<dim>
+{
+public:
+  HydrostaticPressureNBC(double const pressure, bool const is_quasistatic)
+    : FunctionWithNormal<dim>(dim, 0.0), pressure(pressure), is_quasistatic(is_quasistatic)
+  {
+  }
+
+  double
+  value(dealii::Point<dim> const & p, unsigned int const c) const final
+  {
+    (void)p;
+
+    double factor = is_quasistatic ? this->get_time() : 1.0;
+
+    dealii::Tensor<1, dim> const n = this->get_normal_vector();
+
+    return n[c] * factor * pressure;
+  }
+
+private:
+  double pressure{0.0};
+  bool   is_quasistatic{false};
+};
 
 template<int dim>
 class DisplacementDBC : public dealii::Function<dim>
