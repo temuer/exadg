@@ -21,6 +21,7 @@
 
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/base/tensor.h>
 #include <deal.II/base/vectorization.h>
 #include <exadg/structure/spatial_discretization/operators/boundary_conditions.h>
 #include <exadg/structure/spatial_discretization/operators/continuum_mechanics.h>
@@ -502,32 +503,19 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
     {
       tensor const F      = compute_F(integrator.get_gradient(q));
       tensor const F_inv  = dealii::invert(F);
+      scalar const J      = dealii::determinant(F);
       vector const N      = integrator.normal_vector(q);
-      vector const n_star = dealii::determinant(F) * dealii::transpose(F_inv) * N;
+      vector const n_star = J * dealii::transpose(F_inv) * N;
       scalar const da_dA  = n_star.norm();
       vector const n      = n_star / da_dA;
-
-      auto const proj{std::invoke(
-        [](vector const & n) -> symmetric_tensor
-        {
-          symmetric_tensor proj{};
-          for(int d1{0}; d1 < dim; d1++)
-          {
-            proj[d1][d1] = 1.0 - n[d1] * n[d1];
-            for(int d2{d1 + 1}; d2 < dim; d2++)
-            {
-              proj[d1][d2] = -n[d1] * n[d2];
-            }
-          }
-          return proj;
-        },
-        n)};
 
       scalar const surface_tension =
         material->surface_tension(da_dA, time_step_size, integrator.get_current_cell_index(), q);
 
       // This material must be updated after convergence.
-      integrator.submit_gradient((surface_tension * da_dA) * dealii::transpose(F_inv * proj), q);
+      integrator.submit_gradient(surface_tension * da_dA *
+                                   (F_inv - dealii::outer_product(n, F_inv * n)),
+                                 q);
 
       // Note that this has not been linearized (yet).
     }
