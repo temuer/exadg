@@ -1,4 +1,3 @@
-#!/bin/sh
 #########################################################################
 # 
 #                 #######               ######  #######
@@ -9,7 +8,7 @@
 #
 #  ExaDG - High-Order Discontinuous Galerkin for the Exa-Scale
 #
-#  Copyright (C) 2021 by the ExaDG authors
+#  Copyright (C) 2025 by the ExaDG authors
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -26,22 +25,8 @@
 #
 #########################################################################
 
-rm -rf CMakeFiles/ CMakeCache.txt libexadg.so libexadg.a include/exadg/configuration/config.h
+TARGETNAME(TARGET_NAME ${CMAKE_CURRENT_SOURCE_DIR})
 
-# use the dealii/build directory
-DEAL=$WORKING_DIRECTORY/dealii/build
-# or, alternatively, the dealii/install directory
-#DEAL=$WORKING_DIRECTORY/dealii/install
+PROJECT(${TARGET_NAME})
 
-EXADG=$WORKING_DIRECTORY/exadg
-
-EXTRA_ARGS=$@
-
-cmake \
-    -D DEAL_II_DIR="$DEAL" \
-    -D EXADG_WITH_FFTW=OFF \
-    -D EXADG_WITH_LIKWID=OFF \
-    -D BUILD_SHARED_LIBS=ON \
-    -D PICKUP_TESTS=ON \
-    $EXTRA_ARGS \
-    $EXADG
+EXADG_PICKUP_EXE(solver.cpp ${TARGET_NAME} solver)
