@@ -23,9 +23,12 @@
 #define STRUCTURE_MATERIAL_LIBRARY_ALVEOLAR_TISSUE
 
 // deal.II
+#include <deal.II/base/exception_macros.h>
+#include <deal.II/base/exceptions.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/table.h>
+#include <deal.II/base/types.h>
 #include <deal.II/matrix_free/matrix_free.h>
 
 // ExaDG
@@ -45,30 +48,34 @@ struct AlveolarTissueData : public MaterialData
 
   AlveolarTissueData(MaterialType const & type) : MaterialData(type){};
 
-  AlveolarTissueData(MaterialType const &            type,
-                     double const &                  shear_modulus,
-                     double const &                  incompressibility_penalty,
-                     double const &                  incompressibility_exponent,
-                     double const &                  fiber_k_1,
-                     double const &                  fiber_k_2,
-                     double const &                  surfactant_m_1,
-                     double const &                  surfactant_m_2,
-                     double const &                  surfactant_k_1,
-                     double const &                  surfactant_k_2,
-                     double const &                  surfactant_c,
-                     double const &                  relative_surfactant_concentration_max,
-                     double const &                  surface_tension_ref,
-                     double const &                  surface_tension_eq,
-                     double const &                  surface_tension_min,
-                     std::vector<unsigned int> const degree_per_level,
-                     double const &                  point_tolerance,
-                     Type2D const &                  type_two_dim)
+  AlveolarTissueData(MaterialType const &                 type,
+                     double const &                       shear_modulus,
+                     double const &                       incompressibility_penalty,
+                     double const &                       incompressibility_exponent,
+                     double const &                       fiber_k_1,
+                     double const &                       fiber_k_2,
+                     std::set<dealii::types::boundary_id> surfactant_boundary_ids,
+                     double const &                       surfactant_equilibrium_time,
+                     double const &                       surfactant_m_1,
+                     double const &                       surfactant_m_2,
+                     double const &                       surfactant_k_1,
+                     double const &                       surfactant_k_2,
+                     double const &                       surfactant_c,
+                     double const &                       relative_surfactant_concentration_max,
+                     double const &                       surface_tension_ref,
+                     double const &                       surface_tension_eq,
+                     double const &                       surface_tension_min,
+                     std::vector<unsigned int> const      degree_per_level,
+                     double const &                       point_tolerance,
+                     Type2D const &                       type_two_dim)
     : MaterialData(type),
       shear_modulus(shear_modulus),
       fiber_k_1(fiber_k_1),
       fiber_k_2(fiber_k_2),
       incompressibility_penalty(incompressibility_penalty),
       incompressibility_exponent(incompressibility_exponent),
+      surfactant_boundary_ids(std::move(surfactant_boundary_ids)),
+      surfactant_equilibrium_time(surfactant_equilibrium_time),
       surfactant_m_1(surfactant_m_1),
       surfactant_m_2(surfactant_m_2),
       surfactant_k_1(surfactant_k_1),
@@ -78,10 +85,12 @@ struct AlveolarTissueData : public MaterialData
       surface_tension_ref(surface_tension_ref),
       surface_tension_eq(surface_tension_eq),
       surface_tension_min(surface_tension_min),
-      degree_per_level(degree_per_level),
+      degree_per_level(std::move(degree_per_level)),
       point_tolerance(point_tolerance),
       type_two_dim(type_two_dim)
   {
+    AssertThrow(surfactant_equilibrium_time > 0.0,
+                dealii::ExcMessage("equilibrium time must be greater than 0"));
   }
 
   // Ground substance
@@ -96,15 +105,18 @@ struct AlveolarTissueData : public MaterialData
   double incompressibility_exponent{1.0};
 
   // Surfactant
-  double surfactant_m_1{0.0};
-  double surfactant_m_2{0.0};
-  double surfactant_k_1{0.0};
-  double surfactant_k_2{0.0};
-  double surfactant_c{0.0};
-  double relative_surfactant_concentration_max{1.0};
-  double surface_tension_ref{0.0};
-  double surface_tension_eq{0.0};
-  double surface_tension_min{0.0};
+
+  std::set<dealii::types::boundary_id> surfactant_boundary_ids{};
+  double                               surfactant_equilibrium_time{0.0};
+  double                               surfactant_m_1{0.0};
+  double                               surfactant_m_2{0.0};
+  double                               surfactant_k_1{0.0};
+  double                               surfactant_k_2{0.0};
+  double                               surfactant_c{0.0};
+  double                               relative_surfactant_concentration_max{1.0};
+  double                               surface_tension_ref{0.0};
+  double                               surface_tension_eq{0.0};
+  double                               surface_tension_min{0.0};
 
   std::vector<unsigned int> degree_per_level{};
 
@@ -141,11 +153,23 @@ public:
                  unsigned int const                      quad_index,
                  AlveolarTissueData<dim> const &         data);
 
-  scalar
-  surface_tension(scalar const &     da_dA,
+  std::pair<scalar, std::array<unsigned int, scalar::size()>>
+  surface_tension(scalar const &     surface_area_new,
                   double const       time_step_size,
-                  unsigned int const boundary_face,
-                  unsigned int const q) const;
+                  unsigned int const boundary_face) const;
+
+  scalar
+  surface_tension_increment(scalar const & surface_area_new,
+                            scalar const & surface_area_new_increment,
+                            std::array<unsigned int, scalar::size()> const & regime,
+                            double const                                     time_step_size,
+                            unsigned int const                               boundary_face) const;
+
+  void
+  update_material(scalar const &     surface_area_new,
+                  double const       time,
+                  double const       time_step_size,
+                  unsigned int const boundary_face);
 
   /*
    * S_gs  = shear_modulus * J^(-2/3) * (I - I_1 / 3 * C^(-1) )
@@ -178,6 +202,29 @@ public:
                                                         tensor const &     gradient_displacement,
                                                         unsigned int const cell,
                                                         unsigned int const q) const final;
+  /*
+   * Surface tension stress as 1PK
+   */
+  tensor
+  surface_tension_1PK(tensor const &     gradient_displacement,
+                      vector const &     material_normal_vector,
+                      scalar const &     surface_area_new,
+                      double const       time,
+                      double const       time_step_size,
+                      unsigned int const face) const;
+
+  /*
+   * Surface tension stress increment Du_P_gamma
+   */
+  tensor
+  surface_tension_1PK_displacement_derivative(tensor const &     displacement_gradient_increment,
+                                              tensor const &     displacement_gradient,
+                                              vector const &     material_normal_vector,
+                                              scalar const &     surface_area_new,
+                                              scalar const &     surface_area_new_increment,
+                                              double const       time,
+                                              double const       time_step_size,
+                                              unsigned int const face) const;
 
   symmetric_tensor
   kirchhoff_stress(tensor const &     gradient_displacement,
@@ -214,13 +261,25 @@ public:
   tensor
   gradient_displacement(unsigned int const cell, unsigned int const q) const final;
 
+  bool
+  is_surfactant_boundary(dealii::types::boundary_id boundary_id) const
+  {
+    return data.surfactant_boundary_ids.find(boundary_id) != data.surfactant_boundary_ids.end();
+  }
+
 private:
   unsigned int dof_index;
   unsigned int quad_index;
 
   AlveolarTissueData<dim> const & data;
 
-  dealii::Table<2, std::array<scalar, 2>> surfactant_model_coefficients;
+  struct SurfactantModel
+  {
+    scalar relative_concentration;
+    scalar surface_area;
+  };
+
+  dealii::Table<1, SurfactantModel> surfactant_internal_variables_old;
 };
 
 } // namespace Structure

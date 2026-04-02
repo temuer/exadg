@@ -956,10 +956,14 @@ Operator<dim, Number>::solve_nonlinear(VectorType &       sol,
   residual_operator.update(const_vector, scaling_factor_mass, time, time_step_size);
   linearized_operator.update(scaling_factor_mass, time, time_step_size);
 
+  // Utilize last converged solution to update temporal variables in materials
+  elasticity_operator_nonlinear.update_materials(sol);
+
   // set inhomogeneous Dirichlet values in order to evaluate the nonlinear residual correctly
   elasticity_operator_nonlinear.set_time(time);
   elasticity_operator_nonlinear.set_inhomogeneous_boundary_values(sol);
   affine_constraints_periodicity_and_hanging_nodes.distribute(sol);
+
 
   // call Newton solver
   Newton::UpdateData update;

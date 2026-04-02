@@ -22,7 +22,10 @@
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/tensor.h>
+#include <deal.II/base/types.h>
 #include <deal.II/base/vectorization.h>
+#include <deal.II/matrix_free/evaluation_flags.h>
+#include <deal.II/matrix_free/fe_evaluation.h>
 #include <exadg/structure/spatial_discretization/operators/boundary_conditions.h>
 #include <exadg/structure/spatial_discretization/operators/continuum_mechanics.h>
 #include <exadg/structure/spatial_discretization/operators/nonlinear_operator.h>
@@ -45,6 +48,10 @@ NonLinearOperator<dim, Number>::initialize(
   integrator_lin = std::make_shared<IntegratorCell>(*this->matrix_free,
                                                     this->operator_data.dof_index_inhomogeneous,
                                                     this->operator_data.quad_index);
+  face_integrator_lin =
+    std::make_shared<IntegratorFace>(*this->matrix_free,
+                                     this->operator_data.dof_index_inhomogeneous,
+                                     this->operator_data.quad_index);
 
   // It should not make a difference here whether we use dof_index or dof_index_inhomogeneous.
   this->matrix_free->initialize_dof_vector(displacement_lin, this->operator_data.dof_index);
@@ -164,6 +171,144 @@ NonLinearOperator<dim, Number>::set_solution_linearization(
 }
 
 template<int dim, typename Number>
+void
+NonLinearOperator<dim, Number>::cell_loop_update_materials(
+  dealii::MatrixFree<dim, Number> const & matrix_free,
+  VectorType &                            dst,
+  VectorType const &                      src,
+  Range const &                           range) const
+{
+  // With the current selection of materials, nothing is necessary here.
+  (void)matrix_free;
+  (void)dst;
+  (void)src;
+  (void)range;
+}
+
+template<int dim, typename Number>
+void
+NonLinearOperator<dim, Number>::face_loop_update_materials(
+  dealii::MatrixFree<dim, Number> const & matrix_free,
+  VectorType &                            dst,
+  VectorType const &                      src,
+  Range const &                           range) const
+{
+  // With the current selection of materials, nothing is necessary here.
+  (void)matrix_free;
+  (void)dst;
+  (void)src;
+  (void)range;
+}
+
+template<int dim, typename Number>
+auto
+NonLinearOperator<dim, Number>::calculate_surface_area(IntegratorFace const & integrator) -> scalar
+{
+  scalar surface_area = dealii::make_vectorized_array<Number>(0.0);
+
+  for(unsigned int q = 0; q < integrator.n_q_points; ++q)
+  {
+    tensor const F = compute_F(integrator.get_gradient(q));
+    vector const N = integrator.normal_vector(q);
+    // da/dA * n = det F F^{-T} * N := n_star
+    // -> da/dA = n_star.norm()
+    vector const n_star      = determinant(F) * transpose(invert(F)) * N;
+    scalar       n_star_norm = n_star.norm();
+
+    scalar JxW = integrator.JxW(q);
+
+    surface_area += n_star_norm * JxW;
+  }
+
+  return surface_area;
+}
+
+template<int dim, typename Number>
+auto
+NonLinearOperator<dim, Number>::calculate_surface_area_increment(
+  IntegratorFace const & integrator_lin,
+  IntegratorFace const & integrator) -> scalar
+{
+  scalar surface_area_increment = dealii::make_vectorized_array<Number>(0.0);
+
+  for(unsigned int q = 0; q < integrator_lin.n_q_points; ++q)
+  {
+    tensor const F       = compute_F(integrator_lin.get_gradient(q));
+    vector const N       = integrator_lin.normal_vector(q);
+    tensor       F_inv_T = transpose(invert(F));
+    // da/dA * n = det F F^{-T} * N := n_star
+    // -> da/dA = n_star.norm()
+    vector const           n_star      = determinant(F) * F_inv_T * N;
+    scalar                 n_star_norm = n_star.norm();
+    vector const           n           = n_star / n_star_norm;
+    symmetric_tensor const n_projector = get_identity_symmetric_tensor<dim, Number>() -
+                                         dealii::symmetrize(dealii::outer_product(n, n));
+
+    scalar JxW = integrator_lin.JxW(q);
+
+    surface_area_increment +=
+      n_star_norm * dealii::scalar_product(n_projector * F_inv_T, integrator.get_gradient(q)) * JxW;
+  }
+
+  return surface_area_increment;
+}
+
+template<int dim, typename Number>
+void
+NonLinearOperator<dim, Number>::boundary_face_loop_update_materials(
+  dealii::MatrixFree<dim, Number> const & matrix_free,
+  VectorType &                            dst,
+  VectorType const &                      src,
+  Range const &                           range) const
+{
+  (void)dst;
+  AlveolarTissue<dim, Number> * alveolar_material =
+    dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get());
+
+  if(alveolar_material == nullptr)
+  {
+    return;
+  }
+
+  IntegratorFace integrator_m_inhom(matrix_free,
+                                    true,
+                                    this->operator_data.dof_index_inhomogeneous,
+                                    this->operator_data.quad_index);
+
+  for(unsigned int face = range.first; face < range.second; face++)
+  {
+    dealii::types::boundary_id const boundary_id = matrix_free.get_boundary_id(face);
+
+    if(!alveolar_material->is_surfactant_boundary(boundary_id))
+    {
+      return;
+    }
+
+    this->reinit_boundary_face(integrator_m_inhom, face);
+
+    integrator_m_inhom.gather_evaluate(src, dealii::EvaluationFlags::gradients);
+
+    scalar const surface_area = This::calculate_surface_area(integrator_m_inhom);
+
+    alveolar_material->update_material(surface_area, this->time, this->time_step_size, face);
+  }
+}
+
+template<int dim, typename Number>
+void
+NonLinearOperator<dim, Number>::update_materials(
+  VectorType const & last_displacement_solution) const
+{
+  VectorType dummy;
+  this->matrix_free->loop(&This::cell_loop_update_materials,
+                          &This::face_loop_update_materials,
+                          &This::boundary_face_loop_update_materials,
+                          this,
+                          dummy,
+                          last_displacement_solution);
+}
+
+template<int dim, typename Number>
 typename NonLinearOperator<dim, Number>::VectorType const &
 NonLinearOperator<dim, Number>::get_solution_linearization() const
 {
@@ -189,6 +334,33 @@ NonLinearOperator<dim, Number>::apply(VectorType & dst, VectorType const & src) 
     // dst vector.
     for(unsigned int const constrained_index :
         this->matrix_free_spatial.get_constrained_dofs(this->operator_data.dof_index))
+    {
+      dst.local_element(constrained_index) = src.local_element(constrained_index);
+    }
+  }
+  else if(AlveolarTissue<dim, Number> * material = dynamic_cast<AlveolarTissue<dim, Number> *>(
+            this->material_handler.get_material().get());
+          material != nullptr
+
+  )
+  {
+    // Compute matrix-vector product. Constrained degrees of freedom in the src-vector will not
+    // be used. The function read_dof_values() (or gather_evaluate()) uses the homogeneous boundary
+    // data passed to MatrixFree via AffineConstraints with the standard "dof_index".
+    this->matrix_free->loop(&This::cell_loop,
+                            &This::face_loop,
+                            &This::boundary_face_loop_hom_operator,
+                            this,
+                            dst,
+                            src,
+                            true);
+
+    // Constrained degree of freedom are not removed from the system of equations.
+    // Instead, we set the diagonal entries of the matrix to 1 for these constrained
+    // degrees of freedom. This means that we simply copy the constrained values to the
+    // dst vector.
+    for(unsigned int const constrained_index :
+        this->matrix_free->get_constrained_dofs(this->operator_data.dof_index))
     {
       dst.local_element(constrained_index) = src.local_element(constrained_index);
     }
@@ -429,6 +601,20 @@ NonLinearOperator<dim, Number>::face_loop_nonlinear(
 
 template<int dim, typename Number>
 void
+NonLinearOperator<dim, Number>::face_loop(dealii::MatrixFree<dim, Number> const & matrix_free,
+                                          VectorType &                            dst,
+                                          VectorType const &                      src,
+                                          Range const &                           range) const
+{
+  (void)matrix_free;
+  (void)dst;
+  (void)src;
+  (void)range;
+}
+
+
+template<int dim, typename Number>
+void
 NonLinearOperator<dim, Number>::boundary_face_loop_nonlinear(
   dealii::MatrixFree<dim, Number> const & matrix_free,
   VectorType &                            dst,
@@ -457,14 +643,60 @@ NonLinearOperator<dim, Number>::boundary_face_loop_nonlinear(
     // depend on the parameter pull_back_traction.
 
     //! TODO Just always evaluate the gradients.. to be solved later
-    integrator_m_inhom.gather_evaluate(src, dealii::EvaluationFlags::gradients);
+    integrator_m_inhom.gather_evaluate(src,
+                                       dealii::EvaluationFlags::values |
+                                         dealii::EvaluationFlags::gradients);
 
     do_boundary_integral_continuous(integrator_m_inhom, matrix_free.get_boundary_id(face));
 
     // make sure that we do not write into Dirichlet degrees of freedom
-    integrator_m_inhom.integrate(this->integrator_flags.face_integrate,
-                                 integrator_m.begin_dof_values());
+    dealii::EvaluationFlags::EvaluationFlags face_integration_flags =
+      this->integrator_flags.face_integrate;
+
+    // If material is alveolar tissue, then we will have to integrate gradient contributions.
+    if(AlveolarTissue<dim, Number> * material =
+         dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get());
+       material != nullptr)
+    {
+      face_integration_flags = face_integration_flags | dealii::EvaluationFlags::gradients;
+    }
+    integrator_m_inhom.integrate(face_integration_flags, integrator_m.begin_dof_values());
+
     integrator_m.distribute_local_to_global(dst);
+  }
+}
+
+template<int dim, typename Number>
+void
+NonLinearOperator<dim, Number>::boundary_face_loop_hom_operator(
+  dealii::MatrixFree<dim, Number> const & matrix_free,
+  VectorType &                            dst,
+  VectorType const &                      src,
+  Range const &                           range) const
+{
+  IntegratorFace integrator_m = IntegratorFace(matrix_free,
+                                               true,
+                                               this->operator_data.dof_index,
+                                               this->operator_data.quad_index);
+
+
+  for(unsigned int face = range.first; face < range.second; face++)
+  {
+    this->reinit_boundary_face(integrator_m, face);
+    face_integrator_lin->reinit(face);
+    face_integrator_lin->read_dof_values(displacement_lin);
+
+    //! TODO Always evaluating gradients...
+    face_integrator_lin->evaluate(dealii::EvaluationFlags::values |
+                                  dealii::EvaluationFlags::gradients);
+
+    integrator_m.gather_evaluate(src,
+                                 dealii::EvaluationFlags::values |
+                                   dealii::EvaluationFlags::gradients);
+
+    do_boundary_integral_surface_tension_stiffness(integrator_m, matrix_free.get_boundary_id(face));
+
+    integrator_m.integrate_scatter(dealii::EvaluationFlags::gradients, dst);
   }
 }
 
@@ -476,6 +708,17 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 {
   BoundaryType boundary_type = this->operator_data.bc->get_boundary_type(boundary_id);
 
+  unsigned int const face_id = integrator.get_cell_or_face_batch_id();
+
+
+  AlveolarTissue<dim, Number> * alveolar_material =
+    dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get());
+
+  scalar surface_area = dealii::make_vectorized_array<Number>(0.0);
+  if(alveolar_material)
+  {
+    surface_area = calculate_surface_area(integrator);
+  }
 
   for(unsigned int q = 0; q < integrator.n_q_points; ++q)
   {
@@ -496,29 +739,71 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 
     integrator.submit_value(-traction, q);
 
-    // If material is alveolar tissue, then we will go into the surface tension contribution.
-    if(AlveolarTissue<dim, Number> * material =
-         dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get());
-       material != nullptr)
+    // If material is alveolar                    tissue,
+    //   then we will go into the surface tension contribution
+    if(alveolar_material)
     {
-      tensor const F      = compute_F(integrator.get_gradient(q));
-      tensor const F_inv  = dealii::invert(F);
-      scalar const J      = dealii::determinant(F);
-      vector const N      = integrator.normal_vector(q);
-      vector const n_star = J * dealii::transpose(F_inv) * N;
-      scalar const da_dA  = n_star.norm();
-      vector const n      = n_star / da_dA;
+      tensor surface_tension_1PK;
+      if(alveolar_material->is_surfactant_boundary(boundary_id))
+      // if(boundary_id == 1 || boundary_id == 2)
+      {
+        surface_tension_1PK = alveolar_material->surface_tension_1PK(integrator.get_gradient(q),
+                                                                     integrator.normal_vector(q),
+                                                                     surface_area,
+                                                                     this->time,
+                                                                     this->time_step_size,
+                                                                     face_id);
+      }
 
-      scalar const surface_tension =
-        material->surface_tension(da_dA, time_step_size, integrator.get_current_cell_index(), q);
 
-      // This material must be updated after convergence.
-      integrator.submit_gradient(surface_tension * da_dA *
-                                   (F_inv - dealii::outer_product(n, F_inv * n)),
-                                 q);
-
-      // Note that this has not been linearized (yet).
+      integrator.submit_gradient(surface_tension_1PK, q);
     }
+  }
+}
+
+template<int dim, typename Number>
+void
+NonLinearOperator<dim, Number>::do_boundary_integral_surface_tension_stiffness(
+  IntegratorFace &                   integrator,
+  dealii::types::boundary_id const & boundary_id) const
+{
+  AlveolarTissue<dim, Number> * alveolar_material =
+    dynamic_cast<AlveolarTissue<dim, Number> *>(this->material_handler.get_material().get());
+
+  if(!alveolar_material)
+  {
+    return;
+  }
+
+  unsigned int const face_id = integrator.get_cell_or_face_batch_id();
+
+  scalar const surface_area = calculate_surface_area(*face_integrator_lin);
+  scalar const surface_area_increment =
+    calculate_surface_area_increment(*face_integrator_lin, integrator);
+
+  for(unsigned int q = 0; q < integrator.n_q_points; ++q)
+  {
+    tensor const Grad_d_lin = face_integrator_lin->get_gradient(q);
+    tensor const Grad_delta = integrator.get_gradient(q);
+
+    vector const N_lin = face_integrator_lin->normal_vector(q);
+
+    tensor delta_P_gamma;
+    if(alveolar_material->is_surfactant_boundary(boundary_id))
+    // if(boundary_id == 1 || boundary_id == 2)
+    {
+      delta_P_gamma =
+        alveolar_material->surface_tension_1PK_displacement_derivative(Grad_delta,
+                                                                       Grad_d_lin,
+                                                                       N_lin,
+                                                                       surface_area,
+                                                                       surface_area_increment,
+                                                                       this->time,
+                                                                       this->time_step_size,
+                                                                       face_id);
+    }
+
+    integrator.submit_gradient(delta_P_gamma, q);
   }
 }
 

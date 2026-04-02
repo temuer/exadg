@@ -22,6 +22,7 @@
 #ifndef INCLUDE_STRUCTURE_SPATIAL_DISCRETIZATION_NONLINEAR_OPERATOR_H_
 #define INCLUDE_STRUCTURE_SPATIAL_DISCRETIZATION_NONLINEAR_OPERATOR_H_
 
+#include <deal.II/base/types.h>
 #include <exadg/grid/mapping_dof_vector.h>
 #include <exadg/structure/spatial_discretization/operators/elasticity_operator_base.h>
 #ifdef DEAL_II_WITH_TRILINOS
@@ -96,6 +97,9 @@ public:
     time_step_size = time_step_size_in;
   }
 
+  void
+  update_materials(VectorType const & solution) const;
+
   /**
    * Set the mapping pointer for the undeformed mapping.
    */
@@ -119,6 +123,23 @@ public:
                                    VectorType &                            dst,
                                    VectorType const &                      src,
                                    Range const &                           range) const;
+  void
+  cell_loop_update_materials(dealii::MatrixFree<dim, Number> const & matrix_free,
+                             VectorType &                            dst,
+                             VectorType const &                      src,
+                             Range const &                           range) const;
+
+  void
+  face_loop_update_materials(dealii::MatrixFree<dim, Number> const & matrix_free,
+                             VectorType &                            dst,
+                             VectorType const &                      src,
+                             Range const &                           range) const;
+
+  void
+  boundary_face_loop_update_materials(dealii::MatrixFree<dim, Number> const & matrix_free,
+                                      VectorType &                            dst,
+                                      VectorType const &                      src,
+                                      Range const &                           range) const;
 
   /**
    * Overwrite members in OperatorBase to optionally use spatial integration
@@ -183,6 +204,17 @@ private:
                                VectorType const &                      src,
                                Range const &                           range) const;
 
+  void
+  face_loop(dealii::MatrixFree<dim, Number> const & matrix_free,
+            VectorType &                            dst,
+            VectorType const &                      src,
+            Range const &                           range) const;
+
+  void
+  boundary_face_loop_hom_operator(dealii::MatrixFree<dim, Number> const & matrix_free,
+                                  VectorType &                            dst,
+                                  VectorType const &                      src,
+                                  Range const &                           range) const;
   /*
    * A cell loop that checks whether the Jacobian determinant is positive for all q-points.
    * Prior to calling this function, inhomogeneous Dirichlet degrees of freedom need to be
@@ -240,6 +272,29 @@ private:
                                   dealii::types::boundary_id const & boundary_id) const final;
 
   /*
+   * Calculates the integral
+   *
+   *  (Grad(v_h), delta P_surfacetension)_{Gamma_surfacetension}
+   *
+   * with the directional derivative of the surfactant stress tensor P_surfacetension
+   *
+   *  delta P_surfacetension = d(P_surfacetension)/d(d)|_{d_lin} * delta d_h ,
+   *
+   * with the point of linearization
+   *
+   *  d_lin ,
+   *
+   * and displacement increment
+   *
+   *  delta d_h .
+   *
+   */
+  void
+  do_boundary_integral_surface_tension_stiffness(
+    IntegratorFace &                   integrator_m,
+    dealii::types::boundary_id const & boundary_id) const;
+
+  /*
    * Linearized operator.
    */
   void
@@ -283,7 +338,16 @@ private:
             VectorType const &                      src,
             Range const &                           range) const override;
 
+
+  static scalar
+  calculate_surface_area(IntegratorFace const & integrator);
+
+  static scalar
+  calculate_surface_area_increment(IntegratorFace const & integrator_lin,
+                                   IntegratorFace const & integrator);
+
   mutable std::shared_ptr<IntegratorCell> integrator_lin;
+  mutable std::shared_ptr<IntegratorFace> face_integrator_lin;
   mutable VectorType                      displacement_lin;
 
   mutable dealii::MatrixFree<dim, Number>                matrix_free_spatial;

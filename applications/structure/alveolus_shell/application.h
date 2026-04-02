@@ -24,6 +24,8 @@
 
 #include <deal.II/base/function.h>
 #include <deal.II/base/parameter_handler.h>
+#include <deal.II/base/point.h>
+#include <deal.II/base/types.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/tria.h>
@@ -60,7 +62,7 @@ public:
 
     dealii::Tensor<1, dim> const n = this->get_normal_vector();
 
-    return n[c] * factor * pressure;
+    return -n[c] * factor * pressure;
   }
 
 private:
@@ -131,20 +133,22 @@ private:
     this->param.weak_damping_active = false;
 
     // TEMPORAL DISCRETIZATION
-    this->param.load_increment = 0.05;
+    this->param.load_increment = 0.0125;
 
     // SPATIAL DISCRETIZATION
-    this->param.grid.file_name                    = this->grid_parameters.file_name;
-    this->param.grid.element_type                 = ElementType::Simplex;
-    this->param.grid.triangulation_type           = TriangulationType::FullyDistributed;
+    this->param.grid.file_name = this->grid_parameters.file_name;
+    // this->param.grid.element_type                 = ElementType::Simplex;
+    // this->param.grid.triangulation_type           = TriangulationType::FullyDistributed;
+    this->param.grid.element_type                 = ElementType::Hypercube;
+    this->param.grid.triangulation_type           = TriangulationType::Serial;
     this->param.grid.create_coarse_triangulations = false;
-    this->param.mapping_degree                    = 1;
+    this->param.mapping_degree                    = 2;
     this->param.use_matrix_based_implementation   = false;
 
     // SOLVER
-    this->param.newton_solver_data = Newton::SolverData(20, 1.e-4, 1.e-6);
+    this->param.newton_solver_data = Newton::SolverData(100, 1.e-4, 1.e-6);
     this->param.solver             = Solver::CG;
-    this->param.solver_data        = SolverData(30, 1.e-4, 1.e-4, 30);
+    this->param.solver_data        = SolverData(250, 1.e-4, 1.e-6, 30);
 
     // PERCONDITIONER
     this->param.update_preconditioner                         = true;
@@ -196,7 +200,8 @@ private:
     {
       static_cast<void>(periodic_face_pairs);
 
-      GridUtilities::read_external_triangulation<dim>(tria, this->param.grid);
+      dealii::Point<dim> const center;
+      dealii::GridGenerator::hyper_shell(tria, center, 500.0, 550.0, 192, false);
 
       for(auto const & cell : tria.active_cell_iterators())
       {
@@ -206,29 +211,21 @@ private:
           {
             continue;
           }
-          if(std::abs(face->center()[0] - 719.84002685546875) < 1.0e-3)
-          { // LEFT BOUNDARY
+          if(face->center().norm() < 525.0)
+          {
             face->set_all_boundary_ids(1);
           }
-          else if(std::abs(face->center()[0] - 960.15997314453125) < 1.0e-3)
-          { // RIGHT BOUNDARY
+
+          if(face->center().norm() >= 525.0)
+          {
             face->set_all_boundary_ids(2);
           }
-          else if(std::abs(face->center()[1] - 719.84002685546875) < 1.0e-3)
-          { // BACK BOUNDARY
+
+          if(std::abs(face->center()[0] - -7.105427357601002e-15) < 1.0e-2 &&
+             std::abs(face->center()[1] - 532.7608032226563) < 1.0e-2 &&
+             std::abs(face->center()[2] - -96.05324554443359) < 1.0e-2)
+          { // LEFT BOUNDARY
             face->set_all_boundary_ids(3);
-          }
-          else if(std::abs(face->center()[1] - 960.15997314453125) < 1.0e-3)
-          { // FRONT
-            face->set_all_boundary_ids(4);
-          }
-          else if(std::abs(face->center()[2] - -0.15999603271484375) < 1.0e-3)
-          { // BOTTOM
-            face->set_all_boundary_ids(5);
-          }
-          else if(std::abs(face->center()[2] - 240.1599884033203125) < 1.0e-3)
-          { // TOP
-            face->set_all_boundary_ids(6);
           }
         }
       }
@@ -262,58 +259,56 @@ private:
     using pair      = std::pair<dealii::types::boundary_id, std::shared_ptr<dealii::Function<dim>>>;
     using pair_mask = std::pair<dealii::types::boundary_id, dealii::ComponentMask>;
 
-    // free boundaries
+    // Pressure only from the (1 inside, 2 outside)
     this->boundary_descriptor->neumann_bc.insert(
-      pair(0, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-    this->boundary_descriptor->neumann_bc.insert(
-      pair(1, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
+      pair(1, std::make_shared<HydrostaticPressureNBC<dim>>(0.0006, true)));
+
+    // Free boundary (1 inside, 2 outside)
     this->boundary_descriptor->neumann_bc.insert(
       pair(2, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-    this->boundary_descriptor->neumann_bc.insert(
+
+    // single element face (clamped)
+    this->boundary_descriptor->dirichlet_bc.insert(
       pair(3, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-    this->boundary_descriptor->neumann_bc.insert(
-      pair(4, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-
-    // bottom face (clamped)
-    this->boundary_descriptor->dirichlet_bc.insert(
-      pair(5, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
     this->boundary_descriptor->dirichlet_bc_initial_acceleration.insert(
-      pair(5, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-
+      pair(3, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
     this->boundary_descriptor->dirichlet_bc_component_mask.insert(
-      pair_mask(5, std::vector<bool>{true, true, true}));
-
-    // top face (dirichlet BC)
-    this->boundary_descriptor->dirichlet_bc.insert(
-      pair(6,
-           std::make_shared<DisplacementDBC<dim>>(
-             10, this->param.problem_type == ProblemType::QuasiStatic)));
-
-    this->boundary_descriptor->dirichlet_bc_initial_acceleration.insert(
-      pair(6, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-
-    this->boundary_descriptor->dirichlet_bc_component_mask.insert(
-      pair_mask(6, std::vector<bool>{true, true, true}));
+      pair_mask(3, std::vector<bool>{true, true, true}));
   }
 
   void
   set_material_descriptor() final
   {
+    // {
+    //   typedef std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>> Pair;
+
+    //   MaterialType const type = MaterialType::StVenantKirchhoff;
+    //   // E-Modulus of Steel in unit = [N/microm^2]
+    //   double const E = 2.0 * (3.0e-3) * (1.0 + 0.3), nu = 0.3;
+    //   Type2D const two_dim_type = Type2D::PlaneStress;
+
+    //   this->material_descriptor->insert(
+    //     Pair(0, new StVenantKirchhoffData<dim>(type, E, nu, two_dim_type)));
+
+    //   return;
+    // }
+
     auto material = std::make_shared<AlveolarTissueData<dim>>(MaterialType::AlveolarTissue);
     // Ground substance
     material->shear_modulus = 2.0e-3; // kg / s2 / microm = 2 kPa (Wiechert)
     // Fiber
-    material->fiber_k_1 = 13.5e-3; // kg / s2 / microm = 13.5 kPa (Wiechert)
-    material->fiber_k_2 = 76.5;    // 76.5 (Wiechert)
+    material->fiber_k_1 = 0.0; // 13.5e-3; // kg / s2 / microm = 13.5 kPa (Wiechert)
+    material->fiber_k_2 = 0.0; // 76.5;    // 76.5 (Wiechert)
     // Incompressibility
     material->incompressibility_penalty  = 10.0e-3; // kg / s2 / microm != 10 kPa (Wiechert)
-    material->incompressibility_exponent = 1.0;     // 1 (Wiechert)
+    material->incompressibility_exponent = 1.0;     // 1.0;     // 1 (Wiechert)
 
     // Surfactant
+    material->surfactant_boundary_ids     = std::set<dealii::types::boundary_id>{1};
     material->surfactant_equilibrium_time = 1.0;
-    material->surface_tension_ref         = 0.0; // 70 dyn / cm (water)
-    material->surface_tension_eq          = 0.0; // 22.2 dyn / cm (Denny and Schroter)
-    material->surface_tension_min         = 0.0; // 2.0 dyn / cm (Denny and Schroter)
+    material->surface_tension_ref         = 0.0;   // 70 dyn / cm (water)
+    material->surface_tension_eq          = 0.022; // 22.2 dyn / cm = 22 g / s (Denny and Schroter)
+    material->surface_tension_min         = 0.0;   // 2.0 dyn / cm (Denny and Schroter)
 
     material->surfactant_m_1 =
       material->surface_tension_ref - material->surface_tension_eq; // (first isotherm)
@@ -329,7 +324,7 @@ private:
     material->surfactant_c   = 0.0; // 0.0073 mg / ml (Denny and Schroter)
 
     using Pair = std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>>;
-    this->material_descriptor->insert(Pair(1, material));
+    this->material_descriptor->insert(Pair(0, material));
   }
 
   void
@@ -349,7 +344,7 @@ private:
     PostProcessorData<dim> pp_data;
     pp_data.output_data.time_control_data.is_active        = true;
     pp_data.output_data.time_control_data.start_time       = 0.0;
-    pp_data.output_data.time_control_data.trigger_interval = 1.0 / 2.0;
+    pp_data.output_data.time_control_data.trigger_interval = 0.1;
     pp_data.output_data.directory          = this->output_parameters.directory + "vtu/";
     pp_data.output_data.filename           = this->output_parameters.filename;
     pp_data.output_data.write_higher_order = true;
