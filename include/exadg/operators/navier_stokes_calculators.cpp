@@ -186,8 +186,7 @@ VorticityCalculator<dim, Number>::cell_loop(
 
     for(unsigned int q = 0; q < integrator.n_q_points; ++q)
     {
-      dealii::Tensor<1, number_vorticity_components, dealii::VectorizedArray<Number>> omega =
-        integrator.get_curl(q);
+      auto const omega = integrator.get_curl(q);
 
       // omega_vector is a vector with dim components
       // for dim=3: omega_vector[i] = omega[i], i=1,...,dim
