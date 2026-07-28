@@ -1,0 +1,29 @@
+{
+    "General": {
+        "Precision": "double",
+        "Dim": "3",
+        "IsTest": "false"
+    },
+    "SpatialResolution": {
+        "DegreeMin": "2",
+        "DegreeMax": "2",
+        "RefineSpaceMin": "1",
+        "RefineSpaceMax": "1"
+    },
+    "TemporalResolution": {
+        "RefineTimeMin": "0",
+        "RefineTimeMax": "0"
+    },
+    "Application": {
+        "Length": "16.0",
+        "Height": "2.0",
+        "Width": "2.0",
+        "PoissonNumber": "0.49",
+        "ForcePerUnitArea": "2000.0"
+    },
+    "Output": {
+        "OutputDirectory": "output/locking_beam/",
+        "OutputName": "debug_P2_AMG_incompressible",
+        "WriteOutput": "true"
+    }
+}

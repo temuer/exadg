@@ -72,8 +72,11 @@ template<int dim>
 class DisplacementDBC : public dealii::Function<dim>
 {
 public:
-  DisplacementDBC(double const displacement, bool const is_quasistatic)
-    : dealii::Function<dim>(dim), displacement(displacement), is_quasistatic(is_quasistatic)
+  DisplacementDBC(double const displacement, unsigned int direction, bool const is_quasistatic)
+    : dealii::Function<dim>(dim),
+      displacement(displacement),
+      direction(direction),
+      is_quasistatic(is_quasistatic)
   {
   }
 
@@ -84,15 +87,16 @@ public:
 
     double factor = is_quasistatic ? this->get_time() : 1.0;
 
-    if(c == 2)
+    if(c == direction)
       return displacement * factor;
     else
       return 0.0;
   }
 
 private:
-  double displacement;
-  bool   is_quasistatic;
+  double       displacement;
+  unsigned int direction;
+  bool         is_quasistatic;
 };
 
 template<int dim, typename Number>
@@ -127,11 +131,11 @@ private:
     this->param.check_type              = 0;
 
     // PHYSICAL QUANTITIES
-    this->param.density             = 1.0e3;
+    this->param.density             = 1.0;
     this->param.weak_damping_active = false;
 
     // TEMPORAL DISCRETIZATION
-    this->param.load_increment = 0.025;
+    this->param.load_increment = 0.01;
 
     // SPATIAL DISCRETIZATION
     this->param.grid.file_name                    = this->grid_parameters.file_name;
@@ -142,9 +146,9 @@ private:
     this->param.use_matrix_based_implementation   = false;
 
     // SOLVER
-    this->param.newton_solver_data = Newton::SolverData(20, 1.e-4, 1.e-4);
+    this->param.newton_solver_data = Newton::SolverData(20, 1.e-6, 1.e-6);
     this->param.solver             = Solver::CG;
-    this->param.solver_data        = SolverData(1e3, 1.e-4, 1.e-4, 30);
+    this->param.solver_data        = SolverData(1e3, 1.e-6, 1.e-6, 30);
 
     // PERCONDITIONER
     this->param.update_preconditioner                         = true;
@@ -152,6 +156,7 @@ private:
     this->param.update_preconditioner_every_newton_iterations = 1;
 
     // this->param.preconditioner                              = Preconditioner::AMG;
+    this->param.preconditioner                              = Preconditioner::Multigrid;
     this->param.multigrid_data.type                         = MultigridType::pMG;
     this->param.multigrid_data.p_sequence                   = PSequenceType::DecreaseByOne;
     this->param.multigrid_data.smoother_data.smoother       = MultigridSmoother::Chebyshev;
@@ -162,7 +167,7 @@ private:
     this->param.multigrid_data.smoother_data.iterations_eigenvalue_estimation =
       20; // Chebyshev, default: 20
     this->param.multigrid_data.coarse_problem.solver      = MultigridCoarseGridSolver::AMG;
-    this->param.multigrid_data.coarse_problem.solver_data = SolverData(1e3, 1.e-4, 1.e-4, 30);
+    this->param.multigrid_data.coarse_problem.solver_data = SolverData(1e3, 1.e-6, 1.e-6, 30);
     this->param.multigrid_data.coarse_problem.preconditioner =
       MultigridCoarseGridPreconditioner::None;
 
@@ -172,7 +177,7 @@ private:
 
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.elliptic = true;
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.higher_order_elements =
-      this->param.degree > 1;
+      (this->param.preconditioner == Preconditioner::AMG && this->param.degree > 1);
 
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.n_cycles              = 2;
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.w_cycle               = false;
@@ -204,35 +209,21 @@ private:
 
       for(auto const & cell : tria.active_cell_iterators())
       {
+        cell->set_material_id(0);
+
         for(auto const & face : cell->face_iterators())
         {
           if(!face->at_boundary())
           {
             continue;
           }
-          if(std::abs(face->center()[0] - 719.84002685546875) < 1.0e-3)
+          if(std::abs(face->center()[0] - 0.0) < 3.0e-3)
           { // LEFT BOUNDARY
             face->set_all_boundary_ids(1);
           }
-          else if(std::abs(face->center()[0] - 960.15997314453125) < 1.0e-3)
+          else if(std::abs(face->center()[0] - 0.2) < 3.0e-3)
           { // RIGHT BOUNDARY
             face->set_all_boundary_ids(2);
-          }
-          else if(std::abs(face->center()[1] - 719.84002685546875) < 1.0e-3)
-          { // BACK BOUNDARY
-            face->set_all_boundary_ids(3);
-          }
-          else if(std::abs(face->center()[1] - 960.15997314453125) < 1.0e-3)
-          { // FRONT
-            face->set_all_boundary_ids(4);
-          }
-          else if(std::abs(face->center()[2] - -0.15999603271484375) < 1.0e-3)
-          { // BOTTOM
-            face->set_all_boundary_ids(5);
-          }
-          else if(std::abs(face->center()[2] - 240.1599884033203125) < 1.0e-3)
-          { // TOP
-            face->set_all_boundary_ids(6);
           }
         }
       }
@@ -269,71 +260,42 @@ private:
     // free boundaries
     this->boundary_descriptor->neumann_bc.insert(
       pair(0, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-    this->boundary_descriptor->neumann_bc.insert(
+
+    // left face (clamped)
+    this->boundary_descriptor->dirichlet_bc.insert(
       pair(1, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-    this->boundary_descriptor->neumann_bc.insert(
-      pair(2, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-    this->boundary_descriptor->neumann_bc.insert(
-      pair(3, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-    this->boundary_descriptor->neumann_bc.insert(
-      pair(4, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-
-    // bottom face (clamped)
-    this->boundary_descriptor->dirichlet_bc.insert(
-      pair(5, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
     this->boundary_descriptor->dirichlet_bc_initial_acceleration.insert(
-      pair(5, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
-
+      pair(1, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
     this->boundary_descriptor->dirichlet_bc_component_mask.insert(
-      pair_mask(5, std::vector<bool>{true, true, true}));
+      pair_mask(1, std::vector<bool>(dim, true)));
 
-    // top face (dirichlet BC)
+    // right face (dirichlet BC)
     this->boundary_descriptor->dirichlet_bc.insert(
-      pair(6,
+      pair(2,
            std::make_shared<DisplacementDBC<dim>>(
-             10, this->param.problem_type == ProblemType::QuasiStatic)));
+             0.01, 0U, this->param.problem_type == ProblemType::QuasiStatic)));
 
     this->boundary_descriptor->dirichlet_bc_initial_acceleration.insert(
-      pair(6, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
+      pair(2, std::make_shared<dealii::Functions::ZeroFunction<dim>>(dim)));
 
     this->boundary_descriptor->dirichlet_bc_component_mask.insert(
-      pair_mask(6, std::vector<bool>{true, true, true}));
+      pair_mask(2, std::vector<bool>(dim, true)));
   }
 
   void
   set_material_descriptor() final
   {
-    auto material = std::make_shared<AlveolarTissueData<dim>>(MaterialType::AlveolarTissue);
-    // Ground substance
-    material->shear_modulus = 2.0e-3; // kg / s2 / microm = 2 kPa (Wiechert)
-    // Fiber
-    material->fiber_k_1 = 13.5e-3; // kg / s2 / microm = 13.5 kPa (Wiechert)
-    material->fiber_k_2 = 76.5;    // 76.5 (Wiechert)
-    // Incompressibility
-    material->incompressibility_penalty  = 10.0e-3; // kg / s2 / microm != 10 kPa (Wiechert)
-    material->incompressibility_exponent = 1.0;     // 1 (Wiechert)
+    typedef std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>> Pair;
 
-    // Surfactant
-    material->surfactant_equilibrium_time = 1.0;
-    material->surface_tension_ref         = 0.0; // 70 dyn / cm (water)
-    material->surface_tension_eq          = 0.0; // 22.2 dyn / cm (Denny and Schroter)
-    material->surface_tension_min         = 0.0; // 2.0 dyn / cm (Denny and Schroter)
+    MaterialType const type = MaterialType::StVenantKirchhoff;
 
-    material->surfactant_m_1 =
-      material->surface_tension_ref - material->surface_tension_eq; // (first isotherm)
+    constexpr double E  = 6.75; // kPa = kg / mm / s2
+    constexpr double nu = 0.3;
 
-    material->surfactant_m_2 = 0.0; // 81.3... dyn / cm (Otis, graphically)
+    Type2D const two_dim_type = Type2D::Undefined;
 
-    material->relative_surfactant_concentration_max =
-      1.0 + (material->surface_tension_eq - material->surface_tension_min) /
-              material->surfactant_m_2; // (second isotherm)
-
-    material->surfactant_k_1 = 0.0; // 160 cm3 / mg / s (Denny and Schroter)
-    material->surfactant_k_2 = 0.0; // 0.015 1 / s (Denny and Schroter)
-    material->surfactant_c   = 0.0; // 0.0073 mg / ml (Denny and Schroter)
-
-    using Pair = std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>>;
-    this->material_descriptor->insert(Pair(1, material));
+    this->material_descriptor->insert(
+      Pair(0, new StVenantKirchhoffData<dim>(type, E, nu, two_dim_type)));
   }
 
   void
