@@ -528,8 +528,10 @@ initialize_coarse_mappings_from_mapping_dof_vector(
                   dof_handlers_all_levels[h_level].get_mpi_communicator());
   };
 
-  dealii::MGTransferGlobalCoarsening<dim, VectorType> mg_transfer_global_coarsening(
-    transfers, initialize_dof_vector);
+  dealii::MGTransferMatrixFree<dim,
+                               typename VectorType::value_type,
+                               dealii::MemorySpace::Host>
+    mg_transfer_global_coarsening(transfers, initialize_dof_vector);
 
   // Transfer grid coordinates to coarser h-levels.
   // The dealii::DoFHandler object will not be used for global coarsening.

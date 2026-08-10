@@ -26,7 +26,7 @@
 #include <deal.II/fe/mapping.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/multigrid/mg_constrained_dofs.h>
-#include <deal.II/multigrid/mg_transfer_global_coarsening.h>
+#include <deal.II/multigrid/mg_transfer_matrix_free.h>
 
 // ExaDG
 #include <exadg/solvers_and_preconditioners/multigrid/levels_hybrid_multigrid.h>
@@ -57,7 +57,9 @@ public:
 private:
   dealii::MGLevelObject<dealii::MGTwoLevelTransfer<dim, VectorType>> transfers;
 
-  std::unique_ptr<dealii::MGTransferGlobalCoarsening<dim, VectorType>> mg_transfer;
+  std::unique_ptr<dealii::MGTransferMatrixFree<dim,
+                                               typename VectorType::value_type,
+                                               dealii::MemorySpace::Host>> mg_transfer;
 };
 } // namespace ExaDG
 

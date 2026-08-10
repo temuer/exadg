@@ -64,7 +64,9 @@ MultigridTransfer<dim, Number, VectorType>::reinit(
     }
   }
 
-  mg_transfer = std::make_unique<dealii::MGTransferGlobalCoarsening<dim, VectorType>>(
+  mg_transfer = std::make_unique<dealii::MGTransferMatrixFree<dim,
+                                                               typename VectorType::value_type,
+                                                               dealii::MemorySpace::Host>>(
     transfers, [&](const auto l, auto & vec) { mg_matrixfree[l]->initialize_dof_vector(vec); });
 }
 
