@@ -303,7 +303,8 @@ private:
   void
   set_material_descriptor() final
   {
-    auto material = std::make_shared<AlveolarTissueData<dim>>(MaterialType::AlveolarTissue);
+    auto material =
+      std::make_shared<WiechertAlveolarTissueData<dim>>(MaterialType::WiechertAlveolarTissue);
     // Ground substance
     material->shear_modulus = 2.0e-3; // kg / s2 / microm = 2 kPa (Wiechert)
     // Fiber
@@ -314,23 +315,23 @@ private:
     material->incompressibility_exponent = 1.0;     // 1 (Wiechert)
 
     // Surfactant
-    material->surfactant_equilibrium_time = 1.0;
-    material->surface_tension_ref         = 0.0; // 70 dyn / cm (water)
-    material->surface_tension_eq          = 0.0; // 22.2 dyn / cm (Denny and Schroter)
-    material->surface_tension_min         = 0.0; // 2.0 dyn / cm (Denny and Schroter)
+    material->surfactant_data.equilibrium_time = 1.0;
+    material->surfactant_data.gamma_ref       = 0.0; // 70 dyn / cm (water)
+    material->surfactant_data.gamma_eq        = 0.0; // 22.2 dyn / cm (Denny and Schroter)
+    material->surfactant_data.gamma_min       = 0.0; // 2.0 dyn / cm (Denny and Schroter)
 
-    material->surfactant_m_1 =
-      material->surface_tension_ref - material->surface_tension_eq; // (first isotherm)
+    material->surfactant_data.m_1 =
+      material->surfactant_data.gamma_ref - material->surfactant_data.gamma_eq;
 
-    material->surfactant_m_2 = 0.0; // 81.3... dyn / cm (Otis, graphically)
+    material->surfactant_data.m_2 = 0.0; // 81.3... dyn / cm (Otis, graphically)
 
-    material->relative_surfactant_concentration_max =
-      1.0 + (material->surface_tension_eq - material->surface_tension_min) /
-              material->surfactant_m_2; // (second isotherm)
+    material->surfactant_data.relative_concentration_max =
+      1.0 + (material->surfactant_data.gamma_eq - material->surfactant_data.gamma_min) /
+              material->surfactant_data.m_2; // (second isotherm)
 
-    material->surfactant_k_1 = 0.0; // 160 cm3 / mg / s (Denny and Schroter)
-    material->surfactant_k_2 = 0.0; // 0.015 1 / s (Denny and Schroter)
-    material->surfactant_c   = 0.0; // 0.0073 mg / ml (Denny and Schroter)
+    material->surfactant_data.k_1 = 0.0; // 160 cm3 / mg / s (Denny and Schroter)
+    material->surfactant_data.k_2 = 0.0; // 0.015 1 / s (Denny and Schroter)
+    material->surfactant_data.c   = 0.0; // 0.0073 mg / ml (Denny and Schroter)
 
     using Pair = std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>>;
     this->material_descriptor->insert(Pair(1, material));

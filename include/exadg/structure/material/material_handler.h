@@ -474,17 +474,32 @@ public:
           }
           break;
         }
-        case MaterialType::AlveolarTissue:
+        case MaterialType::WiechertAlveolarTissue:
         {
           AssertThrow(
             check_type == 0 && stable_formulation == false && cache_level == 0,
             dealii::ExcMessage(
               "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
 
-          auto data_AlverolarTissue = std::static_pointer_cast<AlveolarTissueData<dim>>(data);
+          auto data_AlverolarTissue =
+            std::static_pointer_cast<WiechertAlveolarTissueData<dim>>(data);
 
           material_map.insert(Pair(id,
-                                   std::make_shared<AlveolarTissue<dim, Number>>(
+                                   std::make_shared<WiechertAlveolarTissue<dim, Number>>(
+                                     matrix_free, dof_index, quad_index, *data_AlverolarTissue)));
+          break;
+        }
+        case MaterialType::RauschAlveolarTissue:
+        {
+          AssertThrow(
+            check_type == 0 && stable_formulation == false && cache_level == 0,
+            dealii::ExcMessage(
+              "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
+
+          auto data_AlverolarTissue = std::static_pointer_cast<RauschAlveolarTissueData<dim>>(data);
+
+          material_map.insert(Pair(id,
+                                   std::make_shared<RauschAlveolarTissue<dim, Number>>(
                                      matrix_free, dof_index, quad_index, *data_AlverolarTissue)));
           break;
         }

@@ -176,6 +176,7 @@ SET(TARGET_SRC
      include/exadg/structure/material/library/compressible_neo_hookean.cpp
      include/exadg/structure/material/library/incompressible_fibrous_tissue.cpp
      include/exadg/structure/material/library/alveolar_tissue.cpp
+     include/exadg/structure/material/library/surfactant.cpp
      include/exadg/structure/spatial_discretization/operators/elasticity_operator_base.cpp
      include/exadg/structure/spatial_discretization/operators/nonlinear_operator.cpp
      include/exadg/structure/spatial_discretization/operators/linear_operator.cpp

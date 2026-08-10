@@ -57,7 +57,8 @@ enum class MaterialType
   IncompressibleNeoHookean,
   CompressibleNeoHookean,
   IncompressibleFibrousTissue,
-  AlveolarTissue
+  WiechertAlveolarTissue,
+  RauschAlveolarTissue,
 };
 
 /**************************************************************************************/
