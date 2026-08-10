@@ -263,8 +263,8 @@ NonLinearOperator<dim, Number>::boundary_face_loop_update_materials(
   Range const &                           range) const
 {
   (void)dst;
-  WiechertAlveolarTissue<dim, Number> * alveolar_material =
-    dynamic_cast<WiechertAlveolarTissue<dim, Number> *>(
+  AlveolarTissue<dim, Number> * alveolar_material =
+    dynamic_cast<AlveolarTissue<dim, Number> *>(
       this->material_handler.get_material().get());
 
   if(alveolar_material == nullptr)
@@ -343,8 +343,8 @@ NonLinearOperator<dim, Number>::apply(VectorType & dst, VectorType const & src) 
       dst.local_element(constrained_index) = src.local_element(constrained_index);
     }
   }
-  else if(WiechertAlveolarTissue<dim, Number> * material =
-            dynamic_cast<WiechertAlveolarTissue<dim, Number> *>(
+  else if(AlveolarTissue<dim, Number> * material =
+            dynamic_cast<AlveolarTissue<dim, Number> *>(
               this->material_handler.get_material().get());
           material != nullptr
 
@@ -660,8 +660,8 @@ NonLinearOperator<dim, Number>::boundary_face_loop_nonlinear(
       this->integrator_flags.face_integrate;
 
     // If material is alveolar tissue, then we will have to integrate gradient contributions.
-    if(WiechertAlveolarTissue<dim, Number> * material =
-         dynamic_cast<WiechertAlveolarTissue<dim, Number> *>(
+    if(AlveolarTissue<dim, Number> * material =
+         dynamic_cast<AlveolarTissue<dim, Number> *>(
            this->material_handler.get_material().get());
        material != nullptr)
     {
@@ -718,8 +718,8 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
   unsigned int const face_id = integrator.get_cell_or_face_batch_id();
 
 
-  WiechertAlveolarTissue<dim, Number> * alveolar_material =
-    dynamic_cast<WiechertAlveolarTissue<dim, Number> *>(
+  AlveolarTissue<dim, Number> * alveolar_material =
+    dynamic_cast<AlveolarTissue<dim, Number> *>(
       this->material_handler.get_material().get());
 
   scalar surface_area = dealii::make_vectorized_array<Number>(0.0);
@@ -776,8 +776,8 @@ NonLinearOperator<dim, Number>::do_boundary_integral_surface_tension_stiffness(
   IntegratorFace &                   integrator,
   dealii::types::boundary_id const & boundary_id) const
 {
-  WiechertAlveolarTissue<dim, Number> * alveolar_material =
-    dynamic_cast<WiechertAlveolarTissue<dim, Number> *>(
+  AlveolarTissue<dim, Number> * alveolar_material =
+    dynamic_cast<AlveolarTissue<dim, Number> *>(
       this->material_handler.get_material().get());
 
   if(!alveolar_material)

@@ -83,6 +83,17 @@ struct WiechertAlveolarTissueData : public MaterialData
   SurfactantData surfactant_data;
 };
 
+template<int dim, typename Number>
+class AlveolarTissue : public Material<dim, Number>
+{
+public:
+  virtual SurfactantModel<dim, Number> const &
+  get_surfactant_model() const = 0;
+
+  virtual SurfactantModel<dim, Number> &
+  get_surfactant_model() = 0;
+};
+
 /*
  * Psi_gs = shear_modulus / 2 * ( I_1 * J^(-2/3) - dim )
  *
@@ -94,7 +105,7 @@ struct WiechertAlveolarTissueData : public MaterialData
  * Psi = Psi_gs + Psi_pen + Psi_fib
  */
 template<int dim, typename Number>
-class WiechertAlveolarTissue : public Material<dim, Number>
+class WiechertAlveolarTissue : public AlveolarTissue<dim, Number>
 {
 public:
   using VectorType     = dealii::LinearAlgebra::distributed::Vector<Number>;
@@ -179,13 +190,13 @@ public:
   gradient_displacement(unsigned int const cell, unsigned int const q) const final;
 
   SurfactantModel<dim, Number> const &
-  get_surfactant_model() const
+  get_surfactant_model() const final
   {
     return surfactant_model;
   }
 
   SurfactantModel<dim, Number> &
-  get_surfactant_model()
+  get_surfactant_model() final
   {
     return surfactant_model;
   }
@@ -229,7 +240,7 @@ struct RauschAlveolarTissueData : public MaterialData
  * Psi = E ( 1 - 2 nu) / (4 nu + 4 nu^2) (I_3^( nu / (1 - 2 nu) ) - 1) + E / (4 - 4 nu) * (I_1 - 3)
  */
 template<int dim, typename Number>
-class RauschAlveolarTissue : public Material<dim, Number>
+class RauschAlveolarTissue : public AlveolarTissue<dim, Number>
 {
 public:
   using VectorType     = dealii::LinearAlgebra::distributed::Vector<Number>;
@@ -307,13 +318,13 @@ public:
   gradient_displacement(unsigned int const cell, unsigned int const q) const final;
 
   SurfactantModel<dim, Number> const &
-  get_surfactant_model() const
+  get_surfactant_model() const final
   {
     return surfactant_model;
   }
 
   SurfactantModel<dim, Number> &
-  get_surfactant_model()
+  get_surfactant_model() final
   {
     return surfactant_model;
   }
