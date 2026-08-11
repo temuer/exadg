@@ -350,6 +350,22 @@ RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
   return second_piola_kirchhoff_stress_eval(gradient_displacement, cell, q);
 }
 
+constexpr auto
+get_mu(double const E, double const nu) -> double
+{
+  Assert(nu != -1.0, dealii::StandardExceptions::ExcDivideByZero());
+
+  return 0.5 * E / (1.0 + nu);
+}
+
+constexpr auto
+get_beta(double const nu) -> double
+{
+  Assert(nu != 0.5, dealii::StandardExceptions::ExcDivideByZero());
+
+  return nu / (1.0 - 2.0 * nu);
+}
+
 template<int dim, typename Number>
 auto
 RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
@@ -365,9 +381,14 @@ RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   symmetric_tensor const C     = dealii::Physics::Elasticity::Kinematics::C(F);
   symmetric_tensor const C_inv = dealii::invert(C);
 
-  return 0.5 * data.E / (1 + data.nu) *
-         (get_identity_symmetric_tensor<dim, Number>() -
-          std::pow(J, static_cast<Number>(2.0 * -data.nu / (1.0 - 2.0 * data.nu))) * C_inv);
+  Number const mu   = static_cast<Number>(get_mu(data.E, data.nu));
+  Number const beta = static_cast<Number>(get_beta(data.nu));
+
+  scalar const J_pow = std::pow(J, static_cast<Number>(-2.0 * beta));
+
+  symmetric_tensor const I_s = get_identity_symmetric_tensor<dim, Number>();
+
+  return mu * (I_s - J_pow * C_inv);
 }
 
 template<int dim, typename Number>
@@ -407,20 +428,12 @@ RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_de
   symmetric_tensor const Du_C_inv    = compute_H_plus_HT(Du_F_inv * dealii::transpose(F_inv));
   scalar const           Du_J_over_J = dealii::trace(gradient_increment * F_inv);
 
+  Number const mu   = static_cast<Number>(get_mu(data.E, data.nu));
+  Number const beta = static_cast<Number>(get_beta(data.nu));
 
-  symmetric_tensor Du_S;
+  scalar const J_pow = std::pow(J, static_cast<Number>(-2.0 * beta));
 
-  // J term
-  Du_S += -data.E * data.nu / (1.0 + data.nu) / (1.0 - 2.0 * data.nu) *
-          std::pow(J, static_cast<Number>(-2.0 * data.nu / (1.0 - 2.0 * data.nu))) * Du_J_over_J *
-          C_inv;
-
-  // C_inv term
-  Du_S += 0.5 * data.E / (1.0 + data.nu) *
-          std::pow(J, static_cast<Number>(-2.0 * data.nu / (1.0 - 2.0 * data.nu))) * Du_C_inv;
-
-
-  return Du_S;
+  return mu * J_pow * (2.0 * beta * Du_J_over_J * C_inv - Du_C_inv);
 }
 
 
