@@ -47,9 +47,9 @@ check_stress_increment(MaterialType &     material,
   using symmetric_tensor = typename MaterialType::symmetric_tensor;
   using scalar           = typename MaterialType::scalar;
 
-  constexpr int n_deformation_cases = 4;
+  constexpr std::size_t n_deformation_cases = 4;
 
-  std::array<DeformationCase<dim>, 4> cases{};
+  std::array<DeformationCase<dim>, n_deformation_cases> cases{};
   cases[0].name = "mixed deformation";
   cases[1].name = "mixed deformation from undeformed";
   cases[2].name = "pure stretch";
@@ -64,69 +64,79 @@ check_stress_increment(MaterialType &     material,
   cases[3].gradient  = {{{{0.0, 0.16, -0.03}}, {{-0.04, 0.0, 0.05}}, {{0.02, -0.06, 0.0}}}};
   cases[3].increment = {{{{0.01, -0.03, 0.02}}, {{0.02, -0.01, -0.02}}, {{-0.01, 0.03, 0.01}}}};
 
-  tensor gradient{};
-  tensor increment{};
-  static_assert(n_deformation_cases == scalar::size());
-
-  for(std::size_t lane{0}; lane < scalar::size(); ++lane)
-  {
-    for(int i = 0; i < dim; ++i)
-      for(int j = 0; j < dim; ++j)
-      {
-        gradient[i][j][lane]  = cases[lane].gradient[i][j];
-        increment[i][j][lane] = cases[lane].increment[i][j];
-      }
-  }
-
-  symmetric_tensor const increment_analytical =
-    material.second_piola_kirchhoff_stress_displacement_derivative(increment, gradient, 0, 0);
+  constexpr std::size_t n_batches =
+    (n_deformation_cases + scalar::size() - 1) / scalar::size();
 
   std::array<double, 4> const step_sizes{{1.0e-3, 1.0e-4, 1.0e-5, 1.0e-6}};
-  for(double const epsilon : step_sizes)
+  for(std::size_t batch{0}; batch < n_batches; ++batch)
   {
-    tensor gradient_plus;
-    tensor gradient_minus;
-    for(int i = 0; i < dim; ++i)
-      for(int j = 0; j < dim; ++j)
-      {
-        gradient_plus[i][j]  = gradient[i][j] + epsilon * increment[i][j];
-        gradient_minus[i][j] = gradient[i][j] - epsilon * increment[i][j];
-      }
-
-    symmetric_tensor const stress_plus =
-      material.second_piola_kirchhoff_stress(gradient_plus, 0, 0);
-    symmetric_tensor const stress_minus =
-      material.second_piola_kirchhoff_stress(gradient_minus, 0, 0);
-    symmetric_tensor const stress_base = material.second_piola_kirchhoff_stress(gradient, 0, 0);
+    tensor gradient{};
+    tensor increment{};
 
     for(std::size_t lane{0}; lane < scalar::size(); ++lane)
     {
-      double max_error = 0.0;
-      double max_scale = 1.0;
-
-      bool const use_forward_difference = forward_difference_for_undeformed_case && lane == 1;
+      std::size_t const case_index = (batch * scalar::size() + lane) % n_deformation_cases;
 
       for(int i = 0; i < dim; ++i)
-        for(int j = 0; j <= i; ++j)
+        for(int j = 0; j < dim; ++j)
         {
-          double const increment_finite_difference =
-            use_forward_difference ?
-              (stress_plus[i][j][lane] - stress_base[i][j][lane]) / epsilon :
-              (stress_plus[i][j][lane] - stress_minus[i][j][lane]) / (2.0 * epsilon);
-          max_error =
-            std::max(max_error,
-                     std::abs(increment_analytical[i][j][lane] - increment_finite_difference));
-          max_scale = std::max(max_scale, std::abs(increment_finite_difference));
+          gradient[i][j][lane]  = cases[case_index].gradient[i][j];
+          increment[i][j][lane] = cases[case_index].increment[i][j];
+        }
+    }
+
+    symmetric_tensor const increment_analytical =
+      material.second_piola_kirchhoff_stress_displacement_derivative(increment, gradient, 0, 0);
+
+    for(double const epsilon : step_sizes)
+    {
+      tensor gradient_plus;
+      tensor gradient_minus;
+      for(int i = 0; i < dim; ++i)
+        for(int j = 0; j < dim; ++j)
+        {
+          gradient_plus[i][j]  = gradient[i][j] + epsilon * increment[i][j];
+          gradient_minus[i][j] = gradient[i][j] - epsilon * increment[i][j];
         }
 
-      double const tolerance =
-        1.0e-8 + (use_forward_difference ? 0.2 * epsilon : 1.0e-6) * max_scale;
-      if(max_error > tolerance)
+      symmetric_tensor const stress_plus =
+        material.second_piola_kirchhoff_stress(gradient_plus, 0, 0);
+      symmetric_tensor const stress_minus =
+        material.second_piola_kirchhoff_stress(gradient_minus, 0, 0);
+      symmetric_tensor const stress_base = material.second_piola_kirchhoff_stress(gradient, 0, 0);
+
+      for(std::size_t lane{0}; lane < scalar::size(); ++lane)
       {
-        std::cerr << material_name << " (" << cases[lane].name << ", lane " << lane
-                  << ") stress increment check failed at epsilon " << epsilon << " with error "
-                  << max_error << " (tolerance " << tolerance << ")" << std::endl;
-        return false;
+        std::size_t const case_index = (batch * scalar::size() + lane) % n_deformation_cases;
+
+        double max_error = 0.0;
+        double max_scale = 1.0;
+
+        bool const use_forward_difference =
+          forward_difference_for_undeformed_case && case_index == 1;
+
+        for(int i = 0; i < dim; ++i)
+          for(int j = 0; j <= i; ++j)
+          {
+            double const increment_finite_difference =
+              use_forward_difference ?
+                (stress_plus[i][j][lane] - stress_base[i][j][lane]) / epsilon :
+                (stress_plus[i][j][lane] - stress_minus[i][j][lane]) / (2.0 * epsilon);
+            max_error =
+              std::max(max_error,
+                       std::abs(increment_analytical[i][j][lane] - increment_finite_difference));
+            max_scale = std::max(max_scale, std::abs(increment_finite_difference));
+          }
+
+        double const tolerance =
+          1.0e-8 + (use_forward_difference ? 0.2 * epsilon : 1.0e-6) * max_scale;
+        if(max_error > tolerance)
+        {
+          std::cerr << material_name << " (" << cases[case_index].name << ", lane " << lane
+                    << ") stress increment check failed at epsilon " << epsilon << " with error "
+                    << max_error << " (tolerance " << tolerance << ")" << std::endl;
+          return false;
+        }
       }
     }
   }
