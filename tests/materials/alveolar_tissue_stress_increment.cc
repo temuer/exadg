@@ -64,10 +64,10 @@ check_stress_increment(MaterialType &     material,
   cases[3].gradient  = {{{{0.0, 0.16, -0.03}}, {{-0.04, 0.0, 0.05}}, {{0.02, -0.06, 0.0}}}};
   cases[3].increment = {{{{0.01, -0.03, 0.02}}, {{0.02, -0.01, -0.02}}, {{-0.01, 0.03, 0.01}}}};
 
-  constexpr std::size_t n_batches =
-    (n_deformation_cases + scalar::size() - 1) / scalar::size();
+  constexpr std::size_t n_batches = (n_deformation_cases + scalar::size() - 1) / scalar::size();
 
   std::array<double, 4> const step_sizes{{1.0e-3, 1.0e-4, 1.0e-5, 1.0e-6}};
+
   for(std::size_t batch{0}; batch < n_batches; ++batch)
   {
     tensor gradient{};
@@ -122,14 +122,16 @@ check_stress_increment(MaterialType &     material,
               use_forward_difference ?
                 (stress_plus[i][j][lane] - stress_base[i][j][lane]) / epsilon :
                 (stress_plus[i][j][lane] - stress_minus[i][j][lane]) / (2.0 * epsilon);
+
             max_error =
               std::max(max_error,
                        std::abs(increment_analytical[i][j][lane] - increment_finite_difference));
+
             max_scale = std::max(max_scale, std::abs(increment_finite_difference));
           }
 
-        double const tolerance =
-          1.0e-8 + (use_forward_difference ? 0.2 * epsilon : 1.0e-6) * max_scale;
+        double const tolerance = 1.0e-10 + (use_forward_difference ? epsilon : 1.0e-6) * max_scale;
+
         if(max_error > tolerance)
         {
           std::cerr << material_name << " (" << cases[case_index].name << ", lane " << lane
