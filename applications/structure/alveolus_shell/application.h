@@ -294,7 +294,7 @@ private:
     // }
 
     auto material =
-      std::make_shared<WiechertAlveolarTissueData<dim>>(MaterialType::WiechertAlveolarTissue);
+      std::make_shared<FibrousAlveolarTissueData<dim>>(MaterialType::FibrousAlveolarTissue);
     // Ground substance
     material->shear_modulus = 2.0e-3; // kg / s2 / microm = 2 kPa (Wiechert)
     // Fiber
@@ -307,9 +307,9 @@ private:
     // Surfactant
     material->surfactant_data.boundary_ids     = std::set<dealii::types::boundary_id>{1};
     material->surfactant_data.equilibrium_time = 1.0;
-    material->surfactant_data.gamma_ref       = 0.0;   // 70 dyn / cm (water)
-    material->surfactant_data.gamma_eq        = 0.022; // 22.2 dyn / cm = 22 g / s (Denny and Schroter)
-    material->surfactant_data.gamma_min       = 0.0;   // 2.0 dyn / cm (Denny and Schroter)
+    material->surfactant_data.gamma_ref        = 0.0; // 70 dyn / cm (water)
+    material->surfactant_data.gamma_eq  = 0.022; // 22.2 dyn / cm = 22 g / s (Denny and Schroter)
+    material->surfactant_data.gamma_min = 0.0;   // 2.0 dyn / cm (Denny and Schroter)
 
     material->surfactant_data.m_1 =
       material->surfactant_data.gamma_ref - material->surfactant_data.gamma_eq;

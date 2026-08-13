@@ -37,7 +37,46 @@ namespace ExaDG
 namespace Structure
 {
 
-struct SurfactantData
+template<int dim, typename Number>
+class SurfactantInterface
+{
+public:
+  using scalar           = dealii::VectorizedArray<Number>;
+  using vector           = dealii::Tensor<1, dim, scalar>;
+  using tensor           = dealii::Tensor<2, dim, scalar>;
+  using symmetric_tensor = dealii::SymmetricTensor<2, dim, scalar>;
+
+  virtual ~SurfactantInterface() = default;
+
+  virtual tensor
+  surface_tension_1PK(tensor const &     displacement_gradient,
+                      vector const &     material_normal_vector,
+                      scalar const &     surface_area_new,
+                      double const       time,
+                      double const       time_step_size,
+                      unsigned int const face) const = 0;
+
+  virtual tensor
+  surface_tension_1PK_displacement_derivative(tensor const &     displacement_gradient_increment,
+                                              tensor const &     displacement_gradient,
+                                              vector const &     material_normal_vector,
+                                              scalar const &     surface_area_new,
+                                              scalar const &     surface_area_new_increment,
+                                              double const       time,
+                                              double const       time_step_size,
+                                              unsigned int const face) const = 0;
+
+  virtual void
+  update(scalar const &     surface_area_new,
+         double const       time,
+         double const       time_step_size,
+         unsigned int const boundary_face_id) = 0;
+
+  virtual bool
+  is_surfactant_boundary(dealii::types::boundary_id boundary_id) const = 0;
+};
+
+struct WiechertSurfactantData
 {
   std::set<dealii::types::boundary_id> boundary_ids{};
   double                               equilibrium_time{0.0};
@@ -53,15 +92,16 @@ struct SurfactantData
 };
 
 template<int dim, typename Number>
-class SurfactantModel
+class WiechertSurfactantModel : public SurfactantInterface<dim, Number>
 {
 public:
-  using scalar           = dealii::VectorizedArray<Number>;
-  using vector           = dealii::Tensor<1, dim, scalar>;
-  using tensor           = dealii::Tensor<2, dim, scalar>;
-  using symmetric_tensor = dealii::SymmetricTensor<2, dim, scalar>;
+  using scalar           = typename SurfactantInterface<dim, Number>::scalar;
+  using vector           = typename SurfactantInterface<dim, Number>::vector;
+  using tensor           = typename SurfactantInterface<dim, Number>::tensor;
+  using symmetric_tensor = typename SurfactantInterface<dim, Number>::symmetric_tensor;
 
-  SurfactantModel(SurfactantData const & data, unsigned int n_boundary_face_batches);
+  WiechertSurfactantModel(WiechertSurfactantData const & data,
+                          unsigned int                   n_boundary_face_batches);
 
   tensor
   surface_tension_1PK(tensor const &     displacement_gradient,
@@ -69,7 +109,7 @@ public:
                       scalar const &     surface_area_new,
                       double const       time,
                       double const       time_step_size,
-                      unsigned int const face) const;
+                      unsigned int const face) const override;
 
   tensor
   surface_tension_1PK_displacement_derivative(tensor const &     displacement_gradient_increment,
@@ -79,16 +119,16 @@ public:
                                               scalar const &     surface_area_new_increment,
                                               double const       time,
                                               double const       time_step_size,
-                                              unsigned int const face) const;
+                                              unsigned int const face) const override;
 
   void
   update(scalar const &     surface_area_new,
          double const       time,
          double const       time_step_size,
-         unsigned int const boundary_face_id);
+         unsigned int const boundary_face_id) override;
 
   bool
-  is_surfactant_boundary(dealii::types::boundary_id boundary_id) const;
+  is_surfactant_boundary(dealii::types::boundary_id boundary_id) const override;
 
 private:
   std::pair<scalar, std::array<unsigned int, scalar::size()>>
@@ -103,7 +143,7 @@ private:
                                           double const       time_step_size,
                                           unsigned int const face_id) const;
 
-  SurfactantData const & data;
+  WiechertSurfactantData const & data;
 
   struct SurfactantVariables
   {

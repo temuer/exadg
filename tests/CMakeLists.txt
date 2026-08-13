@@ -26,5 +26,6 @@
 #########################################################################
 
 ADD_SUBDIRECTORY(solvers_and_preconditioners)
+ADD_SUBDIRECTORY(materials)
 ADD_SUBDIRECTORY(utilities)
 ADD_SUBDIRECTORY(time_integration)

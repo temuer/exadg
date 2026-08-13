@@ -263,11 +263,11 @@ NonLinearOperator<dim, Number>::boundary_face_loop_update_materials(
   Range const &                           range) const
 {
   (void)dst;
-  AlveolarTissue<dim, Number> * alveolar_material =
-    dynamic_cast<AlveolarTissue<dim, Number> *>(
-      this->material_handler.get_material().get());
 
-  if(alveolar_material == nullptr)
+  auto alveolar_surfactant = dynamic_cast<AlveolarSurfactantInterface<dim, Number> *>(
+    this->material_handler.get_material().get());
+
+  if(alveolar_surfactant == nullptr)
   {
     return;
   }
@@ -281,7 +281,7 @@ NonLinearOperator<dim, Number>::boundary_face_loop_update_materials(
   {
     dealii::types::boundary_id const boundary_id = matrix_free.get_boundary_id(face);
 
-    if(!alveolar_material->get_surfactant_model().is_surfactant_boundary(boundary_id))
+    if(!alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id))
     {
       return;
     }
@@ -292,10 +292,10 @@ NonLinearOperator<dim, Number>::boundary_face_loop_update_materials(
 
     scalar const surface_area = This::calculate_surface_area(integrator_m_inhom);
 
-    alveolar_material->get_surfactant_model().update(surface_area,
-                                                     this->time,
-                                                     this->time_step_size,
-                                                     face);
+    alveolar_surfactant->get_surfactant_model().update(surface_area,
+                                                       this->time,
+                                                       this->time_step_size,
+                                                       face);
   }
 }
 
@@ -343,10 +343,10 @@ NonLinearOperator<dim, Number>::apply(VectorType & dst, VectorType const & src) 
       dst.local_element(constrained_index) = src.local_element(constrained_index);
     }
   }
-  else if(AlveolarTissue<dim, Number> * material =
-            dynamic_cast<AlveolarTissue<dim, Number> *>(
+  else if(AlveolarSurfactantInterface<dim, Number> * alveolar_surfactant =
+            dynamic_cast<AlveolarSurfactantInterface<dim, Number> *>(
               this->material_handler.get_material().get());
-          material != nullptr
+          alveolar_surfactant != nullptr
 
   )
   {
@@ -660,10 +660,10 @@ NonLinearOperator<dim, Number>::boundary_face_loop_nonlinear(
       this->integrator_flags.face_integrate;
 
     // If material is alveolar tissue, then we will have to integrate gradient contributions.
-    if(AlveolarTissue<dim, Number> * material =
-         dynamic_cast<AlveolarTissue<dim, Number> *>(
+    if(AlveolarSurfactantInterface<dim, Number> * alveolar_surfactant =
+         dynamic_cast<AlveolarSurfactantInterface<dim, Number> *>(
            this->material_handler.get_material().get());
-       material != nullptr)
+       alveolar_surfactant != nullptr)
     {
       face_integration_flags = face_integration_flags | dealii::EvaluationFlags::gradients;
     }
@@ -718,12 +718,11 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
   unsigned int const face_id = integrator.get_cell_or_face_batch_id();
 
 
-  AlveolarTissue<dim, Number> * alveolar_material =
-    dynamic_cast<AlveolarTissue<dim, Number> *>(
-      this->material_handler.get_material().get());
+  auto alveolar_surfactant = dynamic_cast<AlveolarSurfactantInterface<dim, Number> *>(
+    this->material_handler.get_material().get());
 
   scalar surface_area = dealii::make_vectorized_array<Number>(0.0);
-  if(alveolar_material)
+  if(alveolar_surfactant)
   {
     surface_area = calculate_surface_area(integrator);
   }
@@ -749,19 +748,19 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 
     // If material is alveolar                    tissue,
     //   then we will go into the surface tension contribution
-    if(alveolar_material)
+    if(alveolar_surfactant)
     {
       tensor surface_tension_1PK;
-      if(alveolar_material->get_surfactant_model().is_surfactant_boundary(boundary_id))
+      if(alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id))
       // if(boundary_id == 1 || boundary_id == 2)
       {
-        surface_tension_1PK =
-          alveolar_material->get_surfactant_model().surface_tension_1PK(integrator.get_gradient(q),
-                                                                        integrator.normal_vector(q),
-                                                                        surface_area,
-                                                                        this->time,
-                                                                        this->time_step_size,
-                                                                        face_id);
+        surface_tension_1PK = alveolar_surfactant->get_surfactant_model().surface_tension_1PK(
+          integrator.get_gradient(q),
+          integrator.normal_vector(q),
+          surface_area,
+          this->time,
+          this->time_step_size,
+          face_id);
       }
 
 
@@ -776,11 +775,10 @@ NonLinearOperator<dim, Number>::do_boundary_integral_surface_tension_stiffness(
   IntegratorFace &                   integrator,
   dealii::types::boundary_id const & boundary_id) const
 {
-  AlveolarTissue<dim, Number> * alveolar_material =
-    dynamic_cast<AlveolarTissue<dim, Number> *>(
-      this->material_handler.get_material().get());
+  auto alveolar_surfactant = dynamic_cast<AlveolarSurfactantInterface<dim, Number> *>(
+    this->material_handler.get_material().get());
 
-  if(!alveolar_material)
+  if(!alveolar_surfactant)
   {
     return;
   }
@@ -799,11 +797,11 @@ NonLinearOperator<dim, Number>::do_boundary_integral_surface_tension_stiffness(
     vector const N_lin = face_integrator_lin->normal_vector(q);
 
     tensor delta_P_gamma;
-    if(alveolar_material->get_surfactant_model().is_surfactant_boundary(boundary_id))
+    if(alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id))
     // if(boundary_id == 1 || boundary_id == 2)
     {
       delta_P_gamma =
-        alveolar_material->get_surfactant_model().surface_tension_1PK_displacement_derivative(
+        alveolar_surfactant->get_surfactant_model().surface_tension_1PK_displacement_derivative(
           Grad_delta,
           Grad_d_lin,
           N_lin,

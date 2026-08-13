@@ -28,7 +28,9 @@
 #include <deal.II/physics/elasticity/kinematics.h>
 #include <exadg/structure/material/library/surfactant.h>
 #include <exadg/structure/spatial_discretization/operators/continuum_mechanics.h>
+#include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include <exadg/structure/material/library/alveolar_tissue.h>
 
@@ -38,11 +40,11 @@ namespace Structure
 {
 
 template<int dim, typename Number>
-WiechertAlveolarTissue<dim, Number>::WiechertAlveolarTissue(
+FibrousAlveolarTissue<dim, Number>::FibrousAlveolarTissue(
   dealii::MatrixFree<dim, Number> const & matrix_free,
   unsigned int const                      dof_index,
   unsigned int const                      quad_index,
-  WiechertAlveolarTissueData<dim> const & data)
+  FibrousAlveolarTissueData<dim> const &  data)
   : dof_index(dof_index),
     quad_index(quad_index),
     data(data),
@@ -52,7 +54,7 @@ WiechertAlveolarTissue<dim, Number>::WiechertAlveolarTissue(
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
+FibrousAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
   tensor const &     gradient_displacement,
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
@@ -62,7 +64,7 @@ WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
+FibrousAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   tensor const &     gradient_displacement,
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
@@ -112,8 +114,8 @@ WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int const cell,
-                                                                   unsigned int const q) const
+FibrousAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int const cell,
+                                                                  unsigned int const q) const
   -> symmetric_tensor
 {
   (void)cell;
@@ -128,7 +130,7 @@ WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int 
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivative(
+FibrousAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivative(
   tensor const &     gradient_increment,
   tensor const &     gradient_displacement,
   unsigned int const cell,
@@ -207,19 +209,18 @@ WiechertAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::kirchhoff_stress(tensor const &     gradient_displacement,
-                                                      unsigned int const cell,
-                                                      unsigned int const q) const
-  -> symmetric_tensor
+FibrousAlveolarTissue<dim, Number>::kirchhoff_stress(tensor const &     gradient_displacement,
+                                                     unsigned int const cell,
+                                                     unsigned int const q) const -> symmetric_tensor
 {
   return kirchhoff_stress_eval(gradient_displacement, cell, q);
 }
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_displacement,
-                                                           unsigned int const cell,
-                                                           unsigned int const q) const
+FibrousAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_displacement,
+                                                          unsigned int const cell,
+                                                          unsigned int const q) const
   -> symmetric_tensor
 {
   (void)gradient_displacement;
@@ -234,9 +235,8 @@ WiechertAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gr
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
-                                                      unsigned int const q) const
-  -> symmetric_tensor
+FibrousAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
+                                                     unsigned int const q) const -> symmetric_tensor
 {
   (void)cell;
   (void)q;
@@ -250,7 +250,7 @@ WiechertAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::contract_with_J_times_C(
+FibrousAlveolarTissue<dim, Number>::contract_with_J_times_C(
   symmetric_tensor const & symmetric_gradient_increment,
   tensor const &           gradient_displacement,
   unsigned int const       cell,
@@ -270,7 +270,7 @@ WiechertAlveolarTissue<dim, Number>::contract_with_J_times_C(
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::contract_with_J_times_C(
+FibrousAlveolarTissue<dim, Number>::contract_with_J_times_C(
   symmetric_tensor const & symmetric_gradient_increment,
   unsigned int const       cell,
   unsigned int const       q) const -> symmetric_tensor
@@ -288,7 +288,7 @@ WiechertAlveolarTissue<dim, Number>::contract_with_J_times_C(
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
+FibrousAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
   std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
   unsigned int const                                                         cell) const -> void
 {
@@ -302,8 +302,8 @@ WiechertAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned int const q) const
-  -> scalar
+FibrousAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell,
+                                               unsigned int const q) const -> scalar
 {
   (void)cell;
   (void)q;
@@ -315,8 +315,8 @@ WiechertAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigne
 
 template<int dim, typename Number>
 auto
-WiechertAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
-                                                           unsigned int const q) const -> tensor
+FibrousAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
+                                                          unsigned int const q) const -> tensor
 {
   (void)cell;
   (void)q;
@@ -328,11 +328,11 @@ WiechertAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const ce
 
 
 template<int dim, typename Number>
-RauschAlveolarTissue<dim, Number>::RauschAlveolarTissue(
+NeoHookeAlveolarTissue<dim, Number>::NeoHookeAlveolarTissue(
   dealii::MatrixFree<dim, Number> const & matrix_free,
   unsigned int const                      dof_index,
   unsigned int const                      quad_index,
-  RauschAlveolarTissueData<dim> const &   data)
+  NeoHookeAlveolarTissueData<dim> const & data)
   : dof_index(dof_index),
     quad_index(quad_index),
     data(data),
@@ -342,7 +342,7 @@ RauschAlveolarTissue<dim, Number>::RauschAlveolarTissue(
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
+NeoHookeAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
   tensor const &     gradient_displacement,
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
@@ -368,7 +368,7 @@ get_beta(double const nu) -> double
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
+NeoHookeAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   tensor const &     gradient_displacement,
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
@@ -393,8 +393,8 @@ RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int const cell,
-                                                                 unsigned int const q) const
+NeoHookeAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int const cell,
+                                                                   unsigned int const q) const
   -> symmetric_tensor
 {
   (void)cell;
@@ -409,7 +409,7 @@ RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int co
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivative(
+NeoHookeAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivative(
   tensor const &     gradient_increment,
   tensor const &     gradient_displacement,
   unsigned int const cell,
@@ -440,18 +440,19 @@ RauschAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_de
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::kirchhoff_stress(tensor const &     gradient_displacement,
-                                                    unsigned int const cell,
-                                                    unsigned int const q) const -> symmetric_tensor
+NeoHookeAlveolarTissue<dim, Number>::kirchhoff_stress(tensor const &     gradient_displacement,
+                                                      unsigned int const cell,
+                                                      unsigned int const q) const
+  -> symmetric_tensor
 {
   return kirchhoff_stress_eval(gradient_displacement, cell, q);
 }
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_displacement,
-                                                         unsigned int const cell,
-                                                         unsigned int const q) const
+NeoHookeAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_displacement,
+                                                           unsigned int const cell,
+                                                           unsigned int const q) const
   -> symmetric_tensor
 {
   (void)gradient_displacement;
@@ -466,8 +467,8 @@ RauschAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     grad
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
-                                                    unsigned int const q) const -> symmetric_tensor
+NeoHookeAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell, unsigned int const q)
+  const -> symmetric_tensor
 {
   (void)cell;
   (void)q;
@@ -481,7 +482,7 @@ RauschAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::contract_with_J_times_C(
+NeoHookeAlveolarTissue<dim, Number>::contract_with_J_times_C(
   symmetric_tensor const & symmetric_gradient_increment,
   tensor const &           gradient_displacement,
   unsigned int const       cell,
@@ -501,7 +502,7 @@ RauschAlveolarTissue<dim, Number>::contract_with_J_times_C(
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::contract_with_J_times_C(
+NeoHookeAlveolarTissue<dim, Number>::contract_with_J_times_C(
   symmetric_tensor const & symmetric_gradient_increment,
   unsigned int const       cell,
   unsigned int const       q) const -> symmetric_tensor
@@ -519,7 +520,7 @@ RauschAlveolarTissue<dim, Number>::contract_with_J_times_C(
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
+NeoHookeAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
   std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
   unsigned int const                                                         cell) const -> void
 {
@@ -533,8 +534,8 @@ RauschAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned int const q) const
-  -> scalar
+NeoHookeAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell,
+                                                unsigned int const q) const -> scalar
 {
   (void)cell;
   (void)q;
@@ -546,8 +547,8 @@ RauschAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned 
 
 template<int dim, typename Number>
 auto
-RauschAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
-                                                         unsigned int const q) const -> tensor
+NeoHookeAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
+                                                           unsigned int const q) const -> tensor
 {
   (void)cell;
   (void)q;
@@ -557,17 +558,313 @@ RauschAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_tensor<dim, Number>());
 }
 
-template class WiechertAlveolarTissue<2, float>;
-template class WiechertAlveolarTissue<3, float>;
+template<int dim, typename Number>
+OgdenAlveolarTissue<dim, Number>::OgdenAlveolarTissue(
+  dealii::MatrixFree<dim, Number> const & matrix_free,
+  unsigned int const                      dof_index,
+  unsigned int const                      quad_index,
+  OgdenAlveolarTissueData<dim> const &    data)
+  : dof_index(dof_index),
+    quad_index(quad_index),
+    data(data),
+    surfactant_model(data.surfactant_data, matrix_free.n_boundary_face_batches())
+{
+}
 
-template class WiechertAlveolarTissue<2, double>;
-template class WiechertAlveolarTissue<3, double>;
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
+  tensor const &     gradient_displacement,
+  unsigned int const cell,
+  unsigned int const q) const -> symmetric_tensor
+{
+  return second_piola_kirchhoff_stress_eval(gradient_displacement, cell, q);
+}
 
-template class RauschAlveolarTissue<2, float>;
-template class RauschAlveolarTissue<3, float>;
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
+  tensor const &     gradient_displacement,
+  unsigned int const cell,
+  unsigned int const q) const -> symmetric_tensor
+{
+  (void)cell;
+  (void)q;
 
-template class RauschAlveolarTissue<2, double>;
-template class RauschAlveolarTissue<3, double>;
+  tensor const           F = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
+  symmetric_tensor const C = dealii::Physics::Elasticity::Kinematics::C(F);
+
+  symmetric_tensor S{};
+
+  // Serialize because eigenvectors() does not support VectorizedArray
+  for(std::size_t v{0}; v < scalar::size(); ++v)
+  {
+    dealii::SymmetricTensor<2, dim, Number> C_lane;
+    for(int i = 0; i < dim; ++i)
+      for(int j = 0; j <= i; ++j)
+        C_lane[i][j] = C[i][j][v];
+
+    auto const eigen = dealii::eigenvectors(C_lane);
+
+    for(int d = 0; d < dim; d++)
+    {
+      Number const principal_strain = std::sqrt(eigen[d].first);
+      auto const & N                = eigen[d].second;
+
+      Number const principal_stress = data.mu1 * std::pow(principal_strain, data.alpha1 - 2.0) +
+                                      data.mu2 * std::pow(principal_strain, data.alpha2 - 2.0);
+
+      for(int i = 0; i < dim; ++i)
+        for(int j = 0; j <= i; ++j)
+          S[i][j][v] += principal_stress * N[i] * N[j];
+    }
+  }
+
+  return S;
+}
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int const cell,
+                                                                unsigned int const q) const
+  -> symmetric_tensor
+{
+  (void)cell;
+  (void)q;
+
+  AssertThrow(false,
+              dealii::ExcMessage("This function implements loading a stored stress tensor, but "
+                                 "this material does not store tensorial quantities."));
+
+  return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
+}
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivative(
+  tensor const &     gradient_increment,
+  tensor const &     gradient_displacement,
+  unsigned int const cell,
+  unsigned int const q) const -> symmetric_tensor
+{
+  (void)cell;
+  (void)q;
+
+  tensor const           F    = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
+  symmetric_tensor const C    = dealii::Physics::Elasticity::Kinematics::C(F);
+  symmetric_tensor const Du_C = dealii::symmetrize(dealii::transpose(gradient_increment) * F +
+                                                   dealii::transpose(F) * gradient_increment);
+
+  symmetric_tensor Du_S{};
+
+  auto const h = [this](Number const rho) -> Number
+  {
+    return data.mu1 * std::pow(rho, 0.5 * (data.alpha1 - 2.0)) +
+           data.mu2 * std::pow(rho, 0.5 * (data.alpha2 - 2.0));
+  };
+
+  auto const h_prime = [this](Number const rho) -> Number
+  {
+    return 0.5 * data.mu1 * (data.alpha1 - 2.0) * std::pow(rho, 0.5 * (data.alpha1 - 4.0)) +
+           0.5 * data.mu2 * (data.alpha2 - 2.0) * std::pow(rho, 0.5 * (data.alpha2 - 4.0));
+  };
+
+  // Serialize because eigenvectors() does not support VectorizedArray.
+  for(std::size_t v{0}; v < scalar::size(); ++v)
+  {
+    dealii::SymmetricTensor<2, dim, Number> C_lane;
+    dealii::SymmetricTensor<2, dim, Number> Du_C_lane;
+    for(int i = 0; i < dim; ++i)
+      for(int j = 0; j <= i; ++j)
+      {
+        C_lane[i][j]    = C[i][j][v];
+        Du_C_lane[i][j] = Du_C[i][j][v];
+      }
+
+    auto const eigen = dealii::eigenvectors(C_lane);
+
+    for(int a = 0; a < dim; ++a)
+    {
+      Number const rho_a = eigen[a].first;
+      auto const & N_a   = eigen[a].second;
+
+      Number delta_rho_a = 0.0;
+      for(int i = 0; i < dim; ++i)
+        for(int j = 0; j < dim; ++j)
+          delta_rho_a += N_a[i] * Du_C_lane[i][j] * N_a[j];
+
+      Number const diagonal_coefficient = h_prime(rho_a) * delta_rho_a;
+      for(int i = 0; i < dim; ++i)
+        for(int j = 0; j <= i; ++j)
+          Du_S[i][j][v] += diagonal_coefficient * N_a[i] * N_a[j];
+    }
+
+    for(int a = 0; a < dim; ++a)
+      for(int b = a + 1; b < dim; ++b)
+      {
+        Number const rho_a = eigen[a].first;
+        Number const rho_b = eigen[b].first;
+        Number       divided_difference;
+
+        Number const scale     = std::max(std::max(Number(1.0), std::abs(rho_a)), std::abs(rho_b));
+        Number const tolerance = 100.0 * std::numeric_limits<Number>::epsilon() * scale;
+        if(std::abs(rho_a - rho_b) <= tolerance)
+          divided_difference = h_prime(rho_a);
+        else
+          divided_difference = (h(rho_a) - h(rho_b)) / (rho_a - rho_b);
+
+        auto const & N_a = eigen[a].second;
+        auto const & N_b = eigen[b].second;
+
+        Number const mixed_increment = dealii::scalar_product(N_a, Du_C_lane * N_b);
+
+        for(int i = 0; i < dim; ++i)
+          for(int j = 0; j <= i; ++j)
+            Du_S[i][j][v] +=
+              divided_difference * mixed_increment * (N_a[i] * N_b[j] + N_b[i] * N_a[j]);
+      }
+  }
+
+  return Du_S;
+}
+
+
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::kirchhoff_stress(tensor const &     gradient_displacement,
+                                                   unsigned int const cell,
+                                                   unsigned int const q) const -> symmetric_tensor
+{
+  return kirchhoff_stress_eval(gradient_displacement, cell, q);
+}
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_displacement,
+                                                        unsigned int const cell,
+                                                        unsigned int const q) const
+  -> symmetric_tensor
+{
+  (void)gradient_displacement;
+  (void)cell;
+  (void)q;
+
+  AssertThrow(false,
+              dealii::ExcMessage("This material does not (yet) support spatial integration."));
+
+  return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
+}
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
+                                                   unsigned int const q) const -> symmetric_tensor
+{
+  (void)cell;
+  (void)q;
+
+  AssertThrow(false,
+              dealii::ExcMessage("This function implements loading a stored stress tensor, but "
+                                 "this material does not store tensorial quantities."));
+
+  return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
+}
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::contract_with_J_times_C(
+  symmetric_tensor const & symmetric_gradient_increment,
+  tensor const &           gradient_displacement,
+  unsigned int const       cell,
+  unsigned int const       q) const -> symmetric_tensor
+{
+  (void)symmetric_gradient_increment;
+  (void)gradient_displacement;
+  (void)cell;
+  (void)q;
+
+  AssertThrow(false,
+              dealii::ExcMessage("This material does not (yet) support spatial integration."));
+
+  return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
+}
+
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::contract_with_J_times_C(
+  symmetric_tensor const & symmetric_gradient_increment,
+  unsigned int const       cell,
+  unsigned int const       q) const -> symmetric_tensor
+{
+  (void)symmetric_gradient_increment;
+  (void)cell;
+  (void)q;
+
+  AssertThrow(false,
+              dealii::ExcMessage("This function cannot be called with `non-caching` material."));
+
+  return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
+}
+
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
+  std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
+  unsigned int const                                                         cell) const -> void
+{
+  (void)integrator_lin;
+  (void)cell;
+
+  AssertThrow(false, dealii::ExcMessage("This material does not support caching."));
+
+  return;
+}
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell,
+                                             unsigned int const q) const -> scalar
+{
+  (void)cell;
+  (void)q;
+
+  AssertThrow(false, dealii::ExcMessage("Cannot access precomputed one_over_J."));
+
+  return dealii::make_vectorized_array(std::numeric_limits<Number>::quiet_NaN());
+}
+
+template<int dim, typename Number>
+auto
+OgdenAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
+                                                        unsigned int const q) const -> tensor
+{
+  (void)cell;
+  (void)q;
+
+  AssertThrow(false, dealii::ExcMessage("Cannot access precomputed deformation gradient."));
+
+  return (std::numeric_limits<Number>::quiet_NaN() * get_identity_tensor<dim, Number>());
+}
+template class FibrousAlveolarTissue<2, float>;
+template class FibrousAlveolarTissue<3, float>;
+
+template class FibrousAlveolarTissue<2, double>;
+template class FibrousAlveolarTissue<3, double>;
+
+template class NeoHookeAlveolarTissue<2, float>;
+template class NeoHookeAlveolarTissue<3, float>;
+
+template class NeoHookeAlveolarTissue<2, double>;
+template class NeoHookeAlveolarTissue<3, double>;
+
+template class OgdenAlveolarTissue<2, float>;
+template class OgdenAlveolarTissue<3, float>;
+
+template class OgdenAlveolarTissue<2, double>;
+template class OgdenAlveolarTissue<3, double>;
 
 } // namespace Structure
 } // namespace ExaDG

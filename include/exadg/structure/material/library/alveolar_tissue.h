@@ -43,19 +43,32 @@ namespace ExaDG
 namespace Structure
 {
 
-template<int dim>
-struct WiechertAlveolarTissueData : public MaterialData
+template<int dim, typename Number>
+class AlveolarSurfactantInterface
 {
-  WiechertAlveolarTissueData(MaterialType const & type) : MaterialData(type){};
+public:
+  virtual ~AlveolarSurfactantInterface() = default;
 
-  WiechertAlveolarTissueData(MaterialType const & type,
-                             double const &       shear_modulus,
-                             double const &       incompressibility_penalty,
-                             double const &       incompressibility_exponent,
-                             double const &       fiber_k_1,
-                             double const &       fiber_k_2,
-                             Type2D const &       type_two_dim,
-                             SurfactantData       surfactant_data)
+  virtual WiechertSurfactantModel<dim, Number> const &
+  get_surfactant_model() const = 0;
+
+  virtual WiechertSurfactantModel<dim, Number> &
+  get_surfactant_model() = 0;
+};
+
+template<int dim>
+struct FibrousAlveolarTissueData : public MaterialData
+{
+  FibrousAlveolarTissueData(MaterialType const & type) : MaterialData(type){};
+
+  FibrousAlveolarTissueData(MaterialType const &   type,
+                            double const &         shear_modulus,
+                            double const &         incompressibility_penalty,
+                            double const &         incompressibility_exponent,
+                            double const &         fiber_k_1,
+                            double const &         fiber_k_2,
+                            Type2D const &         type_two_dim,
+                            WiechertSurfactantData surfactant_data)
     : MaterialData(type),
       shear_modulus(shear_modulus),
       fiber_k_1(fiber_k_1),
@@ -80,19 +93,9 @@ struct WiechertAlveolarTissueData : public MaterialData
 
   Type2D type_two_dim{Type2D::Undefined};
 
-  SurfactantData surfactant_data;
+  WiechertSurfactantData surfactant_data;
 };
 
-template<int dim, typename Number>
-class AlveolarTissue : public Material<dim, Number>
-{
-public:
-  virtual SurfactantModel<dim, Number> const &
-  get_surfactant_model() const = 0;
-
-  virtual SurfactantModel<dim, Number> &
-  get_surfactant_model() = 0;
-};
 
 /*
  * Psi_gs = shear_modulus / 2 * ( I_1 * J^(-2/3) - dim )
@@ -105,7 +108,8 @@ public:
  * Psi = Psi_gs + Psi_pen + Psi_fib
  */
 template<int dim, typename Number>
-class WiechertAlveolarTissue : public AlveolarTissue<dim, Number>
+class FibrousAlveolarTissue : public Material<dim, Number>,
+                              public AlveolarSurfactantInterface<dim, Number>
 {
 public:
   using VectorType     = dealii::LinearAlgebra::distributed::Vector<Number>;
@@ -117,10 +121,10 @@ public:
   using tensor           = dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>;
   using symmetric_tensor = dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>;
 
-  WiechertAlveolarTissue(dealii::MatrixFree<dim, Number> const & matrix_free,
-                         unsigned int const                      dof_index,
-                         unsigned int const                      quad_index,
-                         WiechertAlveolarTissueData<dim> const & data);
+  FibrousAlveolarTissue(dealii::MatrixFree<dim, Number> const & matrix_free,
+                        unsigned int const                      dof_index,
+                        unsigned int const                      quad_index,
+                        FibrousAlveolarTissueData<dim> const &  data);
 
   /*
    * S_gs  = shear_modulus * J^(-2/3) * (I - I_1 / 3 * C^(-1) )
@@ -135,15 +139,15 @@ public:
   symmetric_tensor
   second_piola_kirchhoff_stress(tensor const &     gradient_displacement,
                                 unsigned int const cell,
-                                unsigned int const q) const final;
+                                unsigned int const q) const override;
 
   symmetric_tensor
   second_piola_kirchhoff_stress_eval(tensor const &     gradient_displacement,
                                      unsigned int const cell,
-                                     unsigned int const q) const final;
+                                     unsigned int const q) const override;
 
   symmetric_tensor
-  second_piola_kirchhoff_stress(unsigned int const cell, unsigned int const q) const final;
+  second_piola_kirchhoff_stress(unsigned int const cell, unsigned int const q) const override;
 
   /*
    * Stress increment Du_S
@@ -152,51 +156,51 @@ public:
   second_piola_kirchhoff_stress_displacement_derivative(tensor const &     gradient_increment,
                                                         tensor const &     gradient_displacement,
                                                         unsigned int const cell,
-                                                        unsigned int const q) const final;
+                                                        unsigned int const q) const override;
 
   symmetric_tensor
   kirchhoff_stress(tensor const &     gradient_displacement,
                    unsigned int const cell,
-                   unsigned int const q) const final;
+                   unsigned int const q) const override;
 
   symmetric_tensor
   kirchhoff_stress_eval(tensor const &     gradient_displacement,
                         unsigned int const cell,
-                        unsigned int const q) const final;
+                        unsigned int const q) const override;
 
   symmetric_tensor
-  kirchhoff_stress(unsigned int const cell, unsigned int const q) const final;
+  kirchhoff_stress(unsigned int const cell, unsigned int const q) const override;
 
   symmetric_tensor
   contract_with_J_times_C(symmetric_tensor const & symmetric_gradient_increment,
                           tensor const &           gradient_displacement,
                           unsigned int const       cell,
-                          unsigned int const       q) const final;
+                          unsigned int const       q) const override;
 
   symmetric_tensor
   contract_with_J_times_C(symmetric_tensor const & symmetric_gradient_increment,
                           unsigned int const       cell,
-                          unsigned int const       q) const final;
+                          unsigned int const       q) const override;
 
   void
   do_set_cell_linearization_data(
     std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-    unsigned int const                                                         cell) const final;
+    unsigned int const                                                         cell) const override;
 
   scalar
-  one_over_J(unsigned int const cell, unsigned int const q) const final;
+  one_over_J(unsigned int const cell, unsigned int const q) const override;
 
   tensor
-  gradient_displacement(unsigned int const cell, unsigned int const q) const final;
+  gradient_displacement(unsigned int const cell, unsigned int const q) const override;
 
-  SurfactantModel<dim, Number> const &
-  get_surfactant_model() const final
+  WiechertSurfactantModel<dim, Number> const &
+  get_surfactant_model() const override
   {
     return surfactant_model;
   }
 
-  SurfactantModel<dim, Number> &
-  get_surfactant_model() final
+  WiechertSurfactantModel<dim, Number> &
+  get_surfactant_model() override
   {
     return surfactant_model;
   }
@@ -205,21 +209,21 @@ private:
   unsigned int dof_index;
   unsigned int quad_index;
 
-  WiechertAlveolarTissueData<dim> const & data;
+  FibrousAlveolarTissueData<dim> const & data;
 
-  SurfactantModel<dim, Number> surfactant_model;
+  WiechertSurfactantModel<dim, Number> surfactant_model;
 };
 
 template<int dim>
-struct RauschAlveolarTissueData : public MaterialData
+struct NeoHookeAlveolarTissueData : public MaterialData
 {
-  RauschAlveolarTissueData(MaterialType const & type) : MaterialData(type){};
+  NeoHookeAlveolarTissueData(MaterialType const & type) : MaterialData(type){};
 
-  RauschAlveolarTissueData(MaterialType const & type,
-                           double const &       E,
-                           double const &       nu,
-                           Type2D const &       type_two_dim,
-                           SurfactantData       surfactant_data)
+  NeoHookeAlveolarTissueData(MaterialType const &   type,
+                             double const &         E,
+                             double const &         nu,
+                             Type2D const &         type_two_dim,
+                             WiechertSurfactantData surfactant_data)
     : MaterialData(type),
       E(E),
       nu(nu),
@@ -233,14 +237,15 @@ struct RauschAlveolarTissueData : public MaterialData
 
   Type2D type_two_dim{Type2D::Undefined};
 
-  SurfactantData surfactant_data;
+  WiechertSurfactantData surfactant_data;
 };
 
 /*
  * Psi = E ( 1 - 2 nu) / (4 nu + 4 nu^2) (I_3^( nu / (1 - 2 nu) ) - 1) + E / (4 - 4 nu) * (I_1 - 3)
  */
 template<int dim, typename Number>
-class RauschAlveolarTissue : public AlveolarTissue<dim, Number>
+class NeoHookeAlveolarTissue : public Material<dim, Number>,
+                               public AlveolarSurfactantInterface<dim, Number>
 {
 public:
   using VectorType     = dealii::LinearAlgebra::distributed::Vector<Number>;
@@ -252,10 +257,10 @@ public:
   using tensor           = dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>;
   using symmetric_tensor = dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>;
 
-  RauschAlveolarTissue(dealii::MatrixFree<dim, Number> const & matrix_free,
-                       unsigned int const                      dof_index,
-                       unsigned int const                      quad_index,
-                       RauschAlveolarTissueData<dim> const &   data);
+  NeoHookeAlveolarTissue(dealii::MatrixFree<dim, Number> const & matrix_free,
+                         unsigned int const                      dof_index,
+                         unsigned int const                      quad_index,
+                         NeoHookeAlveolarTissueData<dim> const & data);
 
   /*
    * S  = E / (2 + 2 nu) ( I - I_3^( - nu / (1 - 2 nu) ) * C^-1 )
@@ -263,15 +268,15 @@ public:
   symmetric_tensor
   second_piola_kirchhoff_stress(tensor const &     gradient_displacement,
                                 unsigned int const cell,
-                                unsigned int const q) const final;
+                                unsigned int const q) const override;
 
   symmetric_tensor
   second_piola_kirchhoff_stress_eval(tensor const &     gradient_displacement,
                                      unsigned int const cell,
-                                     unsigned int const q) const final;
+                                     unsigned int const q) const override;
 
   symmetric_tensor
-  second_piola_kirchhoff_stress(unsigned int const cell, unsigned int const q) const final;
+  second_piola_kirchhoff_stress(unsigned int const cell, unsigned int const q) const override;
 
   /*
    * Stress increment Du_S
@@ -280,51 +285,51 @@ public:
   second_piola_kirchhoff_stress_displacement_derivative(tensor const &     gradient_increment,
                                                         tensor const &     gradient_displacement,
                                                         unsigned int const cell,
-                                                        unsigned int const q) const final;
+                                                        unsigned int const q) const override;
 
   symmetric_tensor
   kirchhoff_stress(tensor const &     gradient_displacement,
                    unsigned int const cell,
-                   unsigned int const q) const final;
+                   unsigned int const q) const override;
 
   symmetric_tensor
   kirchhoff_stress_eval(tensor const &     gradient_displacement,
                         unsigned int const cell,
-                        unsigned int const q) const final;
+                        unsigned int const q) const override;
 
   symmetric_tensor
-  kirchhoff_stress(unsigned int const cell, unsigned int const q) const final;
+  kirchhoff_stress(unsigned int const cell, unsigned int const q) const override;
 
   symmetric_tensor
   contract_with_J_times_C(symmetric_tensor const & symmetric_gradient_increment,
                           tensor const &           gradient_displacement,
                           unsigned int const       cell,
-                          unsigned int const       q) const final;
+                          unsigned int const       q) const override;
 
   symmetric_tensor
   contract_with_J_times_C(symmetric_tensor const & symmetric_gradient_increment,
                           unsigned int const       cell,
-                          unsigned int const       q) const final;
+                          unsigned int const       q) const override;
 
   void
   do_set_cell_linearization_data(
     std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-    unsigned int const                                                         cell) const final;
+    unsigned int const                                                         cell) const override;
 
   scalar
-  one_over_J(unsigned int const cell, unsigned int const q) const final;
+  one_over_J(unsigned int const cell, unsigned int const q) const override;
 
   tensor
-  gradient_displacement(unsigned int const cell, unsigned int const q) const final;
+  gradient_displacement(unsigned int const cell, unsigned int const q) const override;
 
-  SurfactantModel<dim, Number> const &
-  get_surfactant_model() const final
+  WiechertSurfactantModel<dim, Number> const &
+  get_surfactant_model() const override
   {
     return surfactant_model;
   }
 
-  SurfactantModel<dim, Number> &
-  get_surfactant_model() final
+  WiechertSurfactantModel<dim, Number> &
+  get_surfactant_model() override
   {
     return surfactant_model;
   }
@@ -333,10 +338,148 @@ private:
   unsigned int dof_index;
   unsigned int quad_index;
 
-  RauschAlveolarTissueData<dim> const & data;
+  NeoHookeAlveolarTissueData<dim> const & data;
 
-  SurfactantModel<dim, Number> surfactant_model;
+  WiechertSurfactantModel<dim, Number> surfactant_model;
 };
+
+
+template<int dim>
+struct OgdenAlveolarTissueData : public MaterialData
+{
+  OgdenAlveolarTissueData(MaterialType const & type) : MaterialData(type){};
+
+  OgdenAlveolarTissueData(MaterialType const &   type,
+                          double const &         mu1,
+                          double const &         mu2,
+                          double const &         alpha1,
+                          double const &         alpha2,
+                          Type2D const &         type_two_dim,
+                          WiechertSurfactantData surfactant_data)
+    : MaterialData(type),
+      mu1(mu1),
+      mu2(mu2),
+      alpha1(alpha1),
+      alpha2(alpha2),
+      type_two_dim(type_two_dim),
+      surfactant_data(std::move(surfactant_data))
+  {
+  }
+
+  double mu1{0.0};
+  double mu2{0.0};
+  double alpha1{0.0};
+  double alpha2{0.0};
+
+  Type2D type_two_dim{Type2D::Undefined};
+
+  WiechertSurfactantData surfactant_data;
+};
+
+/*
+ * Psi = sum_{p=1}^{N} mu_p / alpha_p * (lambda_1^{alpha_p} + lambda_2^{alpha_p} +
+ * lambda_3^{alpha_p} - 3)
+ */
+template<int dim, typename Number>
+class OgdenAlveolarTissue : public Material<dim, Number>,
+                            public AlveolarSurfactantInterface<dim, Number>
+{
+public:
+  using VectorType     = dealii::LinearAlgebra::distributed::Vector<Number>;
+  using Range          = std::pair<unsigned int, unsigned int>;
+  using IntegratorCell = CellIntegrator<dim, dim, Number>;
+
+  using scalar           = dealii::VectorizedArray<Number>;
+  using vector           = dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>;
+  using tensor           = dealii::Tensor<2, dim, dealii::VectorizedArray<Number>>;
+  using symmetric_tensor = dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>>;
+
+  OgdenAlveolarTissue(dealii::MatrixFree<dim, Number> const & matrix_free,
+                      unsigned int const                      dof_index,
+                      unsigned int const                      quad_index,
+                      OgdenAlveolarTissueData<dim> const &    data);
+
+  /*
+   * S  = ...
+   */
+  symmetric_tensor
+  second_piola_kirchhoff_stress(tensor const &     gradient_displacement,
+                                unsigned int const cell,
+                                unsigned int const q) const override;
+
+  symmetric_tensor
+  second_piola_kirchhoff_stress_eval(tensor const &     gradient_displacement,
+                                     unsigned int const cell,
+                                     unsigned int const q) const override;
+
+  symmetric_tensor
+  second_piola_kirchhoff_stress(unsigned int const cell, unsigned int const q) const override;
+
+  /*
+   * Stress increment Du_S
+   */
+  symmetric_tensor
+  second_piola_kirchhoff_stress_displacement_derivative(tensor const &     gradient_increment,
+                                                        tensor const &     gradient_displacement,
+                                                        unsigned int const cell,
+                                                        unsigned int const q) const override;
+
+  symmetric_tensor
+  kirchhoff_stress(tensor const &     gradient_displacement,
+                   unsigned int const cell,
+                   unsigned int const q) const override;
+
+  symmetric_tensor
+  kirchhoff_stress_eval(tensor const &     gradient_displacement,
+                        unsigned int const cell,
+                        unsigned int const q) const override;
+
+  symmetric_tensor
+  kirchhoff_stress(unsigned int const cell, unsigned int const q) const override;
+
+  symmetric_tensor
+  contract_with_J_times_C(symmetric_tensor const & symmetric_gradient_increment,
+                          tensor const &           gradient_displacement,
+                          unsigned int const       cell,
+                          unsigned int const       q) const override;
+
+  symmetric_tensor
+  contract_with_J_times_C(symmetric_tensor const & symmetric_gradient_increment,
+                          unsigned int const       cell,
+                          unsigned int const       q) const override;
+
+  void
+  do_set_cell_linearization_data(
+    std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
+    unsigned int const                                                         cell) const override;
+
+  scalar
+  one_over_J(unsigned int const cell, unsigned int const q) const override;
+
+  tensor
+  gradient_displacement(unsigned int const cell, unsigned int const q) const override;
+
+  WiechertSurfactantModel<dim, Number> const &
+  get_surfactant_model() const override
+  {
+    return surfactant_model;
+  }
+
+  WiechertSurfactantModel<dim, Number> &
+  get_surfactant_model() override
+  {
+    return surfactant_model;
+  }
+
+private:
+  unsigned int dof_index;
+  unsigned int quad_index;
+
+  OgdenAlveolarTissueData<dim> const & data;
+
+  WiechertSurfactantModel<dim, Number> surfactant_model;
+};
+
 } // namespace Structure
 } // namespace ExaDG
 

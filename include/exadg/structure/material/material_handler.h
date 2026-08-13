@@ -474,7 +474,7 @@ public:
           }
           break;
         }
-        case MaterialType::WiechertAlveolarTissue:
+        case MaterialType::FibrousAlveolarTissue:
         {
           AssertThrow(
             check_type == 0 && stable_formulation == false && cache_level == 0,
@@ -482,25 +482,42 @@ public:
               "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
 
           auto data_AlverolarTissue =
-            std::static_pointer_cast<WiechertAlveolarTissueData<dim>>(data);
+            std::static_pointer_cast<FibrousAlveolarTissueData<dim>>(data);
 
           material_map.insert(Pair(id,
-                                   std::make_shared<WiechertAlveolarTissue<dim, Number>>(
+                                   std::make_shared<FibrousAlveolarTissue<dim, Number>>(
                                      matrix_free, dof_index, quad_index, *data_AlverolarTissue)));
           break;
         }
-        case MaterialType::RauschAlveolarTissue:
+        case MaterialType::NeoHookeAlveolarTissue:
         {
           AssertThrow(
             check_type == 0 && stable_formulation == false && cache_level == 0,
             dealii::ExcMessage(
               "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
 
-          auto data_AlverolarTissue = std::static_pointer_cast<RauschAlveolarTissueData<dim>>(data);
+          auto data_AlverolarTissue =
+            std::static_pointer_cast<NeoHookeAlveolarTissueData<dim>>(data);
 
           material_map.insert(Pair(id,
-                                   std::make_shared<RauschAlveolarTissue<dim, Number>>(
+                                   std::make_shared<NeoHookeAlveolarTissue<dim, Number>>(
                                      matrix_free, dof_index, quad_index, *data_AlverolarTissue)));
+          break;
+        }
+        case MaterialType::OgdenAlveolarTissue:
+        {
+          AssertThrow(
+            check_type == 0 && stable_formulation == false && cache_level == 0,
+            dealii::ExcMessage(
+              "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
+
+          auto data_OgdenAlveolarTissue =
+            std::static_pointer_cast<OgdenAlveolarTissueData<dim>>(data);
+
+          material_map.insert(
+            Pair(id,
+                 std::make_shared<OgdenAlveolarTissue<dim, Number>>(
+                   matrix_free, dof_index, quad_index, *data_OgdenAlveolarTissue)));
           break;
         }
         default:

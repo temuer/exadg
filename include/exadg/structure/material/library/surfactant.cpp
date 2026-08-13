@@ -38,27 +38,28 @@ namespace Structure
 {
 
 template<int dim, typename Number>
-SurfactantModel<dim, Number>::SurfactantModel(SurfactantData const & data,
-                                              unsigned int           n_boundary_face_batches)
+WiechertSurfactantModel<dim, Number>::WiechertSurfactantModel(WiechertSurfactantData const & data,
+                                                              unsigned int n_boundary_face_batches)
   : data(data), variables_old(n_boundary_face_batches, SurfactantVariables{1.0, 1.0})
 {
 }
 
 template<int dim, typename Number>
 bool
-SurfactantModel<dim, Number>::is_surfactant_boundary(dealii::types::boundary_id boundary_id) const
+WiechertSurfactantModel<dim, Number>::is_surfactant_boundary(
+  dealii::types::boundary_id boundary_id) const
 {
   return data.boundary_ids.find(boundary_id) != data.boundary_ids.end();
 }
 
 template<int dim, typename Number>
 auto
-SurfactantModel<dim, Number>::surface_tension_1PK(tensor const &     displacement_gradient,
-                                                  vector const &     material_normal_vector,
-                                                  scalar const &     surface_area_new,
-                                                  double const       time,
-                                                  double const       time_step_size,
-                                                  unsigned int const face) const -> tensor
+WiechertSurfactantModel<dim, Number>::surface_tension_1PK(tensor const &     displacement_gradient,
+                                                          vector const &     material_normal_vector,
+                                                          scalar const &     surface_area_new,
+                                                          double const       time,
+                                                          double const       time_step_size,
+                                                          unsigned int const face) const -> tensor
 {
   //! UNTIL EQUIILIBRIUM TIME IS ACHIEVED, GRADUALLY APPLY EQUILIBRIUM SURFACE TENSION
   auto const [gamma, regime] =
@@ -85,7 +86,7 @@ SurfactantModel<dim, Number>::surface_tension_1PK(tensor const &     displacemen
 
 template<int dim, typename Number>
 auto
-SurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivative(
+WiechertSurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivative(
   tensor const &     displacement_gradient_increment,
   tensor const &     displacement_gradient,
   vector const &     material_normal_vector,
@@ -159,10 +160,10 @@ SurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivative(
 
 template<int dim, typename Number>
 auto
-SurfactantModel<dim, Number>::surface_tension_and_current_regime(scalar const & surface_area_new,
-                                                                 double const   time_step_size,
-                                                                 unsigned int const face) const
-  -> std::pair<scalar, std::array<unsigned int, scalar::size()>>
+WiechertSurfactantModel<dim, Number>::surface_tension_and_current_regime(
+  scalar const &     surface_area_new,
+  double const       time_step_size,
+  unsigned int const face) const -> std::pair<scalar, std::array<unsigned int, scalar::size()>>
 {
   scalar gamma = dealii::make_vectorized_array<Number>(0.0);
 
@@ -210,7 +211,7 @@ SurfactantModel<dim, Number>::surface_tension_and_current_regime(scalar const & 
 
 template<int dim, typename Number>
 auto
-SurfactantModel<dim, Number>::surface_tension_displacement_derivative(
+WiechertSurfactantModel<dim, Number>::surface_tension_displacement_derivative(
   scalar const &                                   surface_area_new,
   scalar const &                                   surface_area_new_increment,
   std::array<unsigned int, scalar::size()> const & regime,
@@ -254,10 +255,10 @@ SurfactantModel<dim, Number>::surface_tension_displacement_derivative(
 
 template<int dim, typename Number>
 auto
-SurfactantModel<dim, Number>::update(scalar const &     surface_area_new,
-                                     double const       time,
-                                     double const       time_step_size,
-                                     unsigned int const boundary_face_id) -> void
+WiechertSurfactantModel<dim, Number>::update(scalar const &     surface_area_new,
+                                             double const       time,
+                                             double const       time_step_size,
+                                             unsigned int const boundary_face_id) -> void
 {
   //! UNTIL EQUILIBRIUM TIME IS ACHIEVED
   if(time < data.equilibrium_time)
@@ -304,11 +305,11 @@ SurfactantModel<dim, Number>::update(scalar const &     surface_area_new,
   variables_old[boundary_face_id].surface_area = surface_area_new;
 }
 
-template class SurfactantModel<2, double>;
-template class SurfactantModel<3, double>;
+template class WiechertSurfactantModel<2, double>;
+template class WiechertSurfactantModel<3, double>;
 
-template class SurfactantModel<2, float>;
-template class SurfactantModel<3, float>;
+template class WiechertSurfactantModel<2, float>;
+template class WiechertSurfactantModel<3, float>;
 
 } // namespace Structure
 
