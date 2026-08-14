@@ -27,6 +27,7 @@
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/physics/elasticity/kinematics.h>
 #include <exadg/structure/spatial_discretization/operators/continuum_mechanics.h>
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -38,6 +39,44 @@ namespace ExaDG
 namespace Structure
 {
 
+namespace
+{
+template<typename Number>
+void
+assert_finite(dealii::VectorizedArray<Number> const & value, char const * const name)
+{
+  for(std::size_t v{0}; v < dealii::VectorizedArray<Number>::size(); ++v)
+    Assert(std::isfinite(value[v]), dealii::ExcMessage(name));
+}
+
+template<typename Number>
+void
+assert_finite_nonnegative(dealii::VectorizedArray<Number> const & value, char const * const name)
+{
+  assert_finite(value, name);
+
+  for(std::size_t v{0}; v < dealii::VectorizedArray<Number>::size(); ++v)
+    Assert(value[v] >= 0.0, dealii::ExcMessage(name));
+}
+
+template<typename Number>
+void
+assert_finite_positive(dealii::VectorizedArray<Number> const & value, char const * const name)
+{
+  assert_finite(value, name);
+
+  for(std::size_t v{0}; v < dealii::VectorizedArray<Number>::size(); ++v)
+    Assert(value[v] > 0.0, dealii::ExcMessage(name));
+}
+
+bool
+approximately_equal(double const a, double const b)
+{
+  double const scale = std::max(std::abs(a), std::abs(b));
+  return std::abs(a - b) <= 1.0e-12 + 1.0e-10 * scale;
+}
+} // namespace
+
 template<int dim, typename Number>
 WiechertSurfactantModel<dim, Number>::WiechertSurfactantModel(WiechertSurfactantData const & data,
                                                               unsigned int n_boundary_face_batches)
@@ -48,6 +87,44 @@ WiechertSurfactantModel<dim, Number>::WiechertSurfactantModel(WiechertSurfactant
                                             dealii::make_vectorized_array<Number>(
                                               std::numeric_limits<Number>::quiet_NaN())})
 {
+  AssertIsFinite(data.equilibrium_time);
+
+  Assert(data.equilibrium_time > 0.0,
+         dealii::ExcMessage("surfactant equilibrium_time must be positive"));
+
+  AssertIsFinite(data.m_1);
+  AssertIsFinite(data.m_2);
+  AssertIsFinite(data.k_1);
+  AssertIsFinite(data.k_2);
+  AssertIsFinite(data.c);
+  AssertIsFinite(data.relative_concentration_max);
+  AssertIsFinite(data.gamma_ref);
+  AssertIsFinite(data.gamma_eq);
+  AssertIsFinite(data.gamma_min);
+
+  Assert(data.m_1 >= 0.0, dealii::ExcMessage("surfactant m_1 must be nonnegative"));
+  Assert(data.m_2 > 0.0, dealii::ExcMessage("surfactant m_2 must be positive"));
+  Assert(data.k_1 >= 0.0, dealii::ExcMessage("surfactant k_1 must be nonnegative"));
+  Assert(data.k_2 >= 0.0, dealii::ExcMessage("surfactant k_2 must be nonnegative"));
+  Assert(data.c >= 0.0, dealii::ExcMessage("surfactant bulk concentration must be nonnegative"));
+  Assert(data.relative_concentration_max > 1.0,
+         dealii::ExcMessage("surfactant relative concentration maximum must exceed one"));
+  Assert(data.gamma_ref >= 0.0,
+         dealii::ExcMessage("surfactant reference surface tension must be nonnegative"));
+  Assert(data.gamma_eq >= 0.0,
+         dealii::ExcMessage("surfactant equilibrium surface tension must be nonnegative"));
+  Assert(data.gamma_min >= 0.0,
+         dealii::ExcMessage("surfactant minimum surface tension must be nonnegative"));
+  Assert(data.gamma_ref >= data.gamma_eq,
+         dealii::ExcMessage("surfactant surface tensions must satisfy gamma_ref >= gamma_eq"));
+  Assert(data.gamma_eq >= data.gamma_min,
+         dealii::ExcMessage("surfactant surface tensions must satisfy gamma_eq >= gamma_min"));
+
+  Assert(approximately_equal(data.m_1, data.gamma_ref - data.gamma_eq),
+         dealii::ExcMessage("surfactant m_1 is inconsistent with the first isotherm"));
+  Assert(approximately_equal(data.gamma_min,
+                             data.gamma_eq - data.m_2 * (data.relative_concentration_max - 1.0)),
+         dealii::ExcMessage("surfactant regime two isotherm is inconsistent with gamma_min"));
 }
 
 template<int dim, typename Number>
@@ -67,6 +144,8 @@ WiechertSurfactantModel<dim, Number>::surface_tension_1PK(tensor const &     dis
                                                           double const       time_step_size,
                                                           unsigned int const face) const -> tensor
 {
+  assert_finite_positive(surface_area_new, "surface area must be finite and positive");
+
   //! UNTIL EQUIILIBRIUM TIME IS ACHIEVED, GRADUALLY APPLY EQUILIBRIUM SURFACE TENSION
   auto const [gamma, regime] =
     time < data.equilibrium_time ?
@@ -77,15 +156,18 @@ WiechertSurfactantModel<dim, Number>::surface_tension_1PK(tensor const &     dis
   // Regime is not needed further here.
   (void)regime;
 
-  tensor const           F           = compute_F(displacement_gradient);
-  tensor const           F_inv       = dealii::invert(F);
-  scalar const           J           = dealii::determinant(F);
-  vector const           n_star      = J * dealii::transpose(F_inv) * material_normal_vector;
-  scalar const           n_star_norm = n_star.norm();
-  vector const           n           = n_star / n_star_norm;
+  tensor const F = compute_F(displacement_gradient);
+  scalar const J = dealii::determinant(F);
+  assert_finite_positive(J, "deformation determinant must be finite and positive");
+
+  tensor const F_inv       = dealii::invert(F);
+  vector const n_star      = J * dealii::transpose(F_inv) * material_normal_vector;
+  scalar const n_star_norm = n_star.norm();
+  assert_finite_positive(n_star_norm, "length of normal must be finite and positive");
+
+  vector const           n = n_star / n_star_norm;
   symmetric_tensor const n_projector =
     get_identity_symmetric_tensor<dim, Number>() - dealii::symmetrize(dealii::outer_product(n, n));
-
 
   return gamma * n_star_norm * n_projector * dealii::transpose(F_inv);
 }
@@ -102,6 +184,9 @@ WiechertSurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivativ
   double const       time_step_size,
   unsigned int const face) const -> tensor
 {
+  assert_finite_positive(surface_area_new, "surface area must be finite and positive");
+  assert_finite(surface_area_new_increment, "surface area increment must be finite");
+
   //! UNTIL EQUIILIBRIUM TIME IS ACHIEVED, GRADUALLY APPLY EQUILIBRIUM SURFACE TENSION
   auto const [gamma, regime] =
     time < data.equilibrium_time ?
@@ -120,13 +205,15 @@ WiechertSurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivativ
   // TODO! Clear what this is
   (void)Du_gamma;
 
-  tensor const           F     = dealii::Physics::Elasticity::Kinematics::F(displacement_gradient);
-  tensor const           F_inv = dealii::invert(F);
-  tensor const           F_inv_T     = dealii::transpose(F_inv);
-  scalar const           J           = dealii::determinant(F);
-  vector const           n_star      = J * material_normal_vector * F_inv;
-  scalar const           n_star_norm = n_star.norm();
-  vector const           n           = n_star / n_star_norm;
+  tensor const F = dealii::Physics::Elasticity::Kinematics::F(displacement_gradient);
+  scalar const J = dealii::determinant(F);
+  assert_finite_positive(J, "surfactant deformation determinant must be finite and positive");
+  tensor const F_inv       = dealii::invert(F);
+  tensor const F_inv_T     = dealii::transpose(F_inv);
+  vector const n_star      = J * material_normal_vector * F_inv;
+  scalar const n_star_norm = n_star.norm();
+  assert_finite_positive(n_star_norm, "surfactant transformed normal must be finite and nonzero");
+  vector const           n = n_star / n_star_norm;
   symmetric_tensor const n_projector =
     get_identity_symmetric_tensor<dim, Number>() - dealii::symmetrize(dealii::outer_product(n, n));
 
@@ -178,6 +265,9 @@ WiechertSurfactantModel<dim, Number>::surface_tension_and_current_regime(
   scalar const & relative_concentration_old = history_variables_old[face].relative_concentration;
   scalar const & surface_area_old           = history_variables_old[face].surface_area;
 
+  assert_finite(relative_concentration_old, "surfactant concentration history is not initialized");
+  assert_finite_positive(surface_area_old, "surfactant surface-area history is not initialized");
+
   scalar relative_concentration_new = dealii::make_vectorized_array<Number>(0.0);
 
   for(std::size_t v{0}; v < scalar::size(); v++)
@@ -210,8 +300,14 @@ WiechertSurfactantModel<dim, Number>::surface_tension_and_current_regime(
         relative_concentration_old[v] * surface_area_old[v] / surface_area_new[v];
     }
 
+    AssertIsFinite(relative_concentration_new[v]);
+
     relative_concentration_new[v] =
       std::min(static_cast<Number>(data.relative_concentration_max), relative_concentration_new[v]);
+
+    Assert(relative_concentration_new[v] >= 0.0 &&
+             relative_concentration_new[v] <= data.relative_concentration_max,
+           dealii::ExcMessage("surfactant concentration update is outside its valid range"));
 
     // Determination of current generalized surface energy
     // gamma
@@ -253,7 +349,12 @@ WiechertSurfactantModel<dim, Number>::surface_tension_displacement_derivative(
     {
       Number const relative_concentration_old =
         history_variables_old[face_id].relative_concentration[v];
+      AssertIsFinite(relative_concentration_old);
+
       Number const surface_area_old = history_variables_old[face_id].surface_area[v];
+      AssertIsFinite(surface_area_old);
+      Assert(surface_area_old > 0.0,
+             dealii::ExcMessage("surfactant surface-area history is not initialized"));
 
       Du_gamma[v] = static_cast<Number>(data.m_1) * relative_concentration_old * surface_area_old /
                     (time_step_size * surface_area_new[v] * surface_area_new[v] *
@@ -264,7 +365,12 @@ WiechertSurfactantModel<dim, Number>::surface_tension_displacement_derivative(
     {
       Number const relative_concentration_old =
         history_variables_old[face_id].relative_concentration[v];
+      AssertIsFinite(relative_concentration_old);
+
       Number const surface_area_old = history_variables_old[face_id].surface_area[v];
+      AssertIsFinite(surface_area_old);
+      Assert(surface_area_old > 0.0,
+             dealii::ExcMessage("surfactant surface-area history is not initialized"));
 
       Du_gamma[v] = static_cast<Number>(data.m_2) * relative_concentration_old * surface_area_old /
                     (surface_area_new[v] * surface_area_new[v]) * surface_area_new_increment[v];
@@ -275,7 +381,7 @@ WiechertSurfactantModel<dim, Number>::surface_tension_displacement_derivative(
     }
     else
     {
-      AssertThrow(false, dealii::ExcMessage("invalid surfactant regime"));
+      Assert(false, dealii::ExcMessage("invalid surfactant regime"));
     }
   }
 
@@ -289,6 +395,8 @@ WiechertSurfactantModel<dim, Number>::update(scalar const &     surface_area_new
                                              double const       time_step_size,
                                              unsigned int const boundary_face_id) -> void
 {
+  assert_finite_positive(surface_area_new, "surfactant surface area must be finite and positive");
+
   //! UNTIL EQUILIBRIUM TIME IS ACHIEVED
   // Until time is queal to equilibrium time, history variables are not used. For later use, set
   // them to the equilibrium state.
@@ -306,6 +414,9 @@ WiechertSurfactantModel<dim, Number>::update(scalar const &     surface_area_new
   scalar const relative_concentration_old =
     history_variables_old[boundary_face_id].relative_concentration;
   scalar const surface_area_old = history_variables_old[boundary_face_id].surface_area;
+
+  assert_finite(relative_concentration_old, "surfactant concentration history is not initialized");
+  assert_finite_positive(surface_area_old, "surfactant surface-area history is not initialized");
 
   for(std::size_t v{0}; v < scalar::size(); v++)
   {
@@ -330,12 +441,19 @@ WiechertSurfactantModel<dim, Number>::update(scalar const &     surface_area_new
     }
 
     // Update relative concentration (enforce range)
+    AssertIsFinite(relative_concentration_new);
+
     history_variables_old[boundary_face_id].relative_concentration[v] =
       std::min(relative_concentration_new, static_cast<Number>(data.relative_concentration_max));
 
     history_variables_old[boundary_face_id].relative_concentration[v] =
       std::max(static_cast<Number>(0.0),
                history_variables_old[boundary_face_id].relative_concentration[v]);
+
+    Assert(history_variables_old[boundary_face_id].relative_concentration[v] >= 0.0 &&
+             history_variables_old[boundary_face_id].relative_concentration[v] <=
+               data.relative_concentration_max,
+           dealii::ExcMessage("surfactant concentration history is outside its valid range"));
   }
 
   // Update surface area
