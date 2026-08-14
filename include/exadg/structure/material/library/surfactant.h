@@ -28,7 +28,8 @@
 #include <deal.II/base/vectorization.h>
 
 #include <array>
-#include <set>
+#include <limits>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -78,17 +79,17 @@ public:
 
 struct WiechertSurfactantData
 {
-  std::set<dealii::types::boundary_id> boundary_ids{};
-  double                               equilibrium_time{0.0};
-  double                               m_1{0.0};
-  double                               m_2{0.0};
-  double                               k_1{0.0};
-  double                               k_2{0.0};
-  double                               c{0.0};
-  double                               relative_concentration_max{1.0};
-  double                               gamma_ref{0.0};
-  double                               gamma_eq{0.0};
-  double                               gamma_min{0.0};
+  std::unordered_set<dealii::types::boundary_id> boundary_ids{};
+  double equilibrium_time{std::numeric_limits<double>::quiet_NaN()};
+  double m_1{std::numeric_limits<double>::quiet_NaN()};
+  double m_2{std::numeric_limits<double>::quiet_NaN()};
+  double k_1{std::numeric_limits<double>::quiet_NaN()};
+  double k_2{std::numeric_limits<double>::quiet_NaN()};
+  double c{std::numeric_limits<double>::quiet_NaN()};
+  double relative_concentration_max{std::numeric_limits<double>::quiet_NaN()};
+  double gamma_ref{std::numeric_limits<double>::quiet_NaN()};
+  double gamma_eq{std::numeric_limits<double>::quiet_NaN()};
+  double gamma_min{std::numeric_limits<double>::quiet_NaN()};
 };
 
 template<int dim, typename Number>
@@ -145,13 +146,13 @@ private:
 
   WiechertSurfactantData const & data;
 
-  struct SurfactantVariables
+  struct SurfactantHistory
   {
     scalar relative_concentration;
     scalar surface_area;
   };
 
-  std::vector<SurfactantVariables> variables_old;
+  std::vector<SurfactantHistory> history_variables_old;
 };
 
 } // namespace Structure

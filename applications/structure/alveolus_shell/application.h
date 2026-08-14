@@ -305,7 +305,7 @@ private:
     material->incompressibility_exponent = 1.0;     // 1.0;     // 1 (Wiechert)
 
     // Surfactant
-    material->surfactant_data.boundary_ids     = std::set<dealii::types::boundary_id>{1};
+    material->surfactant_data.boundary_ids     = std::unordered_set<dealii::types::boundary_id>{1};
     material->surfactant_data.equilibrium_time = 1.0;
     material->surfactant_data.gamma_ref        = 0.0; // 70 dyn / cm (water)
     material->surfactant_data.gamma_eq  = 0.022; // 22.2 dyn / cm = 22 g / s (Denny and Schroter)

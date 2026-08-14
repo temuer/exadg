@@ -283,7 +283,7 @@ NonLinearOperator<dim, Number>::boundary_face_loop_update_materials(
 
     if(!alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id))
     {
-      return;
+      continue;
     }
 
     this->reinit_boundary_face(integrator_m_inhom, face);
@@ -752,7 +752,6 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
     {
       tensor surface_tension_1PK;
       if(alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id))
-      // if(boundary_id == 1 || boundary_id == 2)
       {
         surface_tension_1PK = alveolar_surfactant->get_surfactant_model().surface_tension_1PK(
           integrator.get_gradient(q),
@@ -798,7 +797,6 @@ NonLinearOperator<dim, Number>::do_boundary_integral_surface_tension_stiffness(
 
     tensor delta_P_gamma;
     if(alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id))
-    // if(boundary_id == 1 || boundary_id == 2)
     {
       delta_P_gamma =
         alveolar_surfactant->get_surfactant_model().surface_tension_1PK_displacement_derivative(

@@ -28,6 +28,7 @@
 #include <deal.II/physics/elasticity/kinematics.h>
 #include <exadg/structure/spatial_discretization/operators/continuum_mechanics.h>
 #include <cmath>
+#include <limits>
 
 
 #include <exadg/structure/material/library/surfactant.h>
@@ -40,7 +41,12 @@ namespace Structure
 template<int dim, typename Number>
 WiechertSurfactantModel<dim, Number>::WiechertSurfactantModel(WiechertSurfactantData const & data,
                                                               unsigned int n_boundary_face_batches)
-  : data(data), variables_old(n_boundary_face_batches, SurfactantVariables{1.0, 1.0})
+  : data(data),
+    history_variables_old(n_boundary_face_batches,
+                          SurfactantHistory{dealii::make_vectorized_array<Number>(
+                                              std::numeric_limits<Number>::quiet_NaN()),
+                                            dealii::make_vectorized_array<Number>(
+                                              std::numeric_limits<Number>::quiet_NaN())})
 {
 }
 
@@ -169,40 +175,61 @@ WiechertSurfactantModel<dim, Number>::surface_tension_and_current_regime(
 
   std::array<unsigned int, scalar::size()> regime{};
 
-  scalar const & relative_concentration_old = variables_old[face].relative_concentration;
-  scalar const & surface_area_old           = variables_old[face].surface_area;
+  scalar const & relative_concentration_old = history_variables_old[face].relative_concentration;
+  scalar const & surface_area_old           = history_variables_old[face].surface_area;
+
+  scalar relative_concentration_new = dealii::make_vectorized_array<Number>(0.0);
 
   for(std::size_t v{0}; v < scalar::size(); v++)
   {
+    // Determination of current non-dimensionalized interfacial surfactant concentration
+    // relative_concentration_new
+
     if(relative_concentration_old[v] < 1.0)
-    // Regime 1
+    // Regime 1: Langmuir kinetics (adsorption/desorption)
     {
       Number const inv_delta_t = 1.0 / time_step_size;
       Number const k1_C        = data.k_1 * data.c;
       Number const k2          = data.k_2;
 
-      Number const relative_concentration_new =
+      relative_concentration_new[v] =
         ((relative_concentration_old[v] * surface_area_old[v] * inv_delta_t) +
          (surface_area_new[v] * k1_C)) /
         (surface_area_new[v] * (inv_delta_t + k1_C + k2));
-
-      gamma[v]  = data.gamma_ref - data.m_1 * relative_concentration_new;
-      regime[v] = 1;
     }
     else if(relative_concentration_old[v] < data.relative_concentration_max)
-    // Regime 2
+    // Regime 2: Insoluble monolayer
     {
-      Number const relative_concentration_new =
+      relative_concentration_new[v] =
         relative_concentration_old[v] * surface_area_old[v] / surface_area_new[v];
-
-      gamma[v]  = data.gamma_eq - data.m_2 * (relative_concentration_new - 1.0);
-      regime[v] = 2;
     }
     else
-    // Regime 3
+    // Regime 3: Squeeze out / Film collapse
     {
-      gamma[v]  = data.gamma_min;
+      relative_concentration_new[v] =
+        relative_concentration_old[v] * surface_area_old[v] / surface_area_new[v];
+    }
+
+    relative_concentration_new[v] =
+      std::min(static_cast<Number>(data.relative_concentration_max), relative_concentration_new[v]);
+
+    // Determination of current generalized surface energy
+    // gamma
+
+    if(relative_concentration_new[v] < 1.0)
+    {
+      regime[v] = 1;
+      gamma[v]  = data.gamma_ref - data.m_1 * relative_concentration_new[v];
+    }
+    else if(relative_concentration_new[v] < data.relative_concentration_max)
+    {
+      regime[v] = 2;
+      gamma[v]  = data.gamma_eq - data.m_2 * (relative_concentration_new[v] - 1.0);
+    }
+    else
+    {
       regime[v] = 3;
+      gamma[v]  = data.gamma_min;
     }
   }
 
@@ -224,8 +251,9 @@ WiechertSurfactantModel<dim, Number>::surface_tension_displacement_derivative(
   {
     if(regime[v] == 1)
     {
-      Number const relative_concentration_old = variables_old[face_id].relative_concentration[v];
-      Number const surface_area_old           = variables_old[face_id].surface_area[v];
+      Number const relative_concentration_old =
+        history_variables_old[face_id].relative_concentration[v];
+      Number const surface_area_old = history_variables_old[face_id].surface_area[v];
 
       Du_gamma[v] = static_cast<Number>(data.m_1) * relative_concentration_old * surface_area_old /
                     (time_step_size * surface_area_new[v] * surface_area_new[v] *
@@ -234,8 +262,9 @@ WiechertSurfactantModel<dim, Number>::surface_tension_displacement_derivative(
     }
     else if(regime[v] == 2)
     {
-      Number const relative_concentration_old = variables_old[face_id].relative_concentration[v];
-      Number const surface_area_old           = variables_old[face_id].surface_area[v];
+      Number const relative_concentration_old =
+        history_variables_old[face_id].relative_concentration[v];
+      Number const surface_area_old = history_variables_old[face_id].surface_area[v];
 
       Du_gamma[v] = static_cast<Number>(data.m_2) * relative_concentration_old * surface_area_old /
                     (surface_area_new[v] * surface_area_new[v]) * surface_area_new_increment[v];
@@ -261,18 +290,22 @@ WiechertSurfactantModel<dim, Number>::update(scalar const &     surface_area_new
                                              unsigned int const boundary_face_id) -> void
 {
   //! UNTIL EQUILIBRIUM TIME IS ACHIEVED
-  if(time < data.equilibrium_time)
+  // Until time is queal to equilibrium time, history variables are not used. For later use, set
+  // them to the equilibrium state.
+  if(time <= data.equilibrium_time)
   {
-    // Until time is queal to equilibrium time, history variables are not used. For later use, set
-    // them to the equilibrium state.
-    variables_old[boundary_face_id].relative_concentration = 1.0;
+    // Equilibrium state for the relative concentration
+    history_variables_old[boundary_face_id].relative_concentration = 1.0;
 
-    // Update surface area
-    variables_old[boundary_face_id].surface_area = surface_area_new;
+    // Store actual surface area
+    history_variables_old[boundary_face_id].surface_area = surface_area_new;
+
+    return;
   }
 
-  scalar const relative_concentration_old = variables_old[boundary_face_id].relative_concentration;
-  scalar const surface_area_old           = variables_old[boundary_face_id].surface_area;
+  scalar const relative_concentration_old =
+    history_variables_old[boundary_face_id].relative_concentration;
+  scalar const surface_area_old = history_variables_old[boundary_face_id].surface_area;
 
   for(std::size_t v{0}; v < scalar::size(); v++)
   {
@@ -280,9 +313,9 @@ WiechertSurfactantModel<dim, Number>::update(scalar const &     surface_area_new
     if(relative_concentration_old[v] < 1.0)
     // Regime 1
     {
-      Number const inv_delta_t = 1.0 / time_step_size;
-      Number const k1_C        = data.k_1 * data.c;
-      Number const k2          = data.k_2;
+      Number const inv_delta_t = static_cast<Number>(1.0 / time_step_size);
+      Number const k1_C        = static_cast<Number>(data.k_1 * data.c);
+      Number const k2          = static_cast<Number>(data.k_2);
 
       relative_concentration_new =
         ((relative_concentration_old[v] * surface_area_old[v] * inv_delta_t) +
@@ -296,13 +329,17 @@ WiechertSurfactantModel<dim, Number>::update(scalar const &     surface_area_new
         relative_concentration_old[v] * surface_area_old[v] / surface_area_new[v];
     }
 
-    // Update relative concentration
-    variables_old[boundary_face_id].relative_concentration[v] =
+    // Update relative concentration (enforce range)
+    history_variables_old[boundary_face_id].relative_concentration[v] =
       std::min(relative_concentration_new, static_cast<Number>(data.relative_concentration_max));
+
+    history_variables_old[boundary_face_id].relative_concentration[v] =
+      std::max(static_cast<Number>(0.0),
+               history_variables_old[boundary_face_id].relative_concentration[v]);
   }
 
   // Update surface area
-  variables_old[boundary_face_id].surface_area = surface_area_new;
+  history_variables_old[boundary_face_id].surface_area = surface_area_new;
 }
 
 template class WiechertSurfactantModel<2, double>;
