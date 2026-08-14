@@ -68,6 +68,9 @@ check_stress_increment(MaterialType &     material,
 
   std::array<double, 4> const step_sizes{{1.0e-3, 1.0e-4, 1.0e-5, 1.0e-6}};
 
+  auto const calculate_case_index = [](size_t batch, size_t lane, size_t n_deformation_cases)
+  { return (batch * scalar::size() + lane) % n_deformation_cases; };
+
   for(std::size_t batch{0}; batch < n_batches; ++batch)
   {
     tensor gradient{};
@@ -75,7 +78,7 @@ check_stress_increment(MaterialType &     material,
 
     for(std::size_t lane{0}; lane < scalar::size(); ++lane)
     {
-      std::size_t const case_index = (batch * scalar::size() + lane) % n_deformation_cases;
+      std::size_t const case_index = calculate_case_index(batch, lane, n_deformation_cases);
 
       for(int i = 0; i < dim; ++i)
         for(int j = 0; j < dim; ++j)
@@ -107,7 +110,7 @@ check_stress_increment(MaterialType &     material,
 
       for(std::size_t lane{0}; lane < scalar::size(); ++lane)
       {
-        std::size_t const case_index = (batch * scalar::size() + lane) % n_deformation_cases;
+        std::size_t const case_index = calculate_case_index(batch, lane, n_deformation_cases);
 
         double max_error = 0.0;
         double max_scale = 1.0;
