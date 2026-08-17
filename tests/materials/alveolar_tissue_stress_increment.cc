@@ -153,6 +153,16 @@ int
 main()
 {
   WiechertSurfactantData surfactant_data;
+  surfactant_data.equilibrium_time           = 1.0;
+  surfactant_data.m_1                        = 48.0;
+  surfactant_data.m_2                        = 20.0;
+  surfactant_data.k_1                        = 2.0;
+  surfactant_data.k_2                        = 1.0;
+  surfactant_data.c                          = 0.5;
+  surfactant_data.relative_concentration_max = 2.0;
+  surfactant_data.gamma_ref                  = 70.0;
+  surfactant_data.gamma_eq                   = 22.0;
+  surfactant_data.gamma_min                  = 2.0;
 
   dealii::MatrixFree<3, double> matrix_free_3d;
   FibrousAlveolarTissueData<3>  fibrous_data_3d(
