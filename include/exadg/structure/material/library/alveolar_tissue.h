@@ -354,6 +354,7 @@ struct OgdenAlveolarTissueData : public MaterialData
                           double const &         mu2,
                           double const &         alpha1,
                           double const &         alpha2,
+                          double const &         kappa,
                           Type2D const &         type_two_dim,
                           WiechertSurfactantData surfactant_data)
     : MaterialData(type),
@@ -361,6 +362,7 @@ struct OgdenAlveolarTissueData : public MaterialData
       mu2(mu2),
       alpha1(alpha1),
       alpha2(alpha2),
+      kappa(kappa),
       type_two_dim(type_two_dim),
       surfactant_data(std::move(surfactant_data))
   {
@@ -370,6 +372,7 @@ struct OgdenAlveolarTissueData : public MaterialData
   double mu2{0.0};
   double alpha1{0.0};
   double alpha2{0.0};
+  double kappa{0.0};
 
   Type2D type_two_dim{Type2D::Undefined};
 
@@ -377,8 +380,11 @@ struct OgdenAlveolarTissueData : public MaterialData
 };
 
 /*
- * Psi = sum_{p=1}^{N} mu_p / alpha_p * (lambda_1^{alpha_p} + lambda_2^{alpha_p} +
- * lambda_3^{alpha_p} - 3)
+ * Psi = Psi_iso + Psi_vol
+ *
+ * Psi_iso = sum_{a=1}^{dim} sum_{p=1}^{2} mu_p / alpha_p * (lambda_a_bar^{alpha_p} - 1)
+ *
+ * Psi_vol = kappa / 4 * (J^2 - 1 - 2 lnJ)
  */
 template<int dim, typename Number>
 class OgdenAlveolarTissue : public Material<dim, Number>,
@@ -472,6 +478,12 @@ public:
   }
 
 private:
+  auto
+  principal_isochoric_2PK_stress(
+    int const &                                          a,
+    std::array<Number, static_cast<size_t>(dim)> const & lambdas,
+    std::array<Number, static_cast<size_t>(dim)> const & lambdas_bar) const -> Number;
+
   unsigned int dof_index;
   unsigned int quad_index;
 

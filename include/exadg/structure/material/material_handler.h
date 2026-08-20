@@ -481,12 +481,13 @@ public:
             dealii::ExcMessage(
               "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
 
-          auto data_AlverolarTissue =
+          auto data_FibrousAlverolarTissue =
             std::static_pointer_cast<FibrousAlveolarTissueData<dim>>(data);
 
-          material_map.insert(Pair(id,
-                                   std::make_shared<FibrousAlveolarTissue<dim, Number>>(
-                                     matrix_free, dof_index, quad_index, *data_AlverolarTissue)));
+          material_map.insert(
+            Pair(id,
+                 std::make_shared<FibrousAlveolarTissue<dim, Number>>(
+                   matrix_free, dof_index, quad_index, *data_FibrousAlverolarTissue)));
           break;
         }
         case MaterialType::NeoHookeAlveolarTissue:
@@ -496,12 +497,13 @@ public:
             dealii::ExcMessage(
               "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
 
-          auto data_AlverolarTissue =
+          auto data_NeoHookeAlverolarTissue =
             std::static_pointer_cast<NeoHookeAlveolarTissueData<dim>>(data);
 
-          material_map.insert(Pair(id,
-                                   std::make_shared<NeoHookeAlveolarTissue<dim, Number>>(
-                                     matrix_free, dof_index, quad_index, *data_AlverolarTissue)));
+          material_map.insert(
+            Pair(id,
+                 std::make_shared<NeoHookeAlveolarTissue<dim, Number>>(
+                   matrix_free, dof_index, quad_index, *data_NeoHookeAlverolarTissue)));
           break;
         }
         case MaterialType::OgdenAlveolarTissue:

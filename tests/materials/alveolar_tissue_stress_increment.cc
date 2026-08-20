@@ -170,7 +170,7 @@ main()
   NeoHookeAlveolarTissueData<3> neo_hooke_data_3d(
     MaterialType::Undefined, 2.0, 0.25, Type2D::PlaneStrain, surfactant_data);
   OgdenAlveolarTissueData<3> ogden_data_3d(
-    MaterialType::Undefined, 1.2, 0.8, 1.7, 2.3, Type2D::PlaneStrain, surfactant_data);
+    MaterialType::Undefined, 1.2, 0.8, 1.7, 2.3, 8.41, Type2D::PlaneStrain, surfactant_data);
 
   FibrousAlveolarTissue<3, double>  fibrous_3d(matrix_free_3d, 0, 0, fibrous_data_3d);
   NeoHookeAlveolarTissue<3, double> neo_hooke_3d(matrix_free_3d, 0, 0, neo_hooke_data_3d);

@@ -302,8 +302,8 @@ FibrousAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
 
 template<int dim, typename Number>
 auto
-FibrousAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell,
-                                               unsigned int const q) const -> scalar
+FibrousAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned int const q) const
+  -> scalar
 {
   (void)cell;
   (void)q;
@@ -433,7 +433,9 @@ NeoHookeAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_
 
   scalar const J_pow = std::pow(J, static_cast<Number>(-2.0 * beta));
 
-  return mu * J_pow * (2.0 * beta * Du_J_over_J * C_inv - Du_C_inv);
+  auto const Du_S = mu * J_pow * (2.0 * beta * Du_J_over_J * C_inv - Du_C_inv);
+
+  return Du_S;
 }
 
 
@@ -467,8 +469,9 @@ NeoHookeAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gr
 
 template<int dim, typename Number>
 auto
-NeoHookeAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell, unsigned int const q)
-  const -> symmetric_tensor
+NeoHookeAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
+                                                      unsigned int const q) const
+  -> symmetric_tensor
 {
   (void)cell;
   (void)q;
@@ -534,8 +537,8 @@ NeoHookeAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
 
 template<int dim, typename Number>
 auto
-NeoHookeAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell,
-                                                unsigned int const q) const -> scalar
+NeoHookeAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned int const q) const
+  -> scalar
 {
   (void)cell;
   (void)q;
@@ -583,6 +586,31 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
 
 template<int dim, typename Number>
 auto
+OgdenAlveolarTissue<dim, Number>::principal_isochoric_2PK_stress(
+  int const &                                          a,
+  std::array<Number, static_cast<size_t>(dim)> const & lambdas,
+  std::array<Number, static_cast<size_t>(dim)> const & lambdas_bar) const -> Number
+{
+  auto const dPsi_iso_dlambda_bar = [this](Number const & lambda_bar)
+  {
+    return data.mu1 * std::pow(lambda_bar, data.alpha1 - 1.0) +
+           data.mu2 * std::pow(lambda_bar, data.alpha2 - 1.0);
+  };
+
+  Number tmp{};
+  for(size_t b = 0; b < dim; ++b)
+  {
+    tmp += lambdas_bar[b] * dPsi_iso_dlambda_bar(lambdas_bar[b]);
+  }
+
+  Number const S_iso_a = 1.0 / lambdas[a] / lambdas[a] *
+                         (lambdas_bar[a] * dPsi_iso_dlambda_bar(lambdas_bar[a]) - ONE_THIRD * tmp);
+
+  return S_iso_a;
+}
+
+template<int dim, typename Number>
+auto
 OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   tensor const &     gradient_displacement,
   unsigned int const cell,
@@ -591,36 +619,59 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   (void)cell;
   (void)q;
 
-  tensor const           F = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
-  symmetric_tensor const C = dealii::Physics::Elasticity::Kinematics::C(F);
+  tensor const F = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
+  scalar const J = dealii::determinant(F);
 
-  symmetric_tensor S{};
+  symmetric_tensor const C     = dealii::Physics::Elasticity::Kinematics::C(F);
+  symmetric_tensor const C_inv = dealii::invert(C);
+
+  symmetric_tensor S_iso{};
+
 
   // Serialize because eigenvectors() does not support VectorizedArray
   for(std::size_t v{0}; v < scalar::size(); ++v)
   {
     dealii::SymmetricTensor<2, dim, Number> C_lane;
     for(int i = 0; i < dim; ++i)
+    {
       for(int j = 0; j <= i; ++j)
+      {
         C_lane[i][j] = C[i][j][v];
+      }
+    }
 
     auto const eigen = dealii::eigenvectors(C_lane);
 
-    for(int d = 0; d < dim; d++)
+    std::array<Number, dim> lambdas{};
+    std::array<Number, dim> lambdas_bar{};
+
+    Number const J_pow = std::pow(J[v], -static_cast<Number>(ONE_THIRD));
+
+    for(int a = 0; a < dim; ++a)
     {
-      Number const principal_strain = std::sqrt(eigen[d].first);
-      auto const & N                = eigen[d].second;
-
-      Number const principal_stress = data.mu1 * std::pow(principal_strain, data.alpha1 - 2.0) +
-                                      data.mu2 * std::pow(principal_strain, data.alpha2 - 2.0);
-
-      for(int i = 0; i < dim; ++i)
-        for(int j = 0; j <= i; ++j)
-          S[i][j][v] += principal_stress * N[i] * N[j];
+      lambdas[a]     = std::sqrt(eigen[a].first);
+      lambdas_bar[a] = J_pow * lambdas[a];
     }
+
+    dealii::SymmetricTensor<2, dim, Number> S_iso_lane{};
+
+    for(int a = 0; a < dim; a++)
+    {
+      Number const S_iso_a = principal_isochoric_2PK_stress(a, lambdas, lambdas_bar);
+
+      auto const & N_a = eigen[a].second;
+
+      S_iso_lane += S_iso_a * dealii::symmetrize(dealii::outer_product(N_a, N_a));
+    }
+
+    for(int i = 0; i < dim; ++i)
+      for(int j = 0; j <= i; ++j)
+        S_iso[i][j][v] += S_iso_lane[i][j];
   }
 
-  return S;
+  symmetric_tensor const S_vol = 0.5 * data.kappa * (J * J - 1.0) * C_inv;
+
+  return S_iso + S_vol;
 }
 
 template<int dim, typename Number>
@@ -650,80 +701,165 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_der
   (void)cell;
   (void)q;
 
-  tensor const           F    = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
-  symmetric_tensor const C    = dealii::Physics::Elasticity::Kinematics::C(F);
+
+  tensor const F = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
+  scalar const J = dealii::determinant(F);
+
+  symmetric_tensor const C     = dealii::Physics::Elasticity::Kinematics::C(F);
+  symmetric_tensor const C_inv = dealii::invert(C);
+
   symmetric_tensor const Du_C = dealii::symmetrize(dealii::transpose(gradient_increment) * F +
                                                    dealii::transpose(F) * gradient_increment);
 
   symmetric_tensor Du_S{};
-
-  auto const h = [this](Number const rho) -> Number
   {
-    return data.mu1 * std::pow(rho, 0.5 * (data.alpha1 - 2.0)) +
-           data.mu2 * std::pow(rho, 0.5 * (data.alpha2 - 2.0));
-  };
+    auto const dS_iso_a_dlambda_b_over_lambda_b =
+      [this](int const &                     a,
+             int const &                     b,
+             std::array<Number, dim> const & lambdas,
+             std::array<Number, dim> const & lambdas_bar) -> Number
+    {
+      Number res = 1.0 / lambdas[a] / lambdas[a] / lambdas[b] / lambdas[b];
 
-  auto const h_prime = [this](Number const rho) -> Number
-  {
-    return 0.5 * data.mu1 * (data.alpha1 - 2.0) * std::pow(rho, 0.5 * (data.alpha1 - 4.0)) +
-           0.5 * data.mu2 * (data.alpha2 - 2.0) * std::pow(rho, 0.5 * (data.alpha2 - 4.0));
-  };
+      Number const fac13 = ONE_THIRD * data.mu1 * data.alpha1;
+      Number const fac23 = ONE_THIRD * data.mu2 * data.alpha2;
+      Number const fac19 = ONE_THIRD * fac13;
+      Number const fac29 = ONE_THIRD * fac23;
 
-  // Serialize because eigenvectors() does not support VectorizedArray.
-  for(std::size_t v{0}; v < scalar::size(); ++v)
-  {
-    dealii::SymmetricTensor<2, dim, Number> C_lane;
-    dealii::SymmetricTensor<2, dim, Number> Du_C_lane;
-    for(int i = 0; i < dim; ++i)
-      for(int j = 0; j <= i; ++j)
+      if(a == b)
       {
-        C_lane[i][j]    = C[i][j][v];
-        Du_C_lane[i][j] = Du_C[i][j][v];
+        Number tmp = fac13 * std::pow(lambdas_bar[a], data.alpha1);
+        tmp += fac23 * std::pow(lambdas_bar[a], data.alpha2);
+
+        for(int c = 0; c < dim; c++)
+        {
+          tmp += fac19 * std::pow(lambdas_bar[c], data.alpha1);
+          tmp += fac29 * std::pow(lambdas_bar[c], data.alpha2);
+        }
+
+        // Derivative of the 1 / lambda_a^2 prefactor.
+        tmp -=
+          2.0 * lambdas[a] * lambdas[a] * principal_isochoric_2PK_stress(a, lambdas, lambdas_bar);
+
+        return res * tmp;
       }
 
-    auto const eigen = dealii::eigenvectors(C_lane);
+      Number tmp = -fac13 * std::pow(lambdas_bar[a], data.alpha1);
+      tmp += -fac23 * std::pow(lambdas_bar[a], data.alpha2);
+      tmp += -fac13 * std::pow(lambdas_bar[b], data.alpha1);
+      tmp += -fac23 * std::pow(lambdas_bar[b], data.alpha2);
 
-    for(int a = 0; a < dim; ++a)
+      for(int c = 0; c < dim; c++)
+      {
+        tmp += fac19 * std::pow(lambdas_bar[c], data.alpha1);
+        tmp += fac29 * std::pow(lambdas_bar[c], data.alpha2);
+      }
+
+      return res * tmp;
+    };
+
+    auto const outer_4 =
+      [](dealii::Tensor<1, dim, Number> const & v1,
+         dealii::Tensor<1, dim, Number> const & v2,
+         dealii::Tensor<1, dim, Number> const & v3,
+         dealii::Tensor<1, dim, Number> const & v4) -> dealii::Tensor<4, dim, Number>
+    { return dealii::outer_product(dealii::outer_product(v1, v2), dealii::outer_product(v3, v4)); };
+
+
+    // Isochoric part
+    // Serialize because eigenvectors() does not support VectorizedArray.
+    for(std::size_t v{0}; v < scalar::size(); ++v)
     {
-      Number const rho_a = eigen[a].first;
-      auto const & N_a   = eigen[a].second;
-
-      Number delta_rho_a = 0.0;
-      for(int i = 0; i < dim; ++i)
-        for(int j = 0; j < dim; ++j)
-          delta_rho_a += N_a[i] * Du_C_lane[i][j] * N_a[j];
-
-      Number const diagonal_coefficient = h_prime(rho_a) * delta_rho_a;
+      dealii::SymmetricTensor<2, dim, Number> C_lane;
+      dealii::SymmetricTensor<2, dim, Number> Du_C_lane;
       for(int i = 0; i < dim; ++i)
         for(int j = 0; j <= i; ++j)
-          Du_S[i][j][v] += diagonal_coefficient * N_a[i] * N_a[j];
-    }
+        {
+          C_lane[i][j]    = C[i][j][v];
+          Du_C_lane[i][j] = Du_C[i][j][v];
+        }
 
-    for(int a = 0; a < dim; ++a)
-      for(int b = a + 1; b < dim; ++b)
+      auto const eigen = dealii::eigenvectors(C_lane);
+
+      std::array<Number, dim> lambdas{};
+      std::array<Number, dim> lambdas_bar{};
+
+      Number const J_pow = std::pow(J[v], -static_cast<Number>(ONE_THIRD));
+
+      for(int a = 0; a < dim; ++a)
       {
-        Number const rho_a = eigen[a].first;
-        Number const rho_b = eigen[b].first;
-        Number       divided_difference;
-
-        Number const scale     = std::max(std::max(Number(1.0), std::abs(rho_a)), std::abs(rho_b));
-        Number const tolerance = 100.0 * std::numeric_limits<Number>::epsilon() * scale;
-        if(std::abs(rho_a - rho_b) <= tolerance)
-          divided_difference = h_prime(rho_a);
-        else
-          divided_difference = (h(rho_a) - h(rho_b)) / (rho_a - rho_b);
-
-        auto const & N_a = eigen[a].second;
-        auto const & N_b = eigen[b].second;
-
-        Number const mixed_increment = dealii::scalar_product(N_a, Du_C_lane * N_b);
-
-        for(int i = 0; i < dim; ++i)
-          for(int j = 0; j <= i; ++j)
-            Du_S[i][j][v] +=
-              divided_difference * mixed_increment * (N_a[i] * N_b[j] + N_b[i] * N_a[j]);
+        lambdas[a]     = std::sqrt(eigen[a].first);
+        lambdas_bar[a] = J_pow * lambdas[a];
       }
+
+      dealii::Tensor<4, dim, Number> elasticity_tensor_iso{};
+
+      for(int a = 0; a < dim; ++a)
+      {
+        Number const lambda_a_squared = eigen[a].first;
+        auto const & N_a              = eigen[a].second;
+
+        for(int b = 0; b < dim; ++b)
+        {
+          auto const & N_b = eigen[b].second;
+
+          elasticity_tensor_iso += dS_iso_a_dlambda_b_over_lambda_b(a, b, lambdas, lambdas_bar) *
+                                   outer_4(N_a, N_a, N_b, N_b);
+
+          if(a == b)
+          {
+            continue;
+          }
+
+          Number const lambda_b_squared = eigen[b].first;
+
+          Number fac{};
+
+          Number const scale =
+            std::max({Number(1.0), std::abs(lambda_a_squared), std::abs(lambda_b_squared)});
+          Number const tolerance = 100.0 * std::numeric_limits<Number>::epsilon() * scale;
+          if(std::abs(lambda_b_squared - lambda_a_squared) < tolerance)
+          {
+            fac = 0.5 * (dS_iso_a_dlambda_b_over_lambda_b(b, b, lambdas, lambdas_bar) -
+                         dS_iso_a_dlambda_b_over_lambda_b(a, b, lambdas, lambdas_bar));
+          }
+          else
+          {
+            fac = (principal_isochoric_2PK_stress(b, lambdas, lambdas_bar) -
+                   principal_isochoric_2PK_stress(a, lambdas, lambdas_bar)) /
+                  (lambda_b_squared - lambda_a_squared);
+          }
+
+          elasticity_tensor_iso +=
+            fac * (outer_4(N_a, N_b, N_a, N_b) + outer_4(N_a, N_b, N_b, N_a));
+        }
+      }
+
+      dealii::SymmetricTensor<4, dim, Number> const elasticity_tensor_iso_sym =
+        dealii::symmetrize(elasticity_tensor_iso, true);
+
+      dealii::SymmetricTensor<2, dim, Number> const Du_S_lane =
+        static_cast<Number>(0.5) * (elasticity_tensor_iso_sym * Du_C_lane);
+
+      for(int i = 0; i < dim; ++i)
+        for(int j = 0; j <= i; ++j)
+        {
+          Du_S[i][j][v] += Du_S_lane[i][j];
+        }
+    }
   }
+
+  // Volumetric part
+  tensor const           F_inv       = dealii::invert(F);
+  tensor const           Du_F_inv    = -F_inv * gradient_increment * F_inv;
+  symmetric_tensor const Du_C_inv    = compute_H_plus_HT(Du_F_inv * dealii::transpose(F_inv));
+  scalar const           Du_J_over_J = dealii::trace(gradient_increment * F_inv);
+
+  // J term
+  Du_S += data.kappa * J * J * Du_J_over_J * C_inv;
+
+  // C_inv term
+  Du_S += 0.5 * data.kappa * (J * J - 1.0) * Du_C_inv;
 
   return Du_S;
 }
@@ -825,8 +961,8 @@ OgdenAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
 
 template<int dim, typename Number>
 auto
-OgdenAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell,
-                                             unsigned int const q) const -> scalar
+OgdenAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned int const q) const
+  -> scalar
 {
   (void)cell;
   (void)q;
