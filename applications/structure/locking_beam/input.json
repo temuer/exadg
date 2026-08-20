@@ -18,12 +18,11 @@
         "Length": "16.0",
         "Height": "2.0",
         "Width": "2.0",
-        "PoissonNumber": "0.49",
-        "ForcePerUnitArea": "2000.0"
+        "ForcePerUnitArea": "2.0"
     },
     "Output": {
         "OutputDirectory": "output/locking_beam/",
-        "OutputName": "debug_P2_AMG_incompressible",
+        "OutputName": "release_NeoHooke_P2_pMG_compressible",
         "WriteOutput": "true"
     }
 }

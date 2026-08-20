@@ -25,7 +25,7 @@
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/tria.h>
 #include "exadg/grid/grid_data.h"
-#include "exadg/structure/material/library/st_venant_kirchhoff.h"
+#include "exadg/structure/material/library/alveolar_tissue.h"
 #include "exadg/structure/user_interface/enum_types.h"
 namespace ExaDG
 {
@@ -84,7 +84,6 @@ public:
       prm.add_parameter("Length", length, "Length of domain.");
       prm.add_parameter("Height", height, "Height of domain.");
       prm.add_parameter("Width", width, "Width of domain.");
-      prm.add_parameter("PoissonNumber", poisson_number, "Width of domain.");
       prm.add_parameter("ForcePerUnitArea",
                         force_per_unit_area,
                         "Value of force per unit area on right boundary.");
@@ -273,16 +272,48 @@ private:
   {
     typedef std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>> Pair;
 
-    MaterialType const type = MaterialType::StVenantKirchhoff;
+    // MaterialType const type = MaterialType::OgdenAlveolarTissue;
+    MaterialType const type = MaterialType::NeoHookeAlveolarTissue;
 
-    constexpr double E = 1.0e6;
+    // Singh Ogden
+    // constexpr double mu1    = 6.24e6;
+    // constexpr double mu2    = 935.0e6;
+    // constexpr double alpha1 = 16.714;
+    // constexpr double alpha2 = 4.456;
+
+    constexpr double E       = 1.0e6;
+    constexpr double poisson = 0.3;
+
+    // Ogden equivalent to above Neo Hooke (N = 1, mu = shear modulus, alpha = 2)
+    constexpr double mu1    = E / 2.0 / (1.0 + poisson);
+    constexpr double mu2    = 0.0;
+    constexpr double alpha1 = 2.0;
+    constexpr double alpha2 = 0.0;
+    constexpr double kappa  = E / (3.0 - 6.0 * poisson);
 
     Type2D const two_dim_type = Type2D::Undefined;
 
-    std::cout << "----- Poisson Number: " << poisson_number << '\n';
+    WiechertSurfactantData surfactant_data;
+    surfactant_data.boundary_ids               = {}; // empty -> no surfactant
+    surfactant_data.equilibrium_time           = 1.0;
+    surfactant_data.m_1                        = 48.0;
+    surfactant_data.m_2                        = 20.0;
+    surfactant_data.k_1                        = 2.0;
+    surfactant_data.k_2                        = 1.0;
+    surfactant_data.c                          = 0.5;
+    surfactant_data.relative_concentration_max = 2.0;
+    surfactant_data.gamma_ref                  = 70.0;
+    surfactant_data.gamma_eq                   = 22.0;
+    surfactant_data.gamma_min                  = 2.0;
+
+    // this->material_descriptor->insert(
+    //   Pair(0,
+    //        new OgdenAlveolarTissueData<dim>(
+    //          type, mu1, mu2, alpha1, alpha2, kappa, two_dim_type, surfactant_data)));
 
     this->material_descriptor->insert(
-      Pair(0, new StVenantKirchhoffData<dim>(type, E, poisson_number, two_dim_type)));
+      Pair(0,
+           new NeoHookeAlveolarTissueData<dim>(type, E, poisson, two_dim_type, surfactant_data)));
   }
 
   void
@@ -315,7 +346,6 @@ private:
   double height              = 0.0;
   double width               = 0.0;
   double force_per_unit_area = 0.0;
-  double poisson_number      = 0.0;
 };
 
 } // namespace Structure
