@@ -91,6 +91,19 @@ check_stress_increment(MaterialType &     material,
     symmetric_tensor const increment_analytical =
       material.second_piola_kirchhoff_stress_displacement_derivative(increment, gradient, 0, 0);
 
+    for(int i = 0; i < dim; ++i)
+      for(int j = 0; j <= i; ++j)
+        for(std::size_t lane = 0; lane < scalar::size(); ++lane)
+        {
+          if(!std::isfinite(increment_analytical[i][j][lane]))
+          {
+            std::size_t const case_index = calculate_case_index(batch, lane, n_deformation_cases);
+            std::cerr << material_name << " (" << cases[case_index].name << ", lane " << lane
+                      << ") analytical stress increment is not finite" << std::endl;
+            return false;
+          }
+        }
+
     for(double const epsilon : step_sizes)
     {
       tensor gradient_plus;
@@ -126,10 +139,23 @@ check_stress_increment(MaterialType &     material,
                 (stress_plus[i][j][lane] - stress_base[i][j][lane]) / epsilon :
                 (stress_plus[i][j][lane] - stress_minus[i][j][lane]) / (2.0 * epsilon);
 
-            max_error =
-              std::max(max_error,
-                       std::abs(increment_analytical[i][j][lane] - increment_finite_difference));
+            if(!std::isfinite(increment_finite_difference))
+            {
+              std::cerr << material_name << " (" << cases[case_index].name << ", lane " << lane
+                        << ") finite-difference stress increment is not finite" << std::endl;
+              return false;
+            }
 
+            double const abs_error =
+              std::abs(increment_analytical[i][j][lane] - increment_finite_difference);
+            if(!std::isfinite(abs_error))
+            {
+              std::cerr << material_name << " (" << cases[case_index].name << ", lane " << lane
+                        << ") abs error is not finite" << std::endl;
+              return false;
+            }
+
+            max_error = std::max(max_error, abs_error);
             max_scale = std::max(max_scale, std::abs(increment_finite_difference));
           }
 

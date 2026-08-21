@@ -480,11 +480,10 @@ public:
 private:
   auto
   principal_isochoric_2PK_stress(int const &                                          a,
-                                 std::array<Number, static_cast<size_t>(dim)> const & lambdas,
-                                 std::array<Number, static_cast<size_t>(dim)> const & lambdas_bar,
-                                 std::array<Number, static_cast<size_t>(dim)> const & pow1,
-                                 std::array<Number, static_cast<size_t>(dim)> const & pow2) const
-    -> Number;
+                                 scalar const &                                       lambda_sq_a,
+                                 std::array<scalar, static_cast<size_t>(dim)> const & pow1,
+                                 std::array<scalar, static_cast<size_t>(dim)> const & pow2) const
+    -> scalar;
 
   unsigned int dof_index;
   unsigned int quad_index;
