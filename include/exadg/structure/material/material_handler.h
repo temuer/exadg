@@ -509,17 +509,32 @@ public:
         case MaterialType::OgdenAlveolarTissue:
         {
           AssertThrow(
-            check_type == 0 && stable_formulation == false && cache_level == 0,
+            check_type == 0 && stable_formulation == false &&
+              (cache_level == 0 || cache_level == 1),
             dealii::ExcMessage(
-              "This material only works with check_type=0, stable_formaluation=false, and cache_level=0"));
+              "This material only works with check_type=0, stable_formaluation=false, and cache_level=0|1"));
 
           auto data_OgdenAlveolarTissue =
             std::static_pointer_cast<OgdenAlveolarTissueData<dim>>(data);
 
-          material_map.insert(
-            Pair(id,
-                 std::make_shared<OgdenAlveolarTissue<dim, Number>>(
-                   matrix_free, dof_index, quad_index, *data_OgdenAlveolarTissue)));
+          if(cache_level == 0)
+          {
+            material_map.insert(
+              Pair(id,
+                   std::make_shared<OgdenAlveolarTissue<dim, Number, 0>>(
+                     matrix_free, dof_index, quad_index, *data_OgdenAlveolarTissue)));
+          }
+          else if(cache_level == 1)
+          {
+            material_map.insert(
+              Pair(id,
+                   std::make_shared<OgdenAlveolarTissue<dim, Number, 1>>(
+                     matrix_free, dof_index, quad_index, *data_OgdenAlveolarTissue)));
+          }
+          else
+          {
+            AssertThrow(cache_level < 2, dealii::ExcMessage("Cache levels 0 and 1 implemented."));
+          }
           break;
         }
         default:

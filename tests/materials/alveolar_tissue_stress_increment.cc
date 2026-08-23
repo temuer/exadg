@@ -200,7 +200,7 @@ main()
 
   FibrousAlveolarTissue<3, double>  fibrous_3d(matrix_free_3d, 0, 0, fibrous_data_3d);
   NeoHookeAlveolarTissue<3, double> neo_hooke_3d(matrix_free_3d, 0, 0, neo_hooke_data_3d);
-  OgdenAlveolarTissue<3, double>    ogden_3d(matrix_free_3d, 0, 0, ogden_data_3d);
+  OgdenAlveolarTissue<3, double, 0> ogden_3d(matrix_free_3d, 0, 0, ogden_data_3d);
 
   bool const passed = check_stress_increment<3>(fibrous_3d, "Fibrous", true) &&
                       check_stress_increment<3>(neo_hooke_3d, "Neo-Hooke") &&

@@ -28,7 +28,6 @@
 #include <deal.II/physics/elasticity/kinematics.h>
 #include <exadg/structure/material/library/surfactant.h>
 #include <exadg/structure/spatial_discretization/operators/continuum_mechanics.h>
-#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <numeric>
@@ -562,8 +561,8 @@ NeoHookeAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const ce
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_tensor<dim, Number>());
 }
 
-template<int dim, typename Number>
-OgdenAlveolarTissue<dim, Number>::OgdenAlveolarTissue(
+template<int dim, typename Number, int cache_level>
+OgdenAlveolarTissue<dim, Number, cache_level>::OgdenAlveolarTissue(
   dealii::MatrixFree<dim, Number> const & matrix_free,
   unsigned int const                      dof_index,
   unsigned int const                      quad_index,
@@ -573,60 +572,100 @@ OgdenAlveolarTissue<dim, Number>::OgdenAlveolarTissue(
     data(data),
     surfactant_model(data.surfactant_data, matrix_free.n_boundary_face_batches())
 {
+  if constexpr(cache_level == 0)
+  {
+    return;
+  }
+
+  eigendecomposition_coefficients.initialize(matrix_free, quad_index, false, false);
+  eigendecomposition_coefficients.set_coefficients(OgdenEigendecomposition<dim, Number>{});
 }
 
 template<int dim, typename Number>
 auto
-OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(
+outer_product_self(dealii::Tensor<1, dim, Number> const & vec)
+  -> dealii::SymmetricTensor<2, dim, Number>
+{
+  dealii::SymmetricTensor<2, dim, Number> res{};
+
+  for(int i = 0; i < dim; ++i)
+  {
+    for(int j = i; j < dim; ++j)
+    {
+      res[i][j] = vec[i] * vec[j];
+    }
+  }
+
+  return res;
+}
+
+template<int dim, typename Number, int cache_level>
+auto
+OgdenAlveolarTissue<dim, Number, cache_level>::second_piola_kirchhoff_stress(
   tensor const &     gradient_displacement,
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
 {
-  return second_piola_kirchhoff_stress_eval(gradient_displacement, cell, q);
-}
+  static_assert(cache_level == 0 || cache_level == 1, "Only cache_level 0 or 1 implemented");
 
-// Serialize the vectorized right Cauchy-Green tensor C into per-lane scalar
-// tensors, call dealii::eigenvectors (which does not support VectorizedArray),
-// and repack the squared principal stretches (eigenvalues) and the principal
-// directions (eigenvectors) into vectorized arrays.
-template<int dim, typename Number>
-auto
-compute_eigenbasis(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> const & C)
-  -> std::pair<
-    std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)>,
-    std::array<dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>, static_cast<size_t>(dim)>>
-{
-  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> lambda_sq{};
-  std::array<dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>, static_cast<size_t>(dim)> N{};
-
-  // Serialize because eigenvectors() does not support VectorizedArray.
-  for(std::size_t v{0}; v < dealii::VectorizedArray<Number>::size(); ++v)
+  if constexpr(cache_level == 0)
   {
-    dealii::SymmetricTensor<2, dim, Number> C_lane;
-    for(int i = 0; i < dim; ++i)
-    {
-      for(int j = 0; j <= i; ++j)
-      {
-        C_lane[i][j] = C[i][j][v];
-      }
-    }
-
-    auto const eigen = dealii::eigenvectors(C_lane);
-
-    for(int a = 0; a < dim; ++a)
-    {
-      lambda_sq[a][v] = eigen[a].first;
-      for(int i = 0; i < dim; ++i)
-        N[a][i][v] = eigen[a].second[i];
-    }
+    return second_piola_kirchhoff_stress_eval(gradient_displacement, cell, q);
   }
 
-  return {lambda_sq, N};
+  tensor const           F = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
+  scalar const           J = dealii::determinant(F);
+  symmetric_tensor const C = dealii::Physics::Elasticity::Kinematics::C(F);
+
+  // Isochoric stress
+  symmetric_tensor const S_iso = std::invoke(
+    [&]()
+    {
+      OgdenEigendecomposition<dim, Number> const & eigendecomposition =
+        eigendecomposition_coefficients.get_coefficient_cell(cell, q);
+
+      std::array<scalar, static_cast<size_t>(dim)> lambda_bar_times_dPsi_iso_dlambda_bar{};
+
+      scalar acc{}; // For the b term
+
+      for(int a = 0; a < dim; ++a)
+      {
+        scalar const s1 = data.mu1 * eigendecomposition.pow1[a];
+        scalar const s2 = data.mu2 * eigendecomposition.pow2[a];
+
+        lambda_bar_times_dPsi_iso_dlambda_bar[a] = s1 + s2;
+
+        acc += lambda_bar_times_dPsi_iso_dlambda_bar[a];
+      };
+
+      acc *= ONE_THIRD;
+
+      symmetric_tensor S_iso{};
+      for(int a = 0; a < dim; a++)
+      {
+        scalar const S_iso_a =
+          1.0 / eigendecomposition.lambda_sq[a] * (lambda_bar_times_dPsi_iso_dlambda_bar[a] - acc);
+
+        S_iso += S_iso_a * outer_product_self(eigendecomposition.eigenvectors[a]);
+      }
+
+      return S_iso;
+    });
+
+  // Volumetric stress
+  symmetric_tensor const S_vol = std::invoke(
+    [&]()
+    {
+      symmetric_tensor const C_inv = dealii::invert(C);
+      return 0.5 * data.kappa * (J * J - 1.0) * C_inv;
+    });
+
+  return S_iso + S_vol;
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::principal_isochoric_2PK_stress(
+OgdenAlveolarTissue<dim, Number, cache_level>::principal_isochoric_2PK_stress(
   int const &                                          a,
   scalar const &                                       lambda_a_sq,
   std::array<scalar, static_cast<size_t>(dim)> const & pow1,
@@ -650,27 +689,10 @@ OgdenAlveolarTissue<dim, Number>::principal_isochoric_2PK_stress(
   return 1.0 / lambda_a_sq * (lambda_bar_times_dPsi_iso_dlambda_bar[a] - b_term);
 }
 
-template<int dim, typename Number>
+
+template<int dim, typename Number, int cache_level>
 auto
-outer_product_self(dealii::Tensor<1, dim, Number> const & vec)
-  -> dealii::SymmetricTensor<2, dim, Number>
-{
-  dealii::SymmetricTensor<2, dim, Number> res{};
-
-  for(int i = 0; i < dim; ++i)
-  {
-    for(int j = i; j < dim; ++j)
-    {
-      res[i][j] = vec[i] * vec[j];
-    }
-  }
-
-  return res;
-}
-
-template<int dim, typename Number>
-auto
-OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
+OgdenAlveolarTissue<dim, Number, cache_level>::second_piola_kirchhoff_stress_eval(
   tensor const &     gradient_displacement,
   unsigned int const cell,
   unsigned int const q) const -> symmetric_tensor
@@ -730,11 +752,11 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_eval(
   return S_iso + S_vol;
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int const cell,
-                                                                unsigned int const q) const
-  -> symmetric_tensor
+OgdenAlveolarTissue<dim, Number, cache_level>::second_piola_kirchhoff_stress(
+  unsigned int const cell,
+  unsigned int const q) const -> symmetric_tensor
 {
   (void)cell;
   (void)q;
@@ -746,16 +768,16 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress(unsigned int con
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_derivative(
-  tensor const &     gradient_increment,
-  tensor const &     gradient_displacement,
-  unsigned int const cell,
-  unsigned int const q) const -> symmetric_tensor
+OgdenAlveolarTissue<dim, Number, cache_level>::
+  second_piola_kirchhoff_stress_displacement_derivative(tensor const &     gradient_increment,
+                                                        tensor const &     gradient_displacement,
+                                                        unsigned int const cell,
+                                                        unsigned int const q) const
+  -> symmetric_tensor
 {
-  (void)cell;
-  (void)q;
+  static_assert(cache_level == 0 || cache_level == 1, "Only cache_level 0 or 1 implemented.");
 
   tensor const F = dealii::Physics::Elasticity::Kinematics::F(gradient_displacement);
   scalar const J = dealii::determinant(F);
@@ -763,27 +785,44 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_der
   symmetric_tensor const C     = dealii::Physics::Elasticity::Kinematics::C(F);
   symmetric_tensor const C_inv = dealii::invert(C);
 
-  symmetric_tensor const Du_C = dealii::symmetrize(dealii::transpose(gradient_increment) * F +
-                                                   dealii::transpose(F) * gradient_increment);
+  symmetric_tensor const Du_C = 2.0 * dealii::symmetrize(dealii::transpose(gradient_increment) * F);
 
-  auto const [lambda_sq, N] = compute_eigenbasis(C);
+  // Cached or not-cached values
+  OgdenEigendecomposition<dim, Number> const deformation = std::invoke(
+    [this](symmetric_tensor const & C, scalar const & J, unsigned int cell, unsigned int q)
+    {
+      if constexpr(cache_level)
+      {
+        return eigendecomposition_coefficients.get_coefficient_cell(cell, q);
+      }
 
-  scalar const J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
+      OgdenEigendecomposition<dim, Number> res;
 
-  std::array<scalar, static_cast<size_t>(dim)> lambdas_bar{};
-  std::array<scalar, static_cast<size_t>(dim)> pow1{};
-  std::array<scalar, static_cast<size_t>(dim)> pow2{};
-  for(int a = 0; a < dim; ++a)
-  {
-    lambdas_bar[a] = J_pow * std::sqrt(lambda_sq[a]);
-    pow1[a]        = std::pow(lambdas_bar[a], static_cast<Number>(data.alpha1));
-    pow2[a]        = std::pow(lambdas_bar[a], static_cast<Number>(data.alpha2));
-  }
+      std::tie(res.lambda_sq, res.eigenvectors) = compute_eigenbasis(C);
+
+      res.J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
+
+      for(int a = 0; a < dim; ++a)
+      {
+        scalar const lambda_bar = res.J_pow * std::sqrt(res.lambda_sq[a]);
+        res.pow1[a]             = std::pow(lambda_bar, static_cast<Number>(data.alpha1));
+        res.pow2[a]             = std::pow(lambda_bar, static_cast<Number>(data.alpha2));
+      }
+
+      return res;
+    },
+    C,
+    J,
+    cell,
+    q);
 
   std::array<scalar, static_cast<size_t>(dim)> S_iso_a{};
   for(int a = 0; a < dim; ++a)
   {
-    S_iso_a[a] = principal_isochoric_2PK_stress(a, lambda_sq[a], pow1, pow2);
+    S_iso_a[a] = principal_isochoric_2PK_stress(a,
+                                                deformation.lambda_sq[a],
+                                                deformation.pow1,
+                                                deformation.pow2);
   }
 
   // dS_iso_a / d(lambda_b) / lambda_b
@@ -801,7 +840,7 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_der
       scalar c_term{};
       for(int c = 0; c < dim; ++c)
       {
-        c_term += fac19 * pow1[c] + fac29 * pow2[c];
+        c_term += fac19 * deformation.pow1[c] + fac29 * deformation.pow2[c];
       }
       return c_term;
     });
@@ -810,20 +849,19 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_der
   {
     for(int b = 0; b < dim; ++b)
     {
-      scalar const res = 1.0 / lambda_sq[a] / lambda_sq[b];
-
-      scalar tmp{};
+      scalar tmp = c_term;
       if(a == b)
       {
-        tmp = fac13 * pow1[a] + fac23 * pow2[a];
-        tmp -= 2.0 * lambda_sq[a] * S_iso_a[a];
+        tmp += fac13 * deformation.pow1[a] + fac23 * deformation.pow2[a];
+        tmp += -2.0 * deformation.lambda_sq[a] * S_iso_a[a];
       }
       else
       {
-        tmp = -fac13 * (pow1[a] + pow1[b]) - fac23 * (pow2[a] + pow2[b]);
+        tmp += -fac13 * (deformation.pow1[a] + deformation.pow1[b]) -
+               fac23 * (deformation.pow2[a] + deformation.pow2[b]);
       }
-      tmp += c_term;
-      dS_dlambda_over_lambda[a][b] = res * tmp;
+      dS_dlambda_over_lambda[a][b] =
+        1.0 / deformation.lambda_sq[a] / deformation.lambda_sq[b] * tmp;
     }
   }
 
@@ -834,28 +872,27 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_der
     for(int b = 0; b < dim; ++b)
     {
       scalar const coef_ab = dS_dlambda_over_lambda[a][b];
-      scalar const g_b     = N[b] * Du_C * N[b];
+      scalar const g_b     = deformation.eigenvectors[b] * Du_C * deformation.eigenvectors[b];
 
-      Du_S += 0.5 * coef_ab * g_b * outer_product_self(N[a]);
-    }
+      Du_S += 0.5 * coef_ab * g_b * outer_product_self(deformation.eigenvectors[a]);
 
-    // Off-diagonal part (a != b)
-    for(int b = 0; b < dim; ++b)
-    {
       if(a == b)
         continue;
 
       Number const tolerance = 100.0 * std::numeric_limits<Number>::epsilon();
 
-      scalar const regular = (S_iso_a[b] - S_iso_a[a]) / (lambda_sq[b] - lambda_sq[a]);
-      scalar const degen   = 0.5 * (dS_dlambda_over_lambda[b][b] - dS_dlambda_over_lambda[a][b]);
+      scalar const regular =
+        (S_iso_a[b] - S_iso_a[a]) / (deformation.lambda_sq[b] - deformation.lambda_sq[a]);
+      scalar const degen = 0.5 * (dS_dlambda_over_lambda[b][b] - dS_dlambda_over_lambda[a][b]);
 
       scalar const fac = dealii::compare_and_apply_mask<dealii::SIMDComparison::less_than>(
-        std::abs(lambda_sq[b] - lambda_sq[a]), tolerance, degen, regular);
+        std::abs(deformation.lambda_sq[b] - deformation.lambda_sq[a]), tolerance, degen, regular);
 
-      scalar const h_ab = N[a] * Du_C * N[b];
+      scalar const h_ab = deformation.eigenvectors[a] * Du_C * deformation.eigenvectors[b];
 
-      Du_S += fac * h_ab * dealii::symmetrize(dealii::outer_product(N[a], N[b]));
+      Du_S += fac * h_ab *
+              dealii::symmetrize(
+                dealii::outer_product(deformation.eigenvectors[a], deformation.eigenvectors[b]));
     }
   }
 
@@ -874,23 +911,22 @@ OgdenAlveolarTissue<dim, Number>::second_piola_kirchhoff_stress_displacement_der
   return Du_S;
 }
 
-
-
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::kirchhoff_stress(tensor const &     gradient_displacement,
-                                                   unsigned int const cell,
-                                                   unsigned int const q) const -> symmetric_tensor
+OgdenAlveolarTissue<dim, Number, cache_level>::kirchhoff_stress(
+  tensor const &     gradient_displacement,
+  unsigned int const cell,
+  unsigned int const q) const -> symmetric_tensor
 {
   return kirchhoff_stress_eval(gradient_displacement, cell, q);
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradient_displacement,
-                                                        unsigned int const cell,
-                                                        unsigned int const q) const
-  -> symmetric_tensor
+OgdenAlveolarTissue<dim, Number, cache_level>::kirchhoff_stress_eval(
+  tensor const &     gradient_displacement,
+  unsigned int const cell,
+  unsigned int const q) const -> symmetric_tensor
 {
   (void)gradient_displacement;
   (void)cell;
@@ -902,10 +938,11 @@ OgdenAlveolarTissue<dim, Number>::kirchhoff_stress_eval(tensor const &     gradi
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
-                                                   unsigned int const q) const -> symmetric_tensor
+OgdenAlveolarTissue<dim, Number, cache_level>::kirchhoff_stress(unsigned int const cell,
+                                                                unsigned int const q) const
+  -> symmetric_tensor
 {
   (void)cell;
   (void)q;
@@ -917,9 +954,9 @@ OgdenAlveolarTissue<dim, Number>::kirchhoff_stress(unsigned int const cell,
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::contract_with_J_times_C(
+OgdenAlveolarTissue<dim, Number, cache_level>::contract_with_J_times_C(
   symmetric_tensor const & symmetric_gradient_increment,
   tensor const &           gradient_displacement,
   unsigned int const       cell,
@@ -936,10 +973,9 @@ OgdenAlveolarTissue<dim, Number>::contract_with_J_times_C(
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
 }
 
-
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::contract_with_J_times_C(
+OgdenAlveolarTissue<dim, Number, cache_level>::contract_with_J_times_C(
   symmetric_tensor const & symmetric_gradient_increment,
   unsigned int const       cell,
   unsigned int const       q) const -> symmetric_tensor
@@ -954,25 +990,38 @@ OgdenAlveolarTissue<dim, Number>::contract_with_J_times_C(
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_symmetric_tensor<dim, Number>());
 }
 
-
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
+OgdenAlveolarTissue<dim, Number, cache_level>::do_set_cell_linearization_data(
   std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
   unsigned int const                                                         cell) const -> void
 {
-  (void)integrator_lin;
-  (void)cell;
+  static_assert(cache_level < 2, "Only cache_level 0 and 1 are implemented.");
 
-  AssertThrow(false, dealii::ExcMessage("This material does not support caching."));
+  AssertThrow(cache_level > 0, dealii::ExcMessage("Cache 0 should not arrive here."));
+
+  for(unsigned int q = 0; q < integrator_lin->n_q_points; ++q)
+  {
+    tensor const Grad_d_lin = integrator_lin->get_gradient(q);
+
+    tensor const           F = dealii::Physics::Elasticity::Kinematics::F(Grad_d_lin);
+    scalar const           J = dealii::determinant(F);
+    symmetric_tensor const C = dealii::Physics::Elasticity::Kinematics::C(F);
+
+    eigendecomposition_coefficients.set_coefficient_cell(
+      cell,
+      q,
+      ogden_eigendecomposition(
+        C, J, static_cast<Number>(data.alpha1), static_cast<Number>(data.alpha2)));
+  }
 
   return;
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned int const q) const
-  -> scalar
+OgdenAlveolarTissue<dim, Number, cache_level>::one_over_J(unsigned int const cell,
+                                                          unsigned int const q) const -> scalar
 {
   (void)cell;
   (void)q;
@@ -982,10 +1031,11 @@ OgdenAlveolarTissue<dim, Number>::one_over_J(unsigned int const cell, unsigned i
   return dealii::make_vectorized_array(std::numeric_limits<Number>::quiet_NaN());
 }
 
-template<int dim, typename Number>
+template<int dim, typename Number, int cache_level>
 auto
-OgdenAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
-                                                        unsigned int const q) const -> tensor
+OgdenAlveolarTissue<dim, Number, cache_level>::gradient_displacement(unsigned int const cell,
+                                                                     unsigned int const q) const
+  -> tensor
 {
   (void)cell;
   (void)q;
@@ -994,6 +1044,7 @@ OgdenAlveolarTissue<dim, Number>::gradient_displacement(unsigned int const cell,
 
   return (std::numeric_limits<Number>::quiet_NaN() * get_identity_tensor<dim, Number>());
 }
+
 template class FibrousAlveolarTissue<2, float>;
 template class FibrousAlveolarTissue<3, float>;
 
@@ -1006,11 +1057,16 @@ template class NeoHookeAlveolarTissue<3, float>;
 template class NeoHookeAlveolarTissue<2, double>;
 template class NeoHookeAlveolarTissue<3, double>;
 
-template class OgdenAlveolarTissue<2, float>;
-template class OgdenAlveolarTissue<3, float>;
+template class OgdenAlveolarTissue<2, float, 0>;
+template class OgdenAlveolarTissue<3, float, 0>;
 
-template class OgdenAlveolarTissue<2, double>;
-template class OgdenAlveolarTissue<3, double>;
+template class OgdenAlveolarTissue<2, double, 0>;
+template class OgdenAlveolarTissue<3, double, 0>;
 
+template class OgdenAlveolarTissue<2, float, 1>;
+template class OgdenAlveolarTissue<3, float, 1>;
+
+template class OgdenAlveolarTissue<2, double, 1>;
+template class OgdenAlveolarTissue<3, double, 1>;
 } // namespace Structure
 } // namespace ExaDG

@@ -27,8 +27,10 @@
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/point.h>
+#include <deal.II/base/symmetric_tensor.h>
 #include <deal.II/base/table.h>
 #include <deal.II/base/types.h>
+#include <deal.II/base/vectorization.h>
 #include <deal.II/matrix_free/matrix_free.h>
 
 // ExaDG
@@ -37,6 +39,7 @@
 #include <exadg/structure/material/library/surfactant.h>
 #include <exadg/structure/material/material.h>
 #include <exadg/structure/user_interface/enum_types.h>
+#include "exadg/structure/spatial_discretization/operators/continuum_mechanics.h"
 
 namespace ExaDG
 {
@@ -379,6 +382,82 @@ struct OgdenAlveolarTissueData : public MaterialData
   WiechertSurfactantData surfactant_data;
 };
 
+// Serialize the vectorized right Cauchy-Green tensor C into per-lane scalar
+// tensors, call dealii::eigenvectors (which does not support VectorizedArray),
+// and repack the squared principal stretches (eigenvalues) and the principal
+// directions (eigenvectors) into vectorized arrays.
+template<int dim, typename Number>
+auto
+compute_eigenbasis(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> const & C)
+  -> std::pair<
+    std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)>,
+    std::array<dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>, static_cast<size_t>(dim)>>
+{
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> lambda_sq{};
+  std::array<dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>, static_cast<size_t>(dim)> N{};
+
+  // Serialize because eigenvectors() does not support VectorizedArray.
+  for(std::size_t v{0}; v < dealii::VectorizedArray<Number>::size(); ++v)
+  {
+    dealii::SymmetricTensor<2, dim, Number> C_lane;
+    for(int i = 0; i < dim; ++i)
+    {
+      for(int j = 0; j <= i; ++j)
+      {
+        C_lane[i][j] = C[i][j][v];
+      }
+    }
+
+    auto const eigen = dealii::eigenvectors(C_lane);
+
+    for(int a = 0; a < dim; ++a)
+    {
+      lambda_sq[a][v] = eigen[a].first;
+      for(int i = 0; i < dim; ++i)
+        N[a][i][v] = eigen[a].second[i];
+    }
+  }
+
+  return {lambda_sq, N};
+}
+
+template<int dim, typename Number>
+struct OgdenEigendecomposition
+{
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> lambda_sq{};
+
+  std::array<dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>, static_cast<size_t>(dim)>
+    eigenvectors{};
+
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow1{};
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow2{};
+
+  dealii::VectorizedArray<Number> J_pow{};
+};
+
+template<int dim, typename Number>
+auto
+ogden_eigendecomposition(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> const & C,
+                         dealii::VectorizedArray<Number> const &                                  J,
+                         Number const & alpha1,
+                         Number const & alpha2) -> OgdenEigendecomposition<dim, Number>
+{
+  OgdenEigendecomposition<dim, Number> res;
+
+  res.J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
+
+  std::tie(res.lambda_sq, res.eigenvectors) = compute_eigenbasis(C);
+
+  for(int a = 0; a < dim; ++a)
+  {
+    dealii::VectorizedArray<Number> const lambda_bar = res.J_pow * std::sqrt(res.lambda_sq[a]);
+    res.pow1[a] = std::pow(lambda_bar, static_cast<Number>(alpha1));
+    res.pow2[a] = std::pow(lambda_bar, static_cast<Number>(alpha2));
+  }
+
+  return res;
+}
+
 /*
  * Psi = Psi_iso + Psi_vol
  *
@@ -386,7 +465,7 @@ struct OgdenAlveolarTissueData : public MaterialData
  *
  * Psi_vol = kappa / 4 * (J^2 - 1 - 2 lnJ)
  */
-template<int dim, typename Number>
+template<int dim, typename Number, int cache>
 class OgdenAlveolarTissue : public Material<dim, Number>,
                             public AlveolarSurfactantInterface<dim, Number>
 {
@@ -489,6 +568,9 @@ private:
   unsigned int quad_index;
 
   OgdenAlveolarTissueData<dim> const & data;
+
+  mutable VariableCoefficients<OgdenEigendecomposition<dim, Number>>
+    eigendecomposition_coefficients;
 
   WiechertSurfactantModel<dim, Number> surfactant_model;
 };
