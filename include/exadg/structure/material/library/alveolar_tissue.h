@@ -429,30 +429,172 @@ struct OgdenEigendecomposition
   std::array<dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>, static_cast<size_t>(dim)>
     eigenvectors{};
 
-  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow1{};
-  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow2{};
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> S_iso;
 
-  dealii::VectorizedArray<Number> J_pow{};
+  dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> c1{};
+
+  dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> c2{};
 };
+
+template<typename Number>
+auto
+principal_isochoric_2PK_stress(
+  dealii::VectorizedArray<Number> const & lambda_sq,
+  dealii::VectorizedArray<Number> const & lambda_bar_times_dPsi_iso_dlambda_bar,
+  dealii::VectorizedArray<Number> const & b_term) -> dealii::VectorizedArray<Number>
+{
+  return 1.0 / lambda_sq * (lambda_bar_times_dPsi_iso_dlambda_bar - b_term);
+}
+
+template<int dim, typename Number>
+auto
+principal_isochoric_2PK_stresses(
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> const & lambda_sq,
+  dealii::VectorizedArray<Number> const &                                       J_pow,
+  Number const &                                                                mu1,
+  Number const &                                                                mu2,
+  Number const &                                                                alpha1,
+  Number const & alpha2) -> std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)>
+{
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow1;
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow2;
+  for(int a = 0; a < dim; ++a)
+  {
+    dealii::VectorizedArray<Number> const lambda_bar = J_pow * std::sqrt(lambda_sq[a]);
+    pow1[a] = std::pow(lambda_bar, static_cast<Number>(alpha1));
+    pow2[a] = std::pow(lambda_bar, static_cast<Number>(alpha2));
+  }
+
+  // dPsi_iso / d(lambda_bar) = mu1 * lambda_bar^(alpha1-1) + mu2 * lambda_bar^(alpha2-1)
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)>
+    lambda_bar_times_dPsi_iso_dlambda_bar{};
+
+  for(int a = 0; a < dim; ++a)
+  {
+    lambda_bar_times_dPsi_iso_dlambda_bar[a] = mu1 * pow1[a] + mu2 * pow2[a];
+  };
+
+  dealii::VectorizedArray<Number> const b_term =
+    ONE_THIRD * std::accumulate(begin(lambda_bar_times_dPsi_iso_dlambda_bar),
+                                end(lambda_bar_times_dPsi_iso_dlambda_bar),
+                                dealii::VectorizedArray<Number>{});
+
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> S_iso;
+  for(int a = 0; a < dim; ++a)
+  {
+    S_iso[a] = principal_isochoric_2PK_stress(lambda_sq[a],
+                                              lambda_bar_times_dPsi_iso_dlambda_bar[a],
+                                              b_term);
+  }
+
+  return S_iso;
+}
+
 
 template<int dim, typename Number>
 auto
 ogden_eigendecomposition(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> const & C,
                          dealii::VectorizedArray<Number> const &                                  J,
+                         Number const & mu1,
+                         Number const & mu2,
                          Number const & alpha1,
                          Number const & alpha2) -> OgdenEigendecomposition<dim, Number>
 {
   OgdenEigendecomposition<dim, Number> res;
 
-  res.J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
+  dealii::VectorizedArray<Number> const J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
 
   std::tie(res.lambda_sq, res.eigenvectors) = compute_eigenbasis(C);
 
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow1;
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow2;
   for(int a = 0; a < dim; ++a)
   {
-    dealii::VectorizedArray<Number> const lambda_bar = res.J_pow * std::sqrt(res.lambda_sq[a]);
-    res.pow1[a] = std::pow(lambda_bar, static_cast<Number>(alpha1));
-    res.pow2[a] = std::pow(lambda_bar, static_cast<Number>(alpha2));
+    dealii::VectorizedArray<Number> const lambda_bar = J_pow * std::sqrt(res.lambda_sq[a]);
+    pow1[a] = std::pow(lambda_bar, static_cast<Number>(alpha1));
+    pow2[a] = std::pow(lambda_bar, static_cast<Number>(alpha2));
+  }
+
+  std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)>
+    lambda_bar_times_dPsi_iso_dlambda_bar{};
+  for(int a = 0; a < dim; ++a)
+  {
+    lambda_bar_times_dPsi_iso_dlambda_bar[a] = mu1 * pow1[a] + mu2 * pow2[a];
+  };
+  dealii::VectorizedArray<Number> const b_term =
+    ONE_THIRD * std::accumulate(begin(lambda_bar_times_dPsi_iso_dlambda_bar),
+                                end(lambda_bar_times_dPsi_iso_dlambda_bar),
+                                dealii::VectorizedArray<Number>{});
+
+  for(int a = 0; a < dim; ++a)
+  {
+    res.S_iso[a] = principal_isochoric_2PK_stress(res.lambda_sq[a],
+                                                  lambda_bar_times_dPsi_iso_dlambda_bar[a],
+                                                  b_term);
+  }
+
+  Number const fac13 = ONE_THIRD * mu1 * alpha1;
+  Number const fac23 = ONE_THIRD * mu2 * alpha2;
+  Number const fac19 = ONE_NINTH * mu1 * alpha1;
+  Number const fac29 = ONE_NINTH * mu2 * alpha2;
+
+  dealii::VectorizedArray<Number> const c_term = std::invoke(
+    [&]()
+    {
+      dealii::VectorizedArray<Number> c_term{};
+      for(int c = 0; c < dim; ++c)
+      {
+        c_term += fac19 * pow1[c] + fac29 * pow2[c];
+      }
+      return c_term;
+    });
+
+  for(int a = 0; a < dim; ++a)
+  {
+    for(int b = a; b < dim; ++b)
+    {
+      dealii::VectorizedArray<Number> tmp = c_term;
+      if(a == b)
+      {
+        tmp += fac13 * pow1[a] + fac23 * pow2[a];
+        tmp += -2.0 * res.lambda_sq[a] * res.S_iso[a];
+      }
+      else
+      {
+        tmp += -fac13 * (pow1[a] + pow1[b]) - fac23 * (pow2[a] + pow2[b]);
+      }
+      res.c1[a][b] = 1.0 / res.lambda_sq[a] / res.lambda_sq[b] * tmp;
+    }
+  }
+
+  for(int a = 0; a < dim; ++a)
+  {
+    dealii::VectorizedArray<Number> const tmp1 =
+      c_term + fac13 * pow1[a] + fac23 * pow2[a] - 2.0 * res.lambda_sq[a] * res.S_iso[a];
+
+    res.c1[a][a] = 1.0 / res.lambda_sq[a] / res.lambda_sq[a] * tmp1;
+
+    for(int b = a + 1; b < dim; ++b)
+    {
+      dealii::VectorizedArray<Number> tmp2 =
+        c_term - fac13 * (pow1[a] + pow1[b]) - fac23 * (pow2[a] + pow2[b]);
+
+      res.c1[a][b] = 1.0 / res.lambda_sq[a] / res.lambda_sq[b] * tmp2;
+    }
+  }
+
+  constexpr Number tolerance = 100.0 * std::numeric_limits<Number>::epsilon();
+  for(int a = 0; a < dim; ++a)
+  {
+    for(int b = a; b < dim; ++b)
+    {
+      dealii::VectorizedArray<Number> const regular =
+        (res.S_iso[b] - res.S_iso[a]) / (res.lambda_sq[b] - res.lambda_sq[a]);
+      dealii::VectorizedArray<Number> const degen = 0.5 * (res.c1[b][b] - res.c1[a][b]);
+
+      res.c2[a][b] = dealii::compare_and_apply_mask<dealii::SIMDComparison::less_than>(
+        std::abs(res.lambda_sq[b] - res.lambda_sq[a]), tolerance, degen, regular);
+    }
   }
 
   return res;
@@ -557,13 +699,6 @@ public:
   }
 
 private:
-  auto
-  principal_isochoric_2PK_stress(int const &                                          a,
-                                 scalar const &                                       lambda_sq_a,
-                                 std::array<scalar, static_cast<size_t>(dim)> const & pow1,
-                                 std::array<scalar, static_cast<size_t>(dim)> const & pow2) const
-    -> scalar;
-
   unsigned int dof_index;
   unsigned int quad_index;
 

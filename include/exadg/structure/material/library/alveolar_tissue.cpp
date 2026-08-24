@@ -621,32 +621,13 @@ OgdenAlveolarTissue<dim, Number, cache_level>::second_piola_kirchhoff_stress(
   symmetric_tensor const S_iso = std::invoke(
     [&]()
     {
-      OgdenEigendecomposition<dim, Number> const & eigendecomposition =
+      OgdenEigendecomposition<dim, Number> const & cache =
         eigendecomposition_coefficients.get_coefficient_cell(cell, q);
-
-      std::array<scalar, static_cast<size_t>(dim)> lambda_bar_times_dPsi_iso_dlambda_bar{};
-
-      scalar acc{}; // For the b term
-
-      for(int a = 0; a < dim; ++a)
-      {
-        scalar const s1 = data.mu1 * eigendecomposition.pow1[a];
-        scalar const s2 = data.mu2 * eigendecomposition.pow2[a];
-
-        lambda_bar_times_dPsi_iso_dlambda_bar[a] = s1 + s2;
-
-        acc += lambda_bar_times_dPsi_iso_dlambda_bar[a];
-      };
-
-      acc *= ONE_THIRD;
 
       symmetric_tensor S_iso{};
       for(int a = 0; a < dim; a++)
       {
-        scalar const S_iso_a =
-          1.0 / eigendecomposition.lambda_sq[a] * (lambda_bar_times_dPsi_iso_dlambda_bar[a] - acc);
-
-        S_iso += S_iso_a * outer_product_self(eigendecomposition.eigenvectors[a]);
+        S_iso += cache.S_iso[a] * outer_product_self(cache.eigenvectors[a]);
       }
 
       return S_iso;
@@ -663,31 +644,6 @@ OgdenAlveolarTissue<dim, Number, cache_level>::second_piola_kirchhoff_stress(
   return S_iso + S_vol;
 }
 
-template<int dim, typename Number, int cache_level>
-auto
-OgdenAlveolarTissue<dim, Number, cache_level>::principal_isochoric_2PK_stress(
-  int const &                                          a,
-  scalar const &                                       lambda_a_sq,
-  std::array<scalar, static_cast<size_t>(dim)> const & pow1,
-  std::array<scalar, static_cast<size_t>(dim)> const & pow2) const -> scalar
-{
-  // dPsi_iso / d(lambda_bar) = mu1 * lambda_bar^(alpha1-1) + mu2 * lambda_bar^(alpha2-1)
-  std::array<scalar, static_cast<size_t>(dim)> lambda_bar_times_dPsi_iso_dlambda_bar{};
-
-  for(int a = 0; a < dim; ++a)
-  {
-    scalar const s1 = data.mu1 * pow1[a];
-    scalar const s2 = data.mu2 * pow2[a];
-
-    lambda_bar_times_dPsi_iso_dlambda_bar[a] = s1 + s2;
-  };
-
-  scalar const b_term = ONE_THIRD * std::accumulate(begin(lambda_bar_times_dPsi_iso_dlambda_bar),
-                                                    end(lambda_bar_times_dPsi_iso_dlambda_bar),
-                                                    scalar{});
-
-  return 1.0 / lambda_a_sq * (lambda_bar_times_dPsi_iso_dlambda_bar[a] - b_term);
-}
 
 
 template<int dim, typename Number, int cache_level>
@@ -712,30 +668,18 @@ OgdenAlveolarTissue<dim, Number, cache_level>::second_piola_kirchhoff_stress_eva
 
       scalar const J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
 
-      std::array<scalar, static_cast<size_t>(dim)> lambda_bar_times_dPsi_iso_dlambda_bar{};
-
-      scalar acc{}; // For the b term
-
-      for(int a = 0; a < dim; ++a)
-      {
-        scalar const lambda_bar = J_pow * std::sqrt(lambda_sq[a]);
-
-        scalar const s1 = data.mu1 * std::pow(lambda_bar, static_cast<Number>(data.alpha1));
-        scalar const s2 = data.mu2 * std::pow(lambda_bar, static_cast<Number>(data.alpha2));
-
-        lambda_bar_times_dPsi_iso_dlambda_bar[a] = s1 + s2;
-        acc += lambda_bar_times_dPsi_iso_dlambda_bar[a];
-      };
-
-      acc *= ONE_THIRD;
+      std::array<scalar, static_cast<size_t>(dim)> principal_stresses =
+        principal_isochoric_2PK_stresses<dim>(lambda_sq,
+                                              J_pow,
+                                              static_cast<Number>(data.mu1),
+                                              static_cast<Number>(data.mu2),
+                                              static_cast<Number>(data.alpha1),
+                                              static_cast<Number>(data.alpha2));
 
       symmetric_tensor S_iso{};
       for(int a = 0; a < dim; a++)
       {
-        scalar const S_iso_a =
-          1.0 / lambda_sq[a] * (lambda_bar_times_dPsi_iso_dlambda_bar[a] - acc);
-
-        S_iso += S_iso_a * outer_product_self(N[a]);
+        S_iso += principal_stresses[a] * outer_product_self(N[a]);
       }
 
       return S_iso;
@@ -795,102 +739,40 @@ OgdenAlveolarTissue<dim, Number, cache_level>::
       {
         return eigendecomposition_coefficients.get_coefficient_cell(cell, q);
       }
-
-      OgdenEigendecomposition<dim, Number> res;
-
-      std::tie(res.lambda_sq, res.eigenvectors) = compute_eigenbasis(C);
-
-      res.J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
-
-      for(int a = 0; a < dim; ++a)
+      else
       {
-        scalar const lambda_bar = res.J_pow * std::sqrt(res.lambda_sq[a]);
-        res.pow1[a]             = std::pow(lambda_bar, static_cast<Number>(data.alpha1));
-        res.pow2[a]             = std::pow(lambda_bar, static_cast<Number>(data.alpha2));
+        return ogden_eigendecomposition(C,
+                                        J,
+                                        static_cast<Number>(data.mu1),
+                                        static_cast<Number>(data.mu2),
+                                        static_cast<Number>(data.alpha1),
+                                        static_cast<Number>(data.alpha2));
       }
-
-      return res;
     },
     C,
     J,
     cell,
     q);
 
-  std::array<scalar, static_cast<size_t>(dim)> S_iso_a{};
-  for(int a = 0; a < dim; ++a)
-  {
-    S_iso_a[a] = principal_isochoric_2PK_stress(a,
-                                                deformation.lambda_sq[a],
-                                                deformation.pow1,
-                                                deformation.pow2);
-  }
-
-  // dS_iso_a / d(lambda_b) / lambda_b
-  std::array<std::array<scalar, static_cast<size_t>(dim)>, static_cast<size_t>(dim)>
-    dS_dlambda_over_lambda{};
-
-  Number const fac13 = ONE_THIRD * data.mu1 * data.alpha1;
-  Number const fac23 = ONE_THIRD * data.mu2 * data.alpha2;
-  Number const fac19 = ONE_NINTH * data.mu1 * data.alpha1;
-  Number const fac29 = ONE_NINTH * data.mu2 * data.alpha2;
-
-  scalar const c_term = std::invoke(
-    [&]()
-    {
-      scalar c_term{};
-      for(int c = 0; c < dim; ++c)
-      {
-        c_term += fac19 * deformation.pow1[c] + fac29 * deformation.pow2[c];
-      }
-      return c_term;
-    });
-
-  for(int a = 0; a < dim; ++a)
-  {
-    for(int b = 0; b < dim; ++b)
-    {
-      scalar tmp = c_term;
-      if(a == b)
-      {
-        tmp += fac13 * deformation.pow1[a] + fac23 * deformation.pow2[a];
-        tmp += -2.0 * deformation.lambda_sq[a] * S_iso_a[a];
-      }
-      else
-      {
-        tmp += -fac13 * (deformation.pow1[a] + deformation.pow1[b]) -
-               fac23 * (deformation.pow2[a] + deformation.pow2[b]);
-      }
-      dS_dlambda_over_lambda[a][b] =
-        1.0 / deformation.lambda_sq[a] / deformation.lambda_sq[b] * tmp;
-    }
-  }
-
+  // Cache dS_dlambda_over_lamda as symmetric_tensor
+  // Cache fac as tensor
+  // Write two loops (one with full tensor, second only non-diag part)
   symmetric_tensor Du_S{};
   for(int a = 0; a < dim; ++a)
   {
-    // Diagonal part: sum over b of coef_ab * (N_b·(Du_C·N_b)) * (N_a⊗N_a)
     for(int b = 0; b < dim; ++b)
     {
-      scalar const coef_ab = dS_dlambda_over_lambda[a][b];
-      scalar const g_b     = deformation.eigenvectors[b] * Du_C * deformation.eigenvectors[b];
+      vector const Du_C_Nb = Du_C * deformation.eigenvectors[b];
+      scalar const g_b     = deformation.eigenvectors[b] * Du_C_Nb;
 
-      Du_S += 0.5 * coef_ab * g_b * outer_product_self(deformation.eigenvectors[a]);
+      Du_S += (0.5 * deformation.c1[a][b] * g_b) * outer_product_self(deformation.eigenvectors[a]);
 
       if(a == b)
         continue;
 
-      Number const tolerance = 100.0 * std::numeric_limits<Number>::epsilon();
+      scalar const h_ab = deformation.eigenvectors[a] * Du_C_Nb;
 
-      scalar const regular =
-        (S_iso_a[b] - S_iso_a[a]) / (deformation.lambda_sq[b] - deformation.lambda_sq[a]);
-      scalar const degen = 0.5 * (dS_dlambda_over_lambda[b][b] - dS_dlambda_over_lambda[a][b]);
-
-      scalar const fac = dealii::compare_and_apply_mask<dealii::SIMDComparison::less_than>(
-        std::abs(deformation.lambda_sq[b] - deformation.lambda_sq[a]), tolerance, degen, regular);
-
-      scalar const h_ab = deformation.eigenvectors[a] * Du_C * deformation.eigenvectors[b];
-
-      Du_S += fac * h_ab *
+      Du_S += (deformation.c2[a][b] * h_ab) *
               dealii::symmetrize(
                 dealii::outer_product(deformation.eigenvectors[a], deformation.eigenvectors[b]));
     }
@@ -1011,8 +893,12 @@ OgdenAlveolarTissue<dim, Number, cache_level>::do_set_cell_linearization_data(
     eigendecomposition_coefficients.set_coefficient_cell(
       cell,
       q,
-      ogden_eigendecomposition(
-        C, J, static_cast<Number>(data.alpha1), static_cast<Number>(data.alpha2)));
+      ogden_eigendecomposition(C,
+                               J,
+                               static_cast<Number>(data.mu1),
+                               static_cast<Number>(data.mu2),
+                               static_cast<Number>(data.alpha1),
+                               static_cast<Number>(data.alpha2)));
   }
 
   return;
