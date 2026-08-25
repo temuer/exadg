@@ -129,7 +129,7 @@ private:
     this->param.check_type              = 0;
 
     // PHYSICAL QUANTITIES
-    this->param.density             = 1.0e3;
+    this->param.density             = 1.0e-3; // g / mm^3 (water)
     this->param.weak_damping_active = false;
 
     // TEMPORAL DISCRETIZATION
@@ -201,7 +201,7 @@ private:
       static_cast<void>(periodic_face_pairs);
 
       dealii::Point<dim> const center;
-      dealii::GridGenerator::hyper_shell(tria, center, 500.0, 550.0, 192, false);
+      dealii::GridGenerator::hyper_shell(tria, center, 0.5, 0.55, 192, false);
 
       for(auto const & cell : tria.active_cell_iterators())
       {
@@ -211,20 +211,22 @@ private:
           {
             continue;
           }
-          if(face->center().norm() < 525.0)
+          double const r = face->center().norm();
+          if(r < 0.525)
           {
             face->set_all_boundary_ids(1);
           }
-
-          if(face->center().norm() >= 525.0)
+          else
           {
             face->set_all_boundary_ids(2);
           }
 
-          if(std::abs(face->center()[0] - -7.105427357601002e-15) < 1.0e-2 &&
-             std::abs(face->center()[1] - 532.7608032226563) < 1.0e-2 &&
-             std::abs(face->center()[2] - -96.05324554443359) < 1.0e-2)
-          { // LEFT BOUNDARY
+          // Anchor a cap around the +y pole (Dirichlet/clamped). This
+          // represents the alveolar wall being tethered to surrounding tissue
+          // and robustly removes the rigid-body modes of the closed shell
+          // (a single clamped face is fragile under the surfactant traction).
+          if(face->center()[1] > 0.53)
+          {
             face->set_all_boundary_ids(3);
           }
         }
@@ -261,7 +263,7 @@ private:
 
     // Pressure only from the (1 inside, 2 outside)
     this->boundary_descriptor->neumann_bc.insert(
-      pair(1, std::make_shared<HydrostaticPressureNBC<dim>>(0.0006, true)));
+      pair(1, std::make_shared<HydrostaticPressureNBC<dim>>(600.0, true)));
 
     // Free boundary (1 inside, 2 outside)
     this->boundary_descriptor->neumann_bc.insert(
@@ -294,35 +296,42 @@ private:
     // }
 
     auto material =
-      std::make_shared<FibrousAlveolarTissueData<dim>>(MaterialType::FibrousAlveolarTissue);
-    // Ground substance
-    material->shear_modulus = 2.0e-3; // kg / s2 / microm = 2 kPa (Wiechert)
-    // Fiber
-    material->fiber_k_1 = 0.0; // 13.5e-3; // kg / s2 / microm = 13.5 kPa (Wiechert)
-    material->fiber_k_2 = 0.0; // 76.5;    // 76.5 (Wiechert)
-    // Incompressibility
-    material->incompressibility_penalty  = 10.0e-3; // kg / s2 / microm != 10 kPa (Wiechert)
-    material->incompressibility_exponent = 1.0;     // 1.0;     // 1 (Wiechert)
+      std::make_shared<OgdenAlveolarTissueData<dim>>(MaterialType::OgdenAlveolarTissue);
 
-    // Surfactant
+    // Singh et al. (2024), alveolar wall, Ogden N = 2, optimized for 30% TLC (Table 2).
+    // Unit system: grams, seconds, millimeters (force = g*mm/s^2).
+    // Stress unit is g/(mm*s^2) = 1 Pa, so 1 kPa = 1000 g/(mm*s^2):
+    // multiply the paper's kPa values by 1000.
+    material->mu1    = 6.24;   // 0.00624 kPa
+    material->mu2    = 935.0;  // 0.935   kPa
+    material->alpha1 = 16.714;
+    material->alpha2 = 4.456;
+    material->kappa  = 2.1e4; // moderate near-incompressibility (~10x shear modulus, nu ~ 0.45)
+    material->type_two_dim = Type2D::Undefined;
+
+    // Surfactant (Otis 1994 / Denny & Schroter 2000 isotherm, Wiechert et al. 2009)
+    // Unit system: grams, seconds, millimeters (force = g*mm/s^2).
+    // Surface tension gamma is a force/length quantity in g/s^2, and
+    // 1 dyn/cm = 1 g/s^2, so the literature dyn/cm numbers are used as-is.
+    double const dyn_per_cm_to_app = 1.0;
     material->surfactant_data.boundary_ids     = std::unordered_set<dealii::types::boundary_id>{1};
     material->surfactant_data.equilibrium_time = 1.0;
-    material->surfactant_data.gamma_ref        = 0.0; // 70 dyn / cm (water)
-    material->surfactant_data.gamma_eq  = 0.022; // 22.2 dyn / cm = 22 g / s (Denny and Schroter)
-    material->surfactant_data.gamma_min = 0.0;   // 2.0 dyn / cm (Denny and Schroter)
+    material->surfactant_data.gamma_ref        = 70.0 * dyn_per_cm_to_app;  // dyn/cm (water)
+    material->surfactant_data.gamma_eq         = 22.0 * dyn_per_cm_to_app;  // dyn/cm (Denny & Schroter)
+    material->surfactant_data.gamma_min        = 2.0 * dyn_per_cm_to_app;   // dyn/cm (Denny & Schroter)
 
     material->surfactant_data.m_1 =
-      material->surfactant_data.gamma_ref - material->surfactant_data.gamma_eq;
+      material->surfactant_data.gamma_ref - material->surfactant_data.gamma_eq; // 48 dyn/cm
 
-    material->surfactant_data.m_2 = 0.0; // 81.3... dyn / cm (Otis, graphically)
+    material->surfactant_data.m_2 = 81.3 * dyn_per_cm_to_app; // dyn/cm (Otis 1994, graphically)
 
     material->surfactant_data.relative_concentration_max =
       1.0 + (material->surfactant_data.gamma_eq - material->surfactant_data.gamma_min) /
-              material->surfactant_data.m_2; // (second isotherm)
+              material->surfactant_data.m_2; // ~1.246 (second isotherm)
 
-    material->surfactant_data.k_1 = 0.0; // 160 cm3 / mg / s (Denny and Schroter)
-    material->surfactant_data.k_2 = 0.0; // 0.015 1 / s (Denny and Schroter)
-    material->surfactant_data.c   = 0.0; // 0.0073 mg / ml (Denny and Schroter)
+    material->surfactant_data.k_1 = 1.6e5;  // mm^3 / mg / s (Denny and Schroter)
+    material->surfactant_data.k_2 = 0.016;  // 1 / s         (Denny and Schroter)
+    material->surfactant_data.c   = 7.3e-6; // mg / mm^3     (Denny and Schroter)
 
     using Pair = std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>>;
     this->material_descriptor->insert(Pair(0, material));
