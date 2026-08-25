@@ -225,9 +225,6 @@ WiechertSurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivativ
                                                                     time_step_size,
                                                                     face);
 
-  // TODO! Clear what this is
-  (void)Du_gamma;
-
   tensor const F = dealii::Physics::Elasticity::Kinematics::F(displacement_gradient);
   scalar const J = dealii::determinant(F);
   assert_finite_positive(J, "surfactant deformation determinant must be finite and positive");
