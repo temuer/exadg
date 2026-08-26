@@ -155,27 +155,29 @@ private:
     this->param.update_preconditioner_every_time_steps        = 1;
     this->param.update_preconditioner_every_newton_iterations = 1;
 
-    this->param.preconditioner = Preconditioner::AMG;
-    // this->param.multigrid_data.type                         = MultigridType::pMG;
-    // this->param.multigrid_data.p_sequence                   = PSequenceType::DecreaseByOne;
-    // this->param.multigrid_data.smoother_data.smoother       = MultigridSmoother::Chebyshev;
-    // this->param.multigrid_data.smoother_data.preconditioner =
-    // PreconditionerSmoother::PointJacobi; this->param.multigrid_data.smoother_data.iterations =
-    // 12; this->param.multigrid_data.smoother_data.relaxation_factor = 0.8; // Jacobi, default: 0.8
-    // this->param.multigrid_data.smoother_data.smoothing_range   = 20;  // Chebyshev, default: 20
-    // this->param.multigrid_data.smoother_data.iterations_eigenvalue_estimation =
-    //   20; // Chebyshev, default: 20
-    // this->param.multigrid_data.coarse_problem.solver      = MultigridCoarseGridSolver::Chebyshev;
-    // this->param.multigrid_data.coarse_problem.solver_data = SolverData(1e3, 1.e-6, 1.e-6, 30);
-    // this->param.multigrid_data.coarse_problem.preconditioner =
-    //   MultigridCoarseGridPreconditioner::PointJacobi;
+    // this->param.preconditioner = Preconditioner::AMG;
+    this->param.preconditioner = Preconditioner::Multigrid;
+
+    this->param.multigrid_data.type                         = MultigridType::pMG;
+    this->param.multigrid_data.p_sequence                   = PSequenceType::DecreaseByOne;
+    this->param.multigrid_data.smoother_data.smoother       = MultigridSmoother::Chebyshev;
+    this->param.multigrid_data.smoother_data.preconditioner = PreconditionerSmoother::PointJacobi;
+    this->param.multigrid_data.smoother_data.iterations     = 12;
+    this->param.multigrid_data.smoother_data.relaxation_factor = 0.8; // Jacobi, default: 0.8
+    this->param.multigrid_data.smoother_data.smoothing_range   = 20;  // Chebyshev, default: 20
+    this->param.multigrid_data.smoother_data.iterations_eigenvalue_estimation =
+      20; // Chebyshev, default: 20
+    this->param.multigrid_data.coarse_problem.solver      = MultigridCoarseGridSolver::AMG;
+    this->param.multigrid_data.coarse_problem.solver_data = SolverData(1e3, 1.e-6, 1.e-6, 30);
+    this->param.multigrid_data.coarse_problem.preconditioner =
+      MultigridCoarseGridPreconditioner::None;
+
 #ifdef DEAL_II_WITH_TRILINOS
     this->param.multigrid_data.coarse_problem.amg_data.amg_operator_type =
       AMGOperatorType::Elasticity;
-
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.elliptic = true;
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.higher_order_elements =
-      this->param.degree > 1;
+      false; // this->param.degree > 1;
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.n_cycles              = 2;
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.w_cycle               = false;
     this->param.multigrid_data.coarse_problem.amg_data.ml_data.aggregation_threshold = 1e-4;
@@ -302,8 +304,8 @@ private:
     // Unit system: grams, seconds, millimeters (force = g*mm/s^2).
     // Stress unit is g/(mm*s^2) = 1 Pa, so 1 kPa = 1000 g/(mm*s^2):
     // multiply the paper's kPa values by 1000.
-    material->mu1    = 6.24;   // 0.00624 kPa
-    material->mu2    = 935.0;  // 0.935   kPa
+    material->mu1    = 6.24;  // 0.00624 kPa
+    material->mu2    = 935.0; // 0.935   kPa
     material->alpha1 = 16.714;
     material->alpha2 = 4.456;
     material->kappa  = 2.1e4; // moderate near-incompressibility (~10x shear modulus, nu ~ 0.45)
@@ -313,12 +315,12 @@ private:
     // Unit system: grams, seconds, millimeters (force = g*mm/s^2).
     // Surface tension gamma is a force/length quantity in g/s^2, and
     // 1 dyn/cm = 1 g/s^2, so the literature dyn/cm numbers are used as-is.
-    double const dyn_per_cm_to_app = 1.0;
+    double const dyn_per_cm_to_app             = 1.0;
     material->surfactant_data.boundary_ids     = std::unordered_set<dealii::types::boundary_id>{1};
     material->surfactant_data.equilibrium_time = 1.0;
-    material->surfactant_data.gamma_ref        = 70.0 * dyn_per_cm_to_app;  // dyn/cm (water)
-    material->surfactant_data.gamma_eq         = 22.0 * dyn_per_cm_to_app;  // dyn/cm (Denny & Schroter)
-    material->surfactant_data.gamma_min        = 2.0 * dyn_per_cm_to_app;   // dyn/cm (Denny & Schroter)
+    material->surfactant_data.gamma_ref        = 70.0 * dyn_per_cm_to_app; // dyn/cm (water)
+    material->surfactant_data.gamma_eq  = 22.0 * dyn_per_cm_to_app; // dyn/cm (Denny & Schroter)
+    material->surfactant_data.gamma_min = 2.0 * dyn_per_cm_to_app;  // dyn/cm (Denny & Schroter)
 
     material->surfactant_data.m_1 =
       material->surfactant_data.gamma_ref - material->surfactant_data.gamma_eq; // 48 dyn/cm
