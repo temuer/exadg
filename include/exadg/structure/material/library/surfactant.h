@@ -90,6 +90,14 @@ struct WiechertSurfactantData
   double gamma_ref{std::numeric_limits<double>::quiet_NaN()};
   double gamma_eq{std::numeric_limits<double>::quiet_NaN()};
   double gamma_min{std::numeric_limits<double>::quiet_NaN()};
+
+  // If true (default), the consistent follower-load tangent of the surfactant
+  // surface tension (dP_surf/d(displacement)) is assembled. If false, this tangent
+  // is omitted and the surfactant is treated as a dead load in the Jacobian; the
+  // surface tension is still applied through the residual, but the global tangent
+  // stays symmetric positive definite (useful when the multigrid smoother cannot
+  // handle the indefinite geometric-stiffness contribution).
+  bool consistent_tangent{true};
 };
 
 template<int dim, typename Number>

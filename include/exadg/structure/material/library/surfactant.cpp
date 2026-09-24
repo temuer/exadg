@@ -210,6 +210,19 @@ WiechertSurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivativ
   assert_finite_positive(surface_area_new, "surface area must be finite and positive");
   assert_finite(surface_area_new_increment);
 
+  // OMIT THE CONSISTENT (FOLLOWER-LOAD) TANGENT OF THE SURFACTANT SURFACE TENSION.
+  // The derivative dP_surf/d(displacement) is a geometric stiffness that introduces
+  // negative eigenvalues into the global tangent (it is indefinite on multigrid
+  // levels), which the SPD Chebyshev/GMRES multigrid smoothers cannot handle. When
+  // this flag is false we deliberately return a zero linearization: the surfactant
+  // surface tension is then treated as a *dead load* in the Jacobian (its value is
+  // still applied through the residual via surface_tension_1PK), so the global
+  // tangent stays symmetric positive definite and the nonlinear solve remains
+  // robust. The surface-tension dynamics (gamma responding to area changes) are
+  // unaffected because they live in the residual, not in this derivative.
+  if(!data.consistent_tangent)
+    return tensor{};
+
   //! UNTIL EQUIILIBRIUM TIME IS ACHIEVED, GRADUALLY APPLY EQUILIBRIUM SURFACE TENSION
   auto const [gamma, regime] =
     time < data.equilibrium_time ?
