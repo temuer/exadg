@@ -1,0 +1,30 @@
+{
+  "General": {
+    "Precision": "double",
+    "Dim": "3",
+    "IsTest": "false"
+  },
+  "SpatialResolution": {
+    "DegreeMin": "2",
+    "DegreeMax": "2",
+    "RefineSpaceMin": "0",
+    "RefineSpaceMax": "0"
+  },
+  "TemporalResolution": {
+    "RefineTimeMin": "0",
+    "RefineTimeMax": "0"
+  },
+  "Application": {
+    "CyclicPeriod": "8",
+    "CyclicBaseline": "300.0",
+    "CyclicAmplitude": "300.0",
+    "NCycles": "3",
+    "EquilibriumTime": "1.0",
+    "StepsPerCycle": "800"
+  },
+  "Output": {
+    "OutputDirectory": "/home/temuer/Desktop/workspace/exadg/applications/structure/alveolus_shell/output/alveolus_shell_freq/8/",
+    "OutputName": "alveolus_shell_f8",
+    "WriteOutput": "true"
+  }
+}

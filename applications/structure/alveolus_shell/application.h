@@ -44,12 +44,31 @@ namespace ExaDG
 {
 namespace Structure
 {
+// If true, remove structural inertia (pseudo-static stepping) while keeping the
+// surfactant kinetics and the cyclic pressure in real time. This is done with the
+// unsteady (implicit Euler) driver and a negligible density, NOT with
+// ProblemType::QuasiStatic: the built-in quasi-static driver ramps the load only
+// 0 -> 1 and passes time_step_size = 0, which the surfactant kinetic model
+// requires to be positive (it divides by it), so the surfactant cannot evolve
+// quasi-statically.
+namespace
+{
+constexpr bool QUASI_STATIC = false;
+} // namespace
+
 template<int dim>
-class HydrostaticPressureNBC : public FunctionWithNormal<dim>
+class CyclicHydrostaticPressureNBC : public FunctionWithNormal<dim>
 {
 public:
-  HydrostaticPressureNBC(double const pressure, bool const is_quasistatic)
-    : FunctionWithNormal<dim>(dim, 0.0), pressure(pressure), is_quasistatic(is_quasistatic)
+  CyclicHydrostaticPressureNBC(double const equilibrium_time,
+                               double const baseline,
+                               double const amplitude,
+                               double const period)
+    : FunctionWithNormal<dim>(dim, 0.0),
+      equilibrium_time(equilibrium_time),
+      baseline(baseline),
+      amplitude(amplitude),
+      period(period)
   {
   }
 
@@ -58,16 +77,33 @@ public:
   {
     (void)p;
 
-    double factor = is_quasistatic ? this->get_time() : 1.0;
+    double const t = this->get_time();
+
+    double pressure = 0.0;
+
+    if(t < equilibrium_time)
+    {
+      // Phase 1: ramp pressure linearly from 0 to the baseline while the
+      // surfactant relaxes to its equilibrium surface tension.
+      pressure = baseline * (t / equilibrium_time);
+    }
+    else
+    {
+      // Phase 2: cyclic (breathing) pressure load about the baseline.
+      pressure = baseline + amplitude * std::sin(2.0 * dealii::numbers::PI *
+                                                 (t - equilibrium_time) / period);
+    }
 
     dealii::Tensor<1, dim> const n = this->get_normal_vector();
 
-    return -n[c] * factor * pressure;
+    return -n[c] * pressure;
   }
 
 private:
-  double pressure{0.0};
-  bool   is_quasistatic{false};
+  double equilibrium_time;
+  double baseline;
+  double amplitude;
+  double period;
 };
 
 template<int dim>
@@ -110,14 +146,33 @@ public:
   add_parameters(dealii::ParameterHandler & prm) final
   {
     ApplicationBase<dim, Number>::add_parameters(prm);
+
+    prm.enter_subsection("Application");
+    {
+      prm.add_parameter("CyclicPeriod",    cyclic_period,    "Cyclic breathing period (s).");
+      prm.add_parameter("CyclicBaseline",  cyclic_baseline,  "Mean cyclic pressure (ramp target).");
+      prm.add_parameter("CyclicAmplitude", cyclic_amplitude, "Cyclic pressure amplitude.");
+      prm.add_parameter("NCycles",         n_cycles,         "Number of breathing cycles.");
+      prm.add_parameter("EquilibriumTime", equilibrium_time,  "Surfactant ramp duration (s).");
+      prm.add_parameter("StepsPerCycle",   steps_per_cycle,  "Time steps per cycle (sets dt).");
+    }
+    prm.leave_subsection();
   }
+
+private:
+  double       cyclic_period    = 4.0;   // cyclic breathing period (s)
+  double       cyclic_baseline  = 300.0; // ramp target and cyclic mean pressure
+  double       cyclic_amplitude = 300.0; // cyclic pressure amplitude
+  unsigned int n_cycles         = 3;     // number of breathing cycles
+  double       equilibrium_time = 1.0;   // surfactant ramp duration (matches surfactant_data)
+  unsigned int steps_per_cycle  = 400;   // time steps per breathing cycle (dt = period/steps)
 
 private:
   void
   set_parameters() final
   {
     // MATHEMATICAL MODEL
-    this->param.problem_type            = ProblemType::QuasiStatic;
+    this->param.problem_type            = ProblemType::Unsteady;
     this->param.body_force              = false;
     this->param.large_deformation       = true;
     this->param.pull_back_body_force    = false;
@@ -125,30 +180,40 @@ private:
     this->param.spatial_integration     = false;
     this->param.force_material_residual = false;
     this->param.stable_formulation      = false;
-    this->param.cache_level             = 0;
+    this->param.cache_level             = 1;
     this->param.check_type              = 0;
 
     // PHYSICAL QUANTITIES
-    this->param.density             = 1.0e-3; // g / mm^3 (water)
-    this->param.weak_damping_active = false;
+    // QUASI_STATIC = true removes structural inertia (pseudo-static stepping) by using a
+    // negligible density; the unsteady implicit-Euler driver still advances real time so the
+    // surfactant kinetics and cyclic pressure continue to evolve.
+    this->param.density                  = QUASI_STATIC ? 1.0e-6 : 1.0e-3; // g / mm^3 (water)
+    this->param.weak_damping_active      = !QUASI_STATIC;
+    this->param.weak_damping_coefficient = QUASI_STATIC ? 0.0 : 1.0;
 
-    // TEMPORAL DISCRETIZATION
-    this->param.load_increment = 0.0125;
+    // TEMPORAL DISCRETIZATION (implicit Euler = generalized-alpha with rho = 0)
+    this->param.start_time     = 0.0;
+    this->param.end_time       = equilibrium_time + n_cycles * cyclic_period;
+    this->param.time_step_size = cyclic_period / steps_per_cycle;
+    this->param.gen_alpha_type  = GenAlphaType::GenAlpha;
+    this->param.spectral_radius = 0.0; // = implicit Euler (generalized-alpha with rho = 0)
 
     // SPATIAL DISCRETIZATION
-    this->param.grid.file_name = this->grid_parameters.file_name;
-    // this->param.grid.element_type                 = ElementType::Simplex;
-    // this->param.grid.triangulation_type           = TriangulationType::FullyDistributed;
+    this->param.grid.file_name                    = this->grid_parameters.file_name;
     this->param.grid.element_type                 = ElementType::Hypercube;
-    this->param.grid.triangulation_type           = TriangulationType::Serial;
+    this->param.grid.triangulation_type           = TriangulationType::Distributed;
     this->param.grid.create_coarse_triangulations = false;
     this->param.mapping_degree                    = 2;
     this->param.use_matrix_based_implementation   = false;
 
     // SOLVER
-    this->param.newton_solver_data = Newton::SolverData(100, 1.e-4, 1.e-6);
-    this->param.solver             = Solver::CG;
-    this->param.solver_data        = SolverData(250, 1.e-4, 1.e-6, 30);
+    // With the surfactant treated as a dead load (consistent_tangent = false) the
+    // global tangent is symmetric positive definite, so the standard CG solver with
+    // a Chebyshev multigrid smoother is appropriate and efficient.
+    this->param.newton_solver_data             = Newton::SolverData(100, 1.e-4, 1.e-6);
+    this->param.solver                         = Solver::CG;
+    this->param.solver_data                    = SolverData(250, 1.e-4, 1.e-6, 30);
+    this->param.solver_info_data.interval_time = 0.1;
 
     // PERCONDITIONER
     this->param.update_preconditioner                         = true;
@@ -264,8 +329,9 @@ private:
     using pair_mask = std::pair<dealii::types::boundary_id, dealii::ComponentMask>;
 
     // Pressure only from the (1 inside, 2 outside)
-    this->boundary_descriptor->neumann_bc.insert(
-      pair(1, std::make_shared<HydrostaticPressureNBC<dim>>(600.0, true)));
+    this->boundary_descriptor->neumann_bc.insert(pair(
+      1, std::make_shared<CyclicHydrostaticPressureNBC<dim>>(
+           equilibrium_time, cyclic_baseline, cyclic_amplitude, cyclic_period)));
 
     // Free boundary (1 inside, 2 outside)
     this->boundary_descriptor->neumann_bc.insert(
@@ -283,20 +349,6 @@ private:
   void
   set_material_descriptor() final
   {
-    // {
-    //   typedef std::pair<dealii::types::material_id, std::shared_ptr<MaterialData>> Pair;
-
-    //   MaterialType const type = MaterialType::StVenantKirchhoff;
-    //   // E-Modulus of Steel in unit = [N/microm^2]
-    //   double const E = 2.0 * (3.0e-3) * (1.0 + 0.3), nu = 0.3;
-    //   Type2D const two_dim_type = Type2D::PlaneStress;
-
-    //   this->material_descriptor->insert(
-    //     Pair(0, new StVenantKirchhoffData<dim>(type, E, nu, two_dim_type)));
-
-    //   return;
-    // }
-
     auto material =
       std::make_shared<OgdenAlveolarTissueData<dim>>(MaterialType::OgdenAlveolarTissue);
 
@@ -317,10 +369,16 @@ private:
     // 1 dyn/cm = 1 g/s^2, so the literature dyn/cm numbers are used as-is.
     double const dyn_per_cm_to_app             = 1.0;
     material->surfactant_data.boundary_ids     = std::unordered_set<dealii::types::boundary_id>{1};
-    material->surfactant_data.equilibrium_time = 1.0;
+    material->surfactant_data.equilibrium_time = equilibrium_time;
     material->surfactant_data.gamma_ref        = 70.0 * dyn_per_cm_to_app; // dyn/cm (water)
     material->surfactant_data.gamma_eq  = 22.0 * dyn_per_cm_to_app; // dyn/cm (Denny & Schroter)
     material->surfactant_data.gamma_min = 2.0 * dyn_per_cm_to_app;  // dyn/cm (Denny & Schroter)
+
+    // Treat the surfactant as a dead load in the Jacobian (omit its consistent
+    // follower-load tangent) so the global tangent stays SPD and the multigrid
+    // preconditioner remains robust. The surface tension still evolves in the
+    // residual, i.e., the surfactant kinetic model keeps responding to area changes.
+    material->surfactant_data.consistent_tangent = false;
 
     material->surfactant_data.m_1 =
       material->surfactant_data.gamma_ref - material->surfactant_data.gamma_eq; // 48 dyn/cm

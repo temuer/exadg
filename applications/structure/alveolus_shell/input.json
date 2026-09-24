@@ -17,7 +17,7 @@
   "Application": {},
   "Output": {
     "OutputDirectory": "output/alveolus_shell/",
-    "OutputName": "alveolus_shell_surfactant",
+    "OutputName": "alveolus_shell_dynamic",
     "WriteOutput": "true"
   }
 }
