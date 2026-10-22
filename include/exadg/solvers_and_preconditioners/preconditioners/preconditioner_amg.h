@@ -382,8 +382,7 @@ private:
 
     for(unsigned int i = 0; i < n_constant_modes; ++i)
     {
-      constant_modes[i].reinit(pde_operator.get_matrix_free().get_vector_partitioner(),
-                               system_matrix.get_mpi_communicator());
+      constant_modes[i].reinit(pde_operator.get_matrix_free().get_vector_partitioner());
 
       // Fill vector with rigid body modes.
       unsigned int const dof_index = pde_operator.get_dof_index();
