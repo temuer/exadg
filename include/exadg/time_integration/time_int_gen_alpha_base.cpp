@@ -202,6 +202,8 @@ TimeIntGenAlphaBase<Number>::do_timestep_post_solve()
   this->time += time_step;
   ++this->time_step_number;
 
+  update_time_step_size();
+
   // restart
   if(this->restart_data.write_restart == true)
   {

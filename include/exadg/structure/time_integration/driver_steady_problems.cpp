@@ -113,7 +113,8 @@ DriverSteady<dim, Number>::do_solve()
                                                     0.0 /* no damping term */,
                                                     0.0 /* time */,
                                                     0.0 /* time step size */,
-                                                    param.update_preconditioner);
+                                                    param.update_preconditioner,
+                                                    true /* update_materials */);
 
     unsigned int const N_iter_nonlinear = std::get<0>(iter);
     unsigned int const N_iter_linear    = std::get<1>(iter);

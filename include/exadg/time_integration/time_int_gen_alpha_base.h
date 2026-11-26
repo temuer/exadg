@@ -114,6 +114,15 @@ private:
   prepare_vectors_for_next_timestep() = 0;
 
   /*
+   * Called after the time has been incremented. Derived classes may override this function to set
+   * the time step size for the next time step. By default, the time step size remains unchanged.
+   */
+  virtual void
+  update_time_step_size()
+  {
+  }
+
+  /*
    * returns whether solver info has to be written in the current time step.
    */
   virtual bool

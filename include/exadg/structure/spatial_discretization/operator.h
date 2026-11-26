@@ -279,6 +279,10 @@ public:
    * This function solves the system of equations for nonlinear problems. This function needs to
    * make sure that Dirichlet degrees of freedom are filled correctly with their inhomogeneous
    * boundary data before calling the nonlinear solver.
+   *
+   * If update_materials is true, the history variables of the materials are updated using sol,
+   * which has to be the last converged solution in this case. Set update_materials to false when
+   * repeating a time step, for which the history variables have already been updated.
    */
   std::tuple<unsigned int, unsigned int>
   solve_nonlinear(VectorType &       sol,
@@ -287,7 +291,8 @@ public:
                   double const       scaling_factor_velocity,
                   double const       time,
                   double const       time_step_size,
-                  bool const         update_preconditioner) const final;
+                  bool const         update_preconditioner,
+                  bool const         update_materials) const final;
 
   /*
    * This function calculates the right-hand side of the linear system of equations for linear

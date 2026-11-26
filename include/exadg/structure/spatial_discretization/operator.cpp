@@ -947,7 +947,8 @@ Operator<dim, Number>::solve_nonlinear(VectorType &       sol,
                                        double const       scaling_factor_velocity,
                                        double const       time,
                                        double const       time_step_size,
-                                       bool const         update_preconditioner) const
+                                       bool const         update_preconditioner,
+                                       bool const         update_materials) const
 {
   // update operators
   double const scaling_factor_mass =
@@ -957,7 +958,8 @@ Operator<dim, Number>::solve_nonlinear(VectorType &       sol,
   linearized_operator.update(scaling_factor_mass, time, time_step_size);
 
   // Utilize last converged solution to update temporal variables in materials
-  elasticity_operator_nonlinear.update_materials(sol);
+  if(update_materials)
+    elasticity_operator_nonlinear.update_materials(sol);
 
   // set inhomogeneous Dirichlet values in order to evaluate the nonlinear residual correctly
   elasticity_operator_nonlinear.set_time(time);

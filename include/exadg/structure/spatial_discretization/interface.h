@@ -72,7 +72,8 @@ public:
                   double const       scaling_factor_velocity,
                   double const       time,
                   double const       time_step_size,
-                  bool const         update_preconditioner) const = 0;
+                  bool const         update_preconditioner,
+                  bool const         update_materials) const = 0;
 
   virtual void
   rhs(VectorType & dst, double const time) const = 0;

@@ -119,7 +119,8 @@ public:
                                       0.0 /* no damping term */,
                                       time,
                                       0.0 /* time step size is irrelevant for this problem */,
-                                      update_preconditioner);
+                                      update_preconditioner,
+                                      true /* update_materials */);
 
       iterations.first += 1;
       std::get<0>(iterations.second) += std::get<0>(iter);

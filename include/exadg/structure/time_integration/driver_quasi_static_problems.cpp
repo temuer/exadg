@@ -20,6 +20,7 @@
  */
 
 #include <deal.II/lac/solver_control.h>
+#include <exadg/solvers_and_preconditioners/newton/newton_solver.h>
 #include <exadg/structure/postprocessor/postprocessor_base.h>
 #include <exadg/structure/spatial_discretization/interface.h>
 #include <exadg/structure/time_integration/driver_quasi_static_problems.h>
@@ -159,6 +160,27 @@ DriverQuasiStatic<dim, Number>::do_solve()
     // step can be solved successfully
     bool         success        = false;
     unsigned int re_try_counter = 0;
+
+    // undo the failed attempt and retry with half the load increment
+    auto const reduce_load_increment = [&](char const * message)
+    {
+      pcout << "  Exception thrown when solving the current load step:" << std::endl
+            << std::endl
+            << "  " << message << std::endl
+            << std::flush;
+
+      // undo changes in solution vector
+      solution = old_solution;
+      ++re_try_counter;
+
+      // reduce load increment by factor of 2
+      load_increment *= 0.5;
+      pcout << std::endl
+            << "  Could not solve non-linear problem. Reduce load increment to " << load_increment
+            << "." << std::endl
+            << std::flush;
+    };
+
     while(not(success) and re_try_counter < 10)
     {
       try
@@ -169,23 +191,21 @@ DriverQuasiStatic<dim, Number>::do_solve()
         iter    = solve_step(load_factor + load_increment, update_preconditioner);
         success = true;
       }
+      // linear solver failure
       catch(dealii::SolverControl::NoConvergence & exc)
       {
-        pcout << "  Exception thrown when solving the current load step:" << std::endl
-              << std::endl
-              << "  " << exc.what() << std::endl
-              << std::flush;
-
-        // undo changes in solution vector
-        solution = old_solution;
-        ++re_try_counter;
-
-        // reduce load increment by factor of 2
-        load_increment *= 0.5;
-        pcout << std::endl
-              << "  Could not solve non-linear problem. Reduce load increment to " << load_increment
-              << "." << std::endl
-              << std::flush;
+        reduce_load_increment(exc.what());
+      }
+      // Newton failure, e.g., the line search does not find an admissible (invertible)
+      // deformation state. The Newton solver decides based on global norms, so all
+      // processes throw consistently.
+      catch(Newton::NewtonExceptionMaxIterations & exc)
+      {
+        reduce_load_increment(exc.what());
+      }
+      catch(Newton::NewtonExceptionMaxIterationsLinesearch & exc)
+      {
+        reduce_load_increment(exc.what());
       }
     }
 
@@ -272,7 +292,8 @@ DriverQuasiStatic<dim, Number>::solve_step(double const load_factor,
                                                   0.0 /* no damping term */,
                                                   load_factor /* = time */,
                                                   0.0 /* time step size */,
-                                                  update_preconditioner);
+                                                  update_preconditioner,
+                                                  true /* update_materials */);
 
   unsigned int const N_iter_nonlinear = std::get<0>(iter);
   unsigned int const N_iter_linear    = std::get<1>(iter);

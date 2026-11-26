@@ -106,6 +106,17 @@ private:
   void
   do_timestep_solve() final;
 
+  /*
+   * Computes displacement_np for the current time step size. Throws an exception if the linear or
+   * nonlinear solver does not converge. The vectors at time t_n are not modified, so a failed time
+   * step can be repeated with a smaller time step size.
+   */
+  void
+  solve_timestep(bool const update_preconditioner, bool const update_materials);
+
+  void
+  update_time_step_size() final;
+
   void
   prepare_vectors_for_next_timestep() final;
 
@@ -130,6 +141,18 @@ private:
   unsigned int const refine_steps_time;
 
   Parameters const & param;
+
+  // time step size defined by the parameters, i.e., without reductions due to solver failures
+  double const time_step_nominal;
+
+  // number of times the current time step size has been halved compared to time_step_nominal
+  unsigned int n_time_step_reductions;
+
+  // end of the nominal time step currently covered by reduced time steps
+  double time_nominal_step_end;
+
+  // the time step size has changed since the last time step, so the preconditioner is outdated
+  bool time_step_size_changed;
 
   MPI_Comm const mpi_comm;
 

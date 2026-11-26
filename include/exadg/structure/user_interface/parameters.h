@@ -169,6 +169,16 @@ public:
   // spectral radius rho_infty for generalized alpha time integration scheme
   double spectral_radius;
 
+  // If the linear or nonlinear solver fails to converge, repeat the time step with half the time
+  // step size instead of aborting the simulation. This is done at most max_time_step_reductions
+  // times, i.e., the smallest possible time step size is time_step_size /
+  // 2^max_time_step_reductions. The remainder of the original time step is covered with the
+  // reduced time step size, after which time_step_size is used again. Hence, the times t_n stay on
+  // the grid defined by start_time and time_step_size. Not supported for partitioned coupling
+  // (FSI), where the time step size is dictated by the coupled solver.
+  bool         reduce_time_step_on_solver_failure;
+  unsigned int max_time_step_reductions;
+
   // configure printing of solver performance (wall time, number of iterations)
   SolverInfoData solver_info_data;
 

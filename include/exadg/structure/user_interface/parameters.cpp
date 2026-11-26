@@ -59,6 +59,8 @@ Parameters::Parameters()
     n_refine_time(0),
     gen_alpha_type(GenAlphaType::GenAlpha),
     spectral_radius(1.0),
+    reduce_time_step_on_solver_failure(false),
+    max_time_step_reductions(10),
     solver_info_data(SolverInfoData()),
     restarted_simulation(false),
     restart_data(RestartData()),
@@ -224,6 +226,13 @@ Parameters::print_parameters_temporal_discretization(dealii::ConditionalOStream 
     print_parameter(pcout, "Temporal refinements", n_refine_time);
     print_parameter(pcout, "Time integration type", gen_alpha_type);
     print_parameter(pcout, "Spectral radius", spectral_radius);
+    if(reduce_time_step_on_solver_failure)
+    {
+      print_parameter(pcout,
+                      "Reduce time step on solver failure",
+                      reduce_time_step_on_solver_failure);
+      print_parameter(pcout, "Max. number of time step reductions", max_time_step_reductions);
+    }
     solver_info_data.print(pcout);
     if(restarted_simulation)
       restart_data.print(pcout);

@@ -19,6 +19,11 @@
  *  ______________________________________________________________________
  */
 
+// deal.II
+#include <deal.II/lac/solver_control.h>
+
+// ExaDG
+#include <exadg/solvers_and_preconditioners/newton/newton_solver.h>
 #include <exadg/structure/postprocessor/postprocessor_base.h>
 #include <exadg/structure/spatial_discretization/interface.h>
 #include <exadg/structure/time_integration/time_int_gen_alpha.h>
@@ -48,6 +53,10 @@ TimeIntGenAlpha<dim, Number>::TimeIntGenAlpha(
     postprocessor(postprocessor_),
     refine_steps_time(param_.n_refine_time),
     param(param_),
+    time_step_nominal(param_.time_step_size / std::pow(2.0, refine_steps_time)),
+    n_time_step_reductions(0),
+    time_nominal_step_end(0.0),
+    time_step_size_changed(false),
     mpi_comm(mpi_comm_),
     pcout(std::cout, dealii::Utilities::MPI::this_mpi_process(mpi_comm_) == 0),
     use_extrapolation(true),
@@ -81,7 +90,7 @@ TimeIntGenAlpha<dim, Number>::setup(bool const do_restart)
   }
   else
   {
-    this->set_current_time_step_size(param.time_step_size / std::pow(2.0, refine_steps_time));
+    this->set_current_time_step_size(time_step_nominal);
 
     pde_operator->prescribe_initial_displacement(displacement_n, this->get_time());
     pde_operator->prescribe_initial_velocity(velocity_n, this->get_time());
@@ -105,6 +114,11 @@ template<int dim, typename Number>
 void
 TimeIntGenAlpha<dim, Number>::advance_one_timestep_partitioned_solve(bool const use_extrapolation)
 {
+  AssertThrow(not param.reduce_time_step_on_solver_failure,
+              dealii::ExcMessage("reduce_time_step_on_solver_failure is not supported for "
+                                 "partitioned coupling, where the time step size is dictated "
+                                 "by the coupled solver."));
+
   this->use_extrapolation = use_extrapolation;
   this->store_solution    = true;
 
@@ -114,6 +128,92 @@ TimeIntGenAlpha<dim, Number>::advance_one_timestep_partitioned_solve(bool const 
 template<int dim, typename Number>
 void
 TimeIntGenAlpha<dim, Number>::do_timestep_solve()
+{
+  bool const update_preconditioner =
+    this->param.update_preconditioner and
+    ((this->time_step_number - 1) % this->param.update_preconditioner_every_time_steps == 0);
+
+  // Since solve_timestep() does not modify the vectors at time t_n, a time step for which the
+  // solver failed can be repeated with half the time step size.
+  bool update_materials = true;
+  while(true)
+  {
+    std::string error_message;
+    try
+    {
+      solve_timestep(update_preconditioner or time_step_size_changed, update_materials);
+      break;
+    }
+    catch(dealii::SolverControl::NoConvergence const & exc)
+    {
+      if(not param.reduce_time_step_on_solver_failure)
+        throw;
+      std::ostringstream message;
+      message << "Linear solver did not converge within " << exc.last_step
+              << " iterations (last residual = " << std::scientific << std::setprecision(4)
+              << exc.last_residual << ").";
+      error_message = message.str();
+    }
+    catch(Newton::NewtonExceptionMaxIterations const & exc)
+    {
+      if(not param.reduce_time_step_on_solver_failure)
+        throw;
+      error_message = exc.what();
+    }
+    catch(Newton::NewtonExceptionMaxIterationsLinesearch const & exc)
+    {
+      if(not param.reduce_time_step_on_solver_failure)
+        throw;
+      error_message = exc.what();
+    }
+
+    AssertThrow(n_time_step_reductions < param.max_time_step_reductions,
+                dealii::ExcMessage("Could not solve the current time step even after reducing "
+                                   "the time step size " +
+                                   std::to_string(n_time_step_reductions) +
+                                   " times. Last error: " + error_message));
+
+    // remember the end of the original time step, which is subsequently covered by smaller steps
+    if(n_time_step_reductions == 0)
+      time_nominal_step_end = this->get_next_time();
+
+    ++n_time_step_reductions;
+    this->set_current_time_step_size(0.5 * this->get_time_step_size());
+    time_step_size_changed = true;
+
+    // The history variables of the materials have already been updated with the solution at t_n
+    // in the first attempt.
+    update_materials = false;
+
+    pcout << std::scientific << std::setprecision(5) << std::endl
+          << "  Solver failure: " << error_message << std::endl
+          << "  Reduce time step size to " << this->get_time_step_size()
+          << " and repeat time step t = " << this->get_time()
+          << " -> t + dt = " << this->get_next_time() << "." << std::endl
+          << std::flush;
+  }
+
+  time_step_size_changed = false;
+
+  // compute vectors at time t_{n+1}
+  dealii::Timer timer;
+  timer.restart();
+
+  if(this->store_solution)
+    displacement_last_iter = displacement_np;
+
+  this->update_displacement(displacement_np, displacement_n);
+  this->update_velocity(velocity_np, displacement_np, displacement_n, velocity_n, acceleration_n);
+  this->update_acceleration(
+    acceleration_np, displacement_np, displacement_n, velocity_n, acceleration_n);
+
+  this->timer_tree->insert({"Timeloop", "Update vectors"}, timer.wall_time());
+}
+
+template<int dim, typename Number>
+void
+TimeIntGenAlpha<dim, Number>::solve_timestep(bool const update_preconditioner,
+                                             bool const update_materials)
 {
   // compute right-hand side in case of linear problems or "constant vector"
   // in case of nonlinear problems
@@ -153,10 +253,6 @@ TimeIntGenAlpha<dim, Number>::do_timestep_solve()
   else
     displacement_np = displacement_last_iter;
 
-  bool const update_preconditioner =
-    this->param.update_preconditioner &&
-    ((this->time_step_number - 1) % this->param.update_preconditioner_every_time_steps == 0);
-
   if(param.large_deformation) // nonlinear case
   {
     auto const iter = pde_operator->solve_nonlinear(displacement_np,
@@ -165,7 +261,8 @@ TimeIntGenAlpha<dim, Number>::do_timestep_solve()
                                                     this->get_scaling_factor_velocity(),
                                                     this->get_mid_time(),
                                                     this->get_time_step_size(),
-                                                    update_preconditioner);
+                                                    update_preconditioner,
+                                                    update_materials);
 
     iterations.first += 1;
     std::get<0>(iterations.second) += std::get<0>(iter);
@@ -198,19 +295,28 @@ TimeIntGenAlpha<dim, Number>::do_timestep_solve()
   }
 
   this->timer_tree->insert({"Timeloop", "Solve"}, timer.wall_time());
+}
 
-  // compute vectors at time t_{n+1}
-  timer.restart();
+template<int dim, typename Number>
+void
+TimeIntGenAlpha<dim, Number>::update_time_step_size()
+{
+  if(n_time_step_reductions == 0)
+    return;
 
-  if(this->store_solution)
-    displacement_last_iter = displacement_np;
-
-  this->update_displacement(displacement_np, displacement_n);
-  this->update_velocity(velocity_np, displacement_np, displacement_n, velocity_n, acceleration_n);
-  this->update_acceleration(
-    acceleration_np, displacement_np, displacement_n, velocity_n, acceleration_n);
-
-  this->timer_tree->insert({"Timeloop", "Update vectors"}, timer.wall_time());
+  // The remaining time is (up to round-off errors) a multiple of the current time step size.
+  double const remaining_time = time_nominal_step_end - this->get_time();
+  if(remaining_time < 0.5 * this->get_time_step_size())
+  {
+    // the original time step is completed, continue with the nominal time step size
+    n_time_step_reductions = 0;
+    this->set_current_time_step_size(time_step_nominal);
+    time_step_size_changed = true;
+  }
+  else
+  {
+    this->set_current_time_step_size(std::min(this->get_time_step_size(), remaining_time));
+  }
 }
 
 template<int dim, typename Number>
