@@ -611,6 +611,11 @@ public:
       prm.add_parameter("MaxTimeStepReductions",
                         max_time_step_reductions,
                         "Unsteady: maximum number of time step reductions per time step.");
+      prm.add_parameter("LinearSolver",
+                        linear_solver,
+                        "Linear solver of the Newton iterations: CG (symmetric positive definite "
+                        "tangent) or FGMRES (e.g., with the consistent surface tension tangent, "
+                        "which is indefinite).");
       prm.add_parameter("UpdatePreconditionerEveryNewtonIterations",
                         update_preconditioner_every_newton_iterations,
                         "Rebuild the (AMG) preconditioner every this many Newton iterations; large "
@@ -674,6 +679,7 @@ private:
   unsigned int max_time_step_reductions                      = 10;
   double       output_interval                               = 0.1;
   unsigned int update_preconditioner_every_newton_iterations = 1;
+  Solver       linear_solver                                 = Solver::CG;
 
   double       cyclic_period    = 4.0;   // cyclic breathing period (s)
   double       cyclic_baseline  = 300.0; // ramp target and cyclic mean pressure
@@ -779,7 +785,7 @@ private:
     // global tangent is symmetric positive definite, so the standard CG solver with
     // a Chebyshev multigrid smoother is appropriate and efficient.
     this->param.newton_solver_data             = Newton::SolverData(100, 1.e-6, 1.e-6);
-    this->param.solver                         = Solver::CG;
+    this->param.solver                         = linear_solver;
     this->param.solver_data                    = SolverData(250, 1.e-6, 1.e-6, 30);
     this->param.solver_info_data.interval_time = 0.1;
 

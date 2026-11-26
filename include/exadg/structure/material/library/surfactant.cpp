@@ -224,10 +224,12 @@ WiechertSurfactantModel<dim, Number>::surface_tension_1PK_displacement_derivativ
     return tensor{};
 
   //! UNTIL EQUIILIBRIUM TIME IS ACHIEVED, GRADUALLY APPLY EQUILIBRIUM SURFACE TENSION
+  // The surface tension has to be the same as in surface_tension_1PK(). During the ramp, it does
+  // not depend on the surface area, i.e., Du_gamma = 0.
   auto const [gamma, regime] =
     time < data.equilibrium_time ?
       std::pair<scalar, std::array<unsigned int, scalar::size()>>{
-        dealii::make_vectorized_array<Number>(0.0), {}} :
+        dealii::make_vectorized_array<Number>(data.gamma_eq * time / data.equilibrium_time), {}} :
       surface_tension_and_current_regime(surface_area_new, time_step_size, face);
 
   scalar const Du_gamma = time < data.equilibrium_time ?
