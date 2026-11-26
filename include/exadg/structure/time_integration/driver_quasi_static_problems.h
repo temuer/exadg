@@ -87,7 +87,7 @@ private:
   solve_step(double const load_factor, bool const update_preconditioner);
 
   void
-  postprocessing() const;
+  postprocessing(double const load_factor) const;
 
   std::shared_ptr<Interface::Operator<Number>> pde_operator;
 

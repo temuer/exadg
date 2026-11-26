@@ -14,7 +14,14 @@
     "RefineTimeMin": "0",
     "RefineTimeMax": "0"
   },
-  "Application": {},
+  "Application": {
+    "BoundaryConditions": "Periodic",
+    "MacroscopicDeformationGradient": "1.1, 0, 0, 0, 1, 0, 0, 0, 1",
+    "MaterialType": "StVenantKirchhoff",
+    "CyclicBaseline": "0.0",
+    "CyclicAmplitude": "0.0",
+    "LoadIncrement": "0.1"
+  },
   "Grid": {
     "FileName": "./alveolar_hex.msh"
   },

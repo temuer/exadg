@@ -60,6 +60,7 @@ enum class MaterialType
   FibrousAlveolarTissue,
   NeoHookeAlveolarTissue,
   OgdenAlveolarTissue,
+  StVenantKirchhoffAlveolarTissue,
 };
 
 /**************************************************************************************/

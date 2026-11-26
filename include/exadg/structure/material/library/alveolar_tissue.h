@@ -188,7 +188,8 @@ public:
   void
   do_set_cell_linearization_data(
     std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-    unsigned int const                                                         cell) const override;
+    tensor const &     macroscopic_displacement_gradient,
+    unsigned int const cell) const override;
 
   scalar
   one_over_J(unsigned int const cell, unsigned int const q) const override;
@@ -317,7 +318,8 @@ public:
   void
   do_set_cell_linearization_data(
     std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-    unsigned int const                                                         cell) const override;
+    tensor const &     macroscopic_displacement_gradient,
+    unsigned int const cell) const override;
 
   scalar
   one_over_J(unsigned int const cell, unsigned int const q) const override;
@@ -678,7 +680,8 @@ public:
   void
   do_set_cell_linearization_data(
     std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-    unsigned int const                                                         cell) const override;
+    tensor const &     macroscopic_displacement_gradient,
+    unsigned int const cell) const override;
 
   scalar
   one_over_J(unsigned int const cell, unsigned int const q) const override;

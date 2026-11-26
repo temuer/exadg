@@ -91,6 +91,14 @@ MultigridPreconditioner<dim, Number>::update()
 
     VectorType const & vector_linearization = pde_operator_nonlinear->get_solution_linearization();
 
+    // The macroscopic displacement gradient is part of the linearization point on all levels. It
+    // has to be set before the linearization vector, which updates the cached material data.
+    for(unsigned int level = 0; level < this->get_number_of_levels(); ++level)
+    {
+      this->get_operator_nonlinear(level)->set_macroscopic_displacement_gradient(
+        pde_operator_nonlinear->get_macroscopic_displacement_gradient());
+    }
+
     // convert Number --> MultigridNumber, e.g., double --> float, but only if necessary
     VectorTypeMG         vector_multigrid_type_copy;
     VectorTypeMG const * vector_multigrid_type_ptr;

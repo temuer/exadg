@@ -290,9 +290,11 @@ template<int dim, typename Number>
 auto
 FibrousAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
   std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-  unsigned int const                                                         cell) const -> void
+  tensor const &     macroscopic_displacement_gradient,
+  unsigned int const cell) const -> void
 {
   (void)integrator_lin;
+  (void)macroscopic_displacement_gradient;
   (void)cell;
 
   AssertThrow(false, dealii::ExcMessage("This material does not support caching."));
@@ -525,9 +527,11 @@ template<int dim, typename Number>
 auto
 NeoHookeAlveolarTissue<dim, Number>::do_set_cell_linearization_data(
   std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-  unsigned int const                                                         cell) const -> void
+  tensor const &     macroscopic_displacement_gradient,
+  unsigned int const cell) const -> void
 {
   (void)integrator_lin;
+  (void)macroscopic_displacement_gradient;
   (void)cell;
 
   AssertThrow(false, dealii::ExcMessage("This material does not support caching."));
@@ -876,7 +880,8 @@ template<int dim, typename Number, int cache_level>
 auto
 OgdenAlveolarTissue<dim, Number, cache_level>::do_set_cell_linearization_data(
   std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-  unsigned int const                                                         cell) const -> void
+  tensor const &     macroscopic_displacement_gradient,
+  unsigned int const cell) const -> void
 {
   static_assert(cache_level < 2, "Only cache_level 0 and 1 are implemented.");
 
@@ -884,7 +889,7 @@ OgdenAlveolarTissue<dim, Number, cache_level>::do_set_cell_linearization_data(
 
   for(unsigned int q = 0; q < integrator_lin->n_q_points; ++q)
   {
-    tensor const Grad_d_lin = integrator_lin->get_gradient(q);
+    tensor const Grad_d_lin = integrator_lin->get_gradient(q) + macroscopic_displacement_gradient;
 
     tensor const           F = dealii::Physics::Elasticity::Kinematics::F(Grad_d_lin);
     scalar const           J = dealii::determinant(F);

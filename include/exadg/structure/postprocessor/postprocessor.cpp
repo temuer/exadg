@@ -20,6 +20,7 @@
  */
 
 #include <exadg/structure/postprocessor/postprocessor.h>
+#include <exadg/structure/spatial_discretization/operator.h>
 
 namespace ExaDG
 {
@@ -33,6 +34,13 @@ PostProcessor<dim, Number>::PostProcessor(PostProcessorData<dim> const & pp_data
     output_generator(OutputGenerator<dim, Number>(mpi_comm_in)),
     error_calculator(ErrorCalculator<dim, Number>(mpi_comm_in))
 {
+}
+
+template<int dim, typename Number>
+void
+PostProcessor<dim, Number>::setup(Operator<dim, Number> const & pde_operator)
+{
+  setup(pde_operator.get_dof_handler(), pde_operator.get_mapping());
 }
 
 template<int dim, typename Number>

@@ -1,0 +1,35 @@
+{
+  "General": {
+    "Precision": "double",
+    "Dim": "3",
+    "IsTest": "true"
+  },
+  "SpatialResolution": {
+    "DegreeMin": "2",
+    "DegreeMax": "2",
+    "RefineSpaceMin": "0",
+    "RefineSpaceMax": "0"
+  },
+  "TemporalResolution": {
+    "RefineTimeMin": "0",
+    "RefineTimeMax": "0"
+  },
+  "Application": {
+    "BoundaryConditions": "Periodic",
+    "MacroscopicDeformationGradient": "1.1, 0.2, 0.0, 0.05, 0.95, 0.1, 0.0, 0.0, 1.05",
+    "SolidCube": "true",
+    "SolidCubeSubdivisions": "2",
+    "MaterialType": "CompressibleNeoHookean",
+    "CyclicBaseline": "0.0",
+    "CyclicAmplitude": "0.0",
+    "LoadIncrement": "0.5"
+  },
+  "Grid": {
+    "FileName": ""
+  },
+  "Output": {
+    "OutputDirectory": "output/alveolar_hex/",
+    "OutputName": "test",
+    "WriteOutput": "false"
+  }
+}

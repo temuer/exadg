@@ -74,11 +74,13 @@ DriverQuasiStatic<dim, Number>::solve()
   dealii::Timer timer;
   timer.restart();
 
-  postprocessing();
+  // The load factor is passed as time, consistent with the time argument of the boundary
+  // conditions in solve_step().
+  postprocessing(0.0 /* load factor */);
 
   do_solve();
 
-  postprocessing();
+  postprocessing(1.0 /* load factor */);
 
   timer_tree->insert({"DriverQuasiStatic"}, timer.wall_time());
 }
@@ -306,12 +308,12 @@ DriverQuasiStatic<dim, Number>::solve_step(double const load_factor,
 
 template<int dim, typename Number>
 void
-DriverQuasiStatic<dim, Number>::postprocessing() const
+DriverQuasiStatic<dim, Number>::postprocessing(double const load_factor) const
 {
   dealii::Timer timer;
   timer.restart();
 
-  postprocessor->do_postprocessing(solution);
+  postprocessor->do_postprocessing(solution, load_factor);
 
   timer_tree->insert({"DriverQuasiStatic", "Postprocessing"}, timer.wall_time());
 }

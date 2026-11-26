@@ -76,7 +76,7 @@ Driver<dim, Number>::setup()
   {
     // initialize postprocessor
     postprocessor = application->create_postprocessor();
-    postprocessor->setup(pde_operator->get_dof_handler(), pde_operator->get_mapping());
+    postprocessor->setup(*pde_operator);
 
     // initialize time integrator/driver
     if(application->get_parameters().problem_type == ProblemType::Unsteady)

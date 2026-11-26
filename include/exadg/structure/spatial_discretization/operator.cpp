@@ -116,6 +116,11 @@ Operator<dim, Number>::initialize_dof_handler_and_constraints()
   // call deal.II utility function to add Dirichlet constraints
   add_homogeneous_dirichlet_constraints(affine_constraints, dof_handler, map_bid_to_mask);
 
+  // Pinned vertices are homogeneous Dirichlet constraints, i.e., the displacement vector is zero at
+  // these vertices and they are not needed in the constraints for inhomogeneous boundary data.
+  for(auto const & point : boundary_descriptor->pinned_vertices)
+    add_pinned_vertex_constraints(point);
+
   // compress constraints *once after* complete setup, since affine constraints to copy from need to
   // be non-closed to add further constraints
   affine_constraints_periodicity_and_hanging_nodes.close();
@@ -128,6 +133,71 @@ Operator<dim, Number>::initialize_dof_handler_and_constraints()
   print_parameter(pcout, "degree of 1D polynomials", param.degree);
   print_parameter(pcout, "number of dofs per cell", fe->n_dofs_per_cell());
   print_parameter(pcout, "number of dofs (total)", dof_handler.n_dofs());
+}
+
+template<int dim, typename Number>
+void
+Operator<dim, Number>::add_pinned_vertex_constraints(dealii::Point<dim> const & point)
+{
+  // find the mesh vertex closest to the given point among all locally owned cells
+  double             min_distance = std::numeric_limits<double>::max();
+  dealii::Point<dim> vertex;
+  for(auto const & cell : dof_handler.active_cell_iterators())
+  {
+    if(cell->is_locally_owned())
+    {
+      for(unsigned int const v : cell->vertex_indices())
+      {
+        if(cell->vertex(v).distance(point) < min_distance)
+        {
+          min_distance = cell->vertex(v).distance(point);
+          vertex       = cell->vertex(v);
+        }
+      }
+    }
+  }
+
+  // the lowest rank with the globally closest vertex defines the vertex for all ranks
+  double const       global_min_distance = dealii::Utilities::MPI::min(min_distance, mpi_comm);
+  unsigned int const owner =
+    dealii::Utilities::MPI::min(min_distance == global_min_distance ?
+                                  dealii::Utilities::MPI::this_mpi_process(mpi_comm) :
+                                  dealii::numbers::invalid_unsigned_int,
+                                mpi_comm);
+  vertex = dealii::Utilities::MPI::broadcast(mpi_comm, vertex, owner);
+
+  // constrain all vertex degrees of freedom on locally relevant cells
+  std::set<dealii::types::global_dof_index> pinned_dofs;
+  for(auto const & cell : dof_handler.active_cell_iterators())
+  {
+    if(cell->is_artificial())
+      continue;
+
+    for(unsigned int const v : cell->vertex_indices())
+    {
+      if(cell->vertex(v).distance(vertex) > 1.0e-10 * cell->diameter())
+        continue;
+
+      for(unsigned int i = 0; i < fe->n_dofs_per_vertex(); ++i)
+      {
+        dealii::types::global_dof_index const dof = cell->vertex_dof_index(v, i);
+        if(pinned_dofs.count(dof) > 0)
+          continue;
+
+        AssertThrow(not affine_constraints.is_constrained(dof),
+                    dealii::ExcMessage("The pinned vertex closest to the given point is already "
+                                       "constrained, e.g., by periodicity or a Dirichlet boundary "
+                                       "condition. Choose a point away from such boundaries."));
+
+        affine_constraints.constrain_dof_to_zero(dof);
+        pinned_dofs.insert(dof);
+      }
+    }
+  }
+
+  std::ostringstream vertex_string;
+  vertex_string << vertex;
+  print_parameter(pcout, "pinned vertex", vertex_string.str());
 }
 
 template<int dim, typename Number>
@@ -247,6 +317,19 @@ Operator<dim, Number>::setup_operators()
     operator_data.spatial_integration = false;
   }
 
+  if(boundary_descriptor->macroscopic_displacement_gradient)
+  {
+    AssertThrow(param.large_deformation,
+                dealii::ExcMessage("A macroscopic displacement gradient is only implemented for "
+                                   "large_deformation = true."));
+    AssertThrow(not param.spatial_integration,
+                dealii::ExcMessage("A macroscopic displacement gradient is not implemented for "
+                                   "spatial_integration = true."));
+    AssertThrow(not(param.body_force and param.pull_back_body_force),
+                dealii::ExcMessage("A macroscopic displacement gradient is not implemented for "
+                                   "pull_back_body_force = true."));
+  }
+
   if(param.large_deformation)
   {
     elasticity_operator_nonlinear.initialize(*matrix_free, affine_constraints, operator_data);
@@ -256,6 +339,15 @@ Operator<dim, Number>::setup_operators()
     {
       elasticity_operator_nonlinear.set_mapping_undeformed(mapping);
     }
+
+    // The initial displacement corresponds to the macroscopic displacement gradient at the initial
+    // time, where the time is the load factor for quasi-static problems.
+    double const initial_time =
+      (param.problem_type == ProblemType::Unsteady) ? param.start_time : 0.0;
+    macroscopic_displacement_gradient_converged =
+      get_macroscopic_displacement_gradient(initial_time);
+    elasticity_operator_nonlinear.set_macroscopic_displacement_gradient(
+      macroscopic_displacement_gradient_converged);
   }
   else
   {
@@ -376,6 +468,11 @@ Operator<dim, Number>::setup_preconditioner()
   }
   else if(param.preconditioner == Preconditioner::Multigrid)
   {
+    // The multigrid levels set up their own constraints, which do not contain pinned vertices.
+    AssertThrow(boundary_descriptor->pinned_vertices.empty(),
+                dealii::ExcMessage("Pinned vertices are not implemented for multigrid "
+                                   "preconditioners. Use, e.g., the AMG preconditioner."));
+
     if(param.large_deformation)
     {
       typedef MultigridPreconditioner<dim, Number> Multigrid;
@@ -737,6 +834,7 @@ Operator<dim, Number>::compute_initial_acceleration(VectorType &       initial_a
       // be consistent with the Dirichlet boundary data g(t=t0) at initial time, i.e. the vector
       // initial_displacement already contains the correct Dirichlet data.
       elasticity_operator_nonlinear.set_time(time);
+      set_macroscopic_displacement_gradient(time);
       elasticity_operator_nonlinear.evaluate_nonlinear(rhs, initial_displacement);
       // shift to right-hand side
       rhs *= -1.0;
@@ -827,6 +925,7 @@ Operator<dim, Number>::evaluate_nonlinear_residual(VectorType &       dst,
   // elasticity operator: make sure that constrained degrees of freedom have been set correctly
   // before evaluating the elasticity operator.
   update_elasticity_operator(factor, time, time_step_size);
+  set_macroscopic_displacement_gradient(time);
 
   // update linearization vector for interpolation and update mapping
   // if we integrate in the spatial configuration
@@ -890,6 +989,8 @@ Operator<dim, Number>::evaluate_elasticity_operator(VectorType &       dst,
 
   if(param.large_deformation)
   {
+    set_macroscopic_displacement_gradient(time);
+
     // update linearization vector for interpolation and update mapping
     // if we integrate in the spatial configuration
     elasticity_operator_nonlinear.set_solution_linearization(
@@ -957,9 +1058,18 @@ Operator<dim, Number>::solve_nonlinear(VectorType &       sol,
   residual_operator.update(const_vector, scaling_factor_mass, time, time_step_size);
   linearized_operator.update(scaling_factor_mass, time, time_step_size);
 
-  // Utilize last converged solution to update temporal variables in materials
+  // Utilize last converged solution to update temporal variables in materials. Note that the
+  // update_elasticity_operator() call above sets the new time, but not the macroscopic displacement
+  // gradient, which has to correspond to the last converged solution here.
   if(update_materials)
+  {
+    elasticity_operator_nonlinear.set_macroscopic_displacement_gradient(
+      macroscopic_displacement_gradient_converged);
     elasticity_operator_nonlinear.update_materials(sol);
+  }
+
+  // macroscopic displacement gradient of the new time
+  set_macroscopic_displacement_gradient(time);
 
   // set inhomogeneous Dirichlet values in order to evaluate the nonlinear residual correctly
   elasticity_operator_nonlinear.set_time(time);
@@ -975,6 +1085,10 @@ Operator<dim, Number>::solve_nonlinear(VectorType &       sol,
 
   // solve nonlinear problem
   auto const iter = newton_solver->solve(sol, update);
+
+  // The Newton solver throws if it does not converge, so sol is a converged solution here.
+  macroscopic_displacement_gradient_converged =
+    elasticity_operator_nonlinear.get_macroscopic_displacement_gradient();
 
   // TODO
   // This call should not be necessary: The constraints have already been set
@@ -1067,6 +1181,105 @@ dealii::types::global_dof_index
 Operator<dim, Number>::get_number_of_dofs() const
 {
   return dof_handler.n_dofs();
+}
+
+template<int dim, typename Number>
+dealii::Tensor<2, dim>
+Operator<dim, Number>::get_macroscopic_displacement_gradient(double const time) const
+{
+  if(not boundary_descriptor->macroscopic_displacement_gradient)
+    return dealii::Tensor<2, dim>();
+
+  boundary_descriptor->macroscopic_displacement_gradient->set_time(time);
+  return boundary_descriptor->macroscopic_displacement_gradient->value(dealii::Point<dim>());
+}
+
+template<int dim, typename Number>
+void
+Operator<dim, Number>::set_macroscopic_displacement_gradient(double const time) const
+{
+  elasticity_operator_nonlinear.set_macroscopic_displacement_gradient(
+    get_macroscopic_displacement_gradient(time));
+}
+
+namespace
+{
+/*
+ * Macroscopic part H * X of the displacement field.
+ */
+template<int dim, typename Number>
+class MacroscopicDisplacement : public dealii::Function<dim, Number>
+{
+public:
+  MacroscopicDisplacement(dealii::Tensor<2, dim> const & gradient)
+    : dealii::Function<dim, Number>(dim), gradient(gradient)
+  {
+  }
+
+  Number
+  value(dealii::Point<dim> const & X, unsigned int const component) const final
+  {
+    return static_cast<Number>((gradient * X)[component]);
+  }
+
+private:
+  dealii::Tensor<2, dim> const gradient;
+};
+} // namespace
+
+template<int dim, typename Number>
+void
+Operator<dim, Number>::compute_total_displacement(VectorType &       dst,
+                                                  VectorType const & src,
+                                                  double const       time) const
+{
+  initialize_dof_vector(dst);
+  dst.copy_locally_owned_data_from(src);
+
+  // the periodic fluctuation has to be continuous across periodic boundaries
+  affine_constraints_periodicity_and_hanging_nodes.distribute(dst);
+
+  if(boundary_descriptor->macroscopic_displacement_gradient)
+  {
+    // H * X is linear in X and hence represented exactly for FE degree >= mapping degree
+    VectorType macroscopic_displacement;
+    initialize_dof_vector(macroscopic_displacement);
+    dealii::VectorTools::interpolate(*mapping,
+                                     dof_handler,
+                                     MacroscopicDisplacement<dim, Number>(
+                                       get_macroscopic_displacement_gradient(time)),
+                                     macroscopic_displacement);
+
+    dst += macroscopic_displacement;
+  }
+
+  dst.update_ghost_values();
+}
+
+template<int dim, typename Number>
+HomogenizationIntegrals<dim>
+Operator<dim, Number>::compute_homogenization_integrals(
+  VectorType const &                           displacement,
+  double const                                 time,
+  std::set<dealii::types::boundary_id> const & area_boundary_ids) const
+{
+  AssertThrow(param.large_deformation,
+              dealii::ExcMessage("Homogenization integrals are only implemented for "
+                                 "large_deformation = true."));
+
+  // evaluate with H(time) without changing the state of the nonlinear operator
+  dealii::Tensor<2, dim> const gradient_backup =
+    elasticity_operator_nonlinear.get_macroscopic_displacement_gradient();
+
+  elasticity_operator_nonlinear.set_macroscopic_displacement_gradient(
+    get_macroscopic_displacement_gradient(time));
+
+  HomogenizationIntegrals<dim> const integrals =
+    elasticity_operator_nonlinear.compute_homogenization_integrals(displacement, area_boundary_ids);
+
+  elasticity_operator_nonlinear.set_macroscopic_displacement_gradient(gradient_backup);
+
+  return integrals;
 }
 
 template class Operator<2, float>;

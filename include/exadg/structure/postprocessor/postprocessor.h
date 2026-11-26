@@ -35,6 +35,10 @@ namespace ExaDG
 {
 namespace Structure
 {
+// forward declaration
+template<int dim, typename Number>
+class Operator;
+
 template<int dim>
 struct PostProcessorData
 {
@@ -51,7 +55,15 @@ private:
 public:
   PostProcessor(PostProcessorData<dim> const & pp_data, MPI_Comm const & mpi_comm);
 
-  void
+  /*
+   * Setup given the PDE operator. Derived classes may override this function to get access to the
+   * PDE operator, e.g., to evaluate derived quantities. By default, this function calls the setup
+   * function below with the DoFHandler and Mapping of the PDE operator.
+   */
+  virtual void
+  setup(Operator<dim, Number> const & pde_operator);
+
+  virtual void
   setup(dealii::DoFHandler<dim> const & dof_handler, dealii::Mapping<dim> const & mapping);
 
   void

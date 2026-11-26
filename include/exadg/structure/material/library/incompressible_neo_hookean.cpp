@@ -177,7 +177,8 @@ void
 IncompressibleNeoHookean<dim, Number, check_type, stable_formulation, cache_level>::
   do_set_cell_linearization_data(
     std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-    unsigned int const                                                         cell) const
+    tensor const &     macroscopic_displacement_gradient,
+    unsigned int const cell) const
 {
   AssertThrow(cache_level > 0 and cache_level < 3,
               dealii::ExcMessage("0 < cache level < 3 expected."));
@@ -189,7 +190,7 @@ IncompressibleNeoHookean<dim, Number, check_type, stable_formulation, cache_leve
       shear_modulus_stored = shear_modulus_coefficients.get_coefficient_cell(cell, q);
     }
 
-    tensor Grad_d_lin = integrator_lin->get_gradient(q);
+    tensor Grad_d_lin = integrator_lin->get_gradient(q) + macroscopic_displacement_gradient;
     auto [F, Jm1] = compute_modified_F_Jm1<dim, Number, check_type, stable_formulation>(Grad_d_lin);
 
     // Overwrite computed values with admissible stored ones

@@ -226,14 +226,18 @@ public:
 
   /*
    * Update the linearization data stored for in each integration point via VariableCoefficients
-   * given the current linearization vector.
+   * given the current linearization vector. The displacement gradient of the linearization point
+   * is integrator_lin->get_gradient(q) + macroscopic_displacement_gradient, where the latter is the
+   * prescribed macroscopic displacement gradient of periodic problems (and zero otherwise).
    */
   virtual void
   do_set_cell_linearization_data(
     std::shared_ptr<CellIntegrator<dim, dim /* n_components */, Number>> const integrator_lin,
-    unsigned int const                                                         cell) const
+    tensor const &     macroscopic_displacement_gradient,
+    unsigned int const cell) const
   {
     (void)integrator_lin;
+    (void)macroscopic_displacement_gradient;
     (void)cell;
   }
 

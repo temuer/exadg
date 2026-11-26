@@ -45,6 +45,11 @@ NonLinearOperator<dim, Number>::initialize(
 {
   Base::initialize(matrix_free, affine_constraints, data);
 
+  set_macroscopic_displacement_gradient(dealii::Tensor<2, dim>());
+
+  // set by the time integrator before each nonlinear solve
+  time_step_size = 0.0;
+
   // integrator_lin always refers to evaluation in the reference configuration.
   integrator_lin = std::make_shared<IntegratorCell>(*this->matrix_free,
                                                     this->operator_data.dof_index_inhomogeneous,
@@ -203,13 +208,14 @@ NonLinearOperator<dim, Number>::face_loop_update_materials(
 
 template<int dim, typename Number>
 auto
-NonLinearOperator<dim, Number>::calculate_surface_area(IntegratorFace const & integrator) -> scalar
+NonLinearOperator<dim, Number>::calculate_surface_area(IntegratorFace const & integrator) const
+  -> scalar
 {
   scalar surface_area = dealii::make_vectorized_array<Number>(0.0);
 
   for(unsigned int q = 0; q < integrator.n_q_points; ++q)
   {
-    tensor const F = compute_F(integrator.get_gradient(q));
+    tensor const F = compute_F(get_displacement_gradient(integrator, q));
     vector const N = integrator.normal_vector(q);
     // da/dA * n = det F F^{-T} * N := n_star
     // -> da/dA = n_star.norm()
@@ -228,13 +234,13 @@ template<int dim, typename Number>
 auto
 NonLinearOperator<dim, Number>::calculate_surface_area_increment(
   IntegratorFace const & integrator_lin,
-  IntegratorFace const & integrator) -> scalar
+  IntegratorFace const & integrator) const -> scalar
 {
   scalar surface_area_increment = dealii::make_vectorized_array<Number>(0.0);
 
   for(unsigned int q = 0; q < integrator_lin.n_q_points; ++q)
   {
-    tensor const F       = compute_F(integrator_lin.get_gradient(q));
+    tensor const F       = compute_F(get_displacement_gradient(integrator_lin, q));
     vector const N       = integrator_lin.normal_vector(q);
     tensor       F_inv_T = transpose(invert(F));
     // da/dA * n = det F F^{-T} * N := n_star
@@ -290,7 +296,7 @@ NonLinearOperator<dim, Number>::boundary_face_loop_update_materials(
 
     integrator_m_inhom.gather_evaluate(src, dealii::EvaluationFlags::gradients);
 
-    scalar const surface_area = This::calculate_surface_area(integrator_m_inhom);
+    scalar const surface_area = calculate_surface_area(integrator_m_inhom);
 
     alveolar_surfactant->get_surfactant_model().update(surface_area,
                                                        this->time,
@@ -311,6 +317,194 @@ NonLinearOperator<dim, Number>::update_materials(
                           this,
                           dummy,
                           last_displacement_solution);
+}
+
+template<int dim, typename Number>
+void
+NonLinearOperator<dim, Number>::set_macroscopic_displacement_gradient(
+  dealii::Tensor<2, dim> const & gradient) const
+{
+  // The spatial mapping is built from the displacement vector alone, i.e., it would miss H * X.
+  AssertThrow(gradient.norm() == 0.0 or not this->operator_data.spatial_integration,
+              dealii::ExcMessage("A macroscopic displacement gradient is not supported in "
+                                 "combination with spatial_integration."));
+
+  macroscopic_displacement_gradient = gradient;
+
+  for(unsigned int i = 0; i < dim; ++i)
+    for(unsigned int j = 0; j < dim; ++j)
+      macroscopic_displacement_gradient_vectorized[i][j] =
+        dealii::make_vectorized_array<Number>(static_cast<Number>(gradient[i][j]));
+}
+
+template<int dim, typename Number>
+dealii::Tensor<2, dim> const &
+NonLinearOperator<dim, Number>::get_macroscopic_displacement_gradient() const
+{
+  return macroscopic_displacement_gradient;
+}
+
+template<int dim, typename Number>
+HomogenizationIntegrals<dim>
+NonLinearOperator<dim, Number>::compute_homogenization_integrals(
+  VectorType const &                           displacement,
+  std::set<dealii::types::boundary_id> const & area_boundary_ids) const
+{
+  AssertThrow(not this->operator_data.spatial_integration,
+              dealii::ExcMessage("Homogenization integrals are only implemented for integration "
+                                 "in the reference configuration."));
+
+  dealii::MatrixFree<dim, Number> const & matrix_free = *this->matrix_free;
+
+  // ghost values are needed to evaluate locally owned cells
+  VectorType src;
+  matrix_free.initialize_dof_vector(src, this->operator_data.dof_index);
+  src.copy_locally_owned_data_from(displacement);
+  src.update_ghost_values();
+
+  HomogenizationIntegrals<dim> integrals;
+
+  // volume integrals
+  IntegratorCell integrator(matrix_free,
+                            this->operator_data.dof_index_inhomogeneous,
+                            this->operator_data.quad_index);
+
+  for(unsigned int cell = 0; cell < matrix_free.n_cell_batches(); ++cell)
+  {
+    // sets the material of the current cell batch
+    reinit_cell_nonlinear(integrator, cell);
+    std::shared_ptr<Material<dim, Number>> const material = this->material_handler.get_material();
+
+    integrator.gather_evaluate(src, dealii::EvaluationFlags::gradients);
+
+    unsigned int const n_filled_lanes = matrix_free.n_active_entries_per_cell_batch(cell);
+
+    for(unsigned int q = 0; q < integrator.n_q_points; ++q)
+    {
+      tensor const           Grad_d = get_displacement_gradient(integrator, q);
+      tensor const           F      = compute_F(Grad_d);
+      scalar const           J      = determinant(F);
+      symmetric_tensor const S      = material->second_piola_kirchhoff_stress_eval(Grad_d, cell, q);
+      tensor const           P      = F * S;
+      tensor const           cofactor_F = J * transpose(invert(F));
+      scalar const           JxW        = integrator.JxW(q);
+
+      for(unsigned int v = 0; v < n_filled_lanes; ++v)
+      {
+        for(unsigned int i = 0; i < dim; ++i)
+        {
+          for(unsigned int j = 0; j < dim; ++j)
+          {
+            integrals.first_piola_kirchhoff_stress[i][j] += P[i][j][v] * JxW[v];
+            integrals.cofactor_deformation_gradient[i][j] += cofactor_F[i][j][v] * JxW[v];
+          }
+        }
+        integrals.volume_reference += JxW[v];
+        integrals.volume_current += J[v] * JxW[v];
+      }
+    }
+  }
+
+  // Boundary terms: area of the boundaries in area_boundary_ids and, on the surfactant boundaries,
+  // the surface stress of the surface tension. The surfactant model requires the positive time step
+  // size of a nonlinear solve. Before the first solve (e.g., postprocessing of the initial
+  // condition), the surface tension is still ramped from zero and its stress is not evaluated. As
+  // in the boundary face loops of the operator evaluation, the material set by the last cell batch
+  // is used, which assumes a single material for the surfactant.
+  auto alveolar_surfactant = dynamic_cast<AlveolarSurfactantInterface<dim, Number> *>(
+    this->material_handler.get_material().get());
+
+  bool const evaluate_surface_tension = this->time_step_size > 0.0;
+
+  IntegratorFace integrator_face(matrix_free,
+                                 true,
+                                 this->operator_data.dof_index_inhomogeneous,
+                                 this->operator_data.quad_index);
+
+  unsigned int const face_begin = matrix_free.n_inner_face_batches();
+  unsigned int const face_end   = face_begin + matrix_free.n_boundary_face_batches();
+
+  for(unsigned int face = face_begin; face < face_end; ++face)
+  {
+    dealii::types::boundary_id const boundary_id = matrix_free.get_boundary_id(face);
+
+    bool const is_area_boundary = area_boundary_ids.find(boundary_id) != area_boundary_ids.end();
+    bool const is_surfactant_boundary =
+      alveolar_surfactant != nullptr and
+      alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id);
+
+    if(not(is_area_boundary or is_surfactant_boundary))
+      continue;
+
+    this->reinit_boundary_face(integrator_face, face);
+    integrator_face.gather_evaluate(src, dealii::EvaluationFlags::gradients);
+
+    scalar const surface_area = calculate_surface_area(integrator_face);
+
+    unsigned int const n_filled_lanes = matrix_free.n_active_entries_per_face_batch(face);
+
+    for(unsigned int q = 0; q < integrator_face.n_q_points; ++q)
+    {
+      tensor const Grad_d = get_displacement_gradient(integrator_face, q);
+      vector const N      = integrator_face.normal_vector(q);
+
+      tensor const F          = compute_F(Grad_d);
+      scalar const area_ratio = (determinant(F) * transpose(invert(F)) * N).norm();
+      scalar const JxW        = integrator_face.JxW(q);
+
+      // P_gamma = gamma da/dA (I - n x n) F^{-T}, i.e., tr(P_gamma F^T) = (dim - 1) gamma da/dA
+      tensor P_gamma;
+      scalar gamma_area_ratio = dealii::make_vectorized_array<Number>(0.0);
+      if(is_surfactant_boundary and evaluate_surface_tension)
+      {
+        P_gamma = alveolar_surfactant->get_surfactant_model().surface_tension_1PK(
+          Grad_d, N, surface_area, this->time, this->time_step_size, face);
+        gamma_area_ratio = dealii::trace(P_gamma * transpose(F)) / static_cast<Number>(dim - 1);
+      }
+
+      for(unsigned int v = 0; v < n_filled_lanes; ++v)
+      {
+        if(is_area_boundary)
+        {
+          integrals.area_reference += JxW[v];
+          integrals.area_current += area_ratio[v] * JxW[v];
+        }
+
+        if(is_surfactant_boundary)
+        {
+          for(unsigned int i = 0; i < dim; ++i)
+            for(unsigned int j = 0; j < dim; ++j)
+              integrals.surface_tension_stress[i][j] += P_gamma[i][j][v] * JxW[v];
+
+          integrals.surface_tension_area += gamma_area_ratio[v] * JxW[v];
+          integrals.surfactant_area_reference += JxW[v];
+          integrals.surfactant_area_current += area_ratio[v] * JxW[v];
+        }
+      }
+    }
+  }
+
+  MPI_Comm const mpi_comm =
+    matrix_free.get_dof_handler(this->operator_data.dof_index).get_mpi_communicator();
+
+  integrals.first_piola_kirchhoff_stress =
+    dealii::Utilities::MPI::sum(integrals.first_piola_kirchhoff_stress, mpi_comm);
+  integrals.cofactor_deformation_gradient =
+    dealii::Utilities::MPI::sum(integrals.cofactor_deformation_gradient, mpi_comm);
+  integrals.surface_tension_stress =
+    dealii::Utilities::MPI::sum(integrals.surface_tension_stress, mpi_comm);
+  integrals.volume_reference = dealii::Utilities::MPI::sum(integrals.volume_reference, mpi_comm);
+  integrals.volume_current   = dealii::Utilities::MPI::sum(integrals.volume_current, mpi_comm);
+  integrals.surfactant_area_reference =
+    dealii::Utilities::MPI::sum(integrals.surfactant_area_reference, mpi_comm);
+  integrals.surfactant_area_current =
+    dealii::Utilities::MPI::sum(integrals.surfactant_area_current, mpi_comm);
+  integrals.surface_tension_area =
+    dealii::Utilities::MPI::sum(integrals.surface_tension_area, mpi_comm);
+  integrals.area_reference = dealii::Utilities::MPI::sum(integrals.area_reference, mpi_comm);
+  integrals.area_current   = dealii::Utilities::MPI::sum(integrals.area_current, mpi_comm);
+
+  return integrals;
 }
 
 template<int dim, typename Number>
@@ -548,7 +742,9 @@ NonLinearOperator<dim, Number>::cell_loop_set_linearization_data(
     integrator_lin->read_dof_values(src);
     integrator_lin->evaluate(dealii::EvaluationFlags::gradients);
 
-    material->do_set_cell_linearization_data(integrator_lin, cell);
+    material->do_set_cell_linearization_data(integrator_lin,
+                                             macroscopic_displacement_gradient_vectorized,
+                                             cell);
   }
 }
 
@@ -574,7 +770,7 @@ NonLinearOperator<dim, Number>::cell_loop_valid_deformation(
     for(unsigned int q = 0; q < integrator.n_q_points; ++q)
     {
       // material displacement gradient
-      tensor const Grad_d = integrator.get_gradient(q);
+      tensor const Grad_d = get_displacement_gradient(integrator, q);
 
       // material deformation gradient
       tensor const F = compute_F(Grad_d);
@@ -735,7 +931,7 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
 
     if(this->operator_data.pull_back_traction)
     {
-      tensor const F = compute_F(integrator.get_gradient(q));
+      tensor const F = compute_F(get_displacement_gradient(integrator, q));
       vector const N = integrator.normal_vector(q);
       // da/dA * n = det F F^{-T} * N := n_star
       // -> da/dA = n_star.norm()
@@ -754,7 +950,7 @@ NonLinearOperator<dim, Number>::do_boundary_integral_continuous(
       if(alveolar_surfactant->get_surfactant_model().is_surfactant_boundary(boundary_id))
       {
         surface_tension_1PK = alveolar_surfactant->get_surfactant_model().surface_tension_1PK(
-          integrator.get_gradient(q),
+          get_displacement_gradient(integrator, q),
           integrator.normal_vector(q),
           surface_area,
           this->time,
@@ -790,7 +986,7 @@ NonLinearOperator<dim, Number>::do_boundary_integral_surface_tension_stiffness(
 
   for(unsigned int q = 0; q < integrator.n_q_points; ++q)
   {
-    tensor const Grad_d_lin = face_integrator_lin->get_gradient(q);
+    tensor const Grad_d_lin = get_displacement_gradient(*face_integrator_lin, q);
     tensor const Grad_delta = integrator.get_gradient(q);
 
     vector const N_lin = face_integrator_lin->normal_vector(q);
@@ -844,7 +1040,7 @@ NonLinearOperator<dim, Number>::do_cell_integral_nonlinear(IntegratorCell & inte
     {
       for(unsigned int q = 0; q < integrator.n_q_points; ++q)
       {
-        tensor const Grad_d_lin = integrator_lin->get_gradient(q);
+        tensor const Grad_d_lin = get_displacement_gradient(*integrator_lin, q);
         scalar const Jm1_lin =
           compute_modified_Jm1<dim, Number, check_type, true /* stable_formulation */>(Grad_d_lin);
         scalar const           one_over_J_lin = 1.0 / (Jm1_lin + 1.0);
@@ -866,7 +1062,7 @@ NonLinearOperator<dim, Number>::do_cell_integral_nonlinear(IntegratorCell & inte
     {
       for(unsigned int q = 0; q < integrator.n_q_points; ++q)
       {
-        tensor const Grad_d_lin = integrator_lin->get_gradient(q);
+        tensor const Grad_d_lin = get_displacement_gradient(*integrator_lin, q);
         scalar const Jm1_lin =
           compute_modified_Jm1<dim, Number, check_type, true /* stable_formulation */>(Grad_d_lin);
         scalar const           one_over_J_lin = 1.0 / (Jm1_lin + 1.0);
@@ -894,7 +1090,7 @@ NonLinearOperator<dim, Number>::do_cell_integral_nonlinear(IntegratorCell & inte
     {
       for(unsigned int q = 0; q < integrator.n_q_points; ++q)
       {
-        tensor const Grad_d_lin = integrator.get_gradient(q);
+        tensor const Grad_d_lin = get_displacement_gradient(integrator, q);
         tensor const F_lin =
           compute_modified_F<dim, Number, check_type, true /* stable_formulation */>(Grad_d_lin);
         symmetric_tensor const S_lin =
@@ -916,7 +1112,7 @@ NonLinearOperator<dim, Number>::do_cell_integral_nonlinear(IntegratorCell & inte
     {
       for(unsigned int q = 0; q < integrator.n_q_points; ++q)
       {
-        tensor const Grad_d_lin = integrator.get_gradient(q);
+        tensor const Grad_d_lin = get_displacement_gradient(integrator, q);
         tensor const F_lin =
           compute_modified_F<dim, Number, check_type, false /* stable_formulation */>(Grad_d_lin);
         symmetric_tensor const S_lin =
@@ -959,7 +1155,7 @@ NonLinearOperator<dim, Number>::do_cell_integral(IntegratorCell & integrator) co
       {
         for(unsigned int q = 0; q < integrator.n_q_points; ++q)
         {
-          tensor const           Grad_d_lin = integrator_lin->get_gradient(q);
+          tensor const           Grad_d_lin = get_displacement_gradient(*integrator_lin, q);
           tensor const           grad_delta = integrator.get_gradient(q);
           symmetric_tensor const delta_tau  = material->contract_with_J_times_C(
             symmetrize(grad_delta), Grad_d_lin, integrator.get_current_cell_index(), q);
@@ -985,7 +1181,7 @@ NonLinearOperator<dim, Number>::do_cell_integral(IntegratorCell & integrator) co
       {
         for(unsigned int q = 0; q < integrator.n_q_points; ++q)
         {
-          tensor const           Grad_d_lin = integrator_lin->get_gradient(q);
+          tensor const           Grad_d_lin = get_displacement_gradient(*integrator_lin, q);
           tensor const           grad_delta = integrator.get_gradient(q);
           symmetric_tensor const delta_tau  = material->contract_with_J_times_C(
             symmetrize(grad_delta), Grad_d_lin, integrator.get_current_cell_index(), q);
@@ -1012,7 +1208,7 @@ NonLinearOperator<dim, Number>::do_cell_integral(IntegratorCell & integrator) co
     {
       for(unsigned int q = 0; q < integrator.n_q_points; ++q)
       {
-        tensor const           Grad_d_lin = integrator_lin->get_gradient(q);
+        tensor const           Grad_d_lin = get_displacement_gradient(*integrator_lin, q);
         tensor const           grad_delta = integrator.get_gradient(q);
         symmetric_tensor const delta_tau  = material->contract_with_J_times_C(
           symmetrize(grad_delta), Grad_d_lin, integrator.get_current_cell_index(), q);
@@ -1064,7 +1260,7 @@ NonLinearOperator<dim, Number>::do_cell_integral(IntegratorCell & integrator) co
       {
         for(unsigned int q = 0; q < integrator.n_q_points; ++q)
         {
-          tensor const Grad_d_lin = integrator_lin->get_gradient(q);
+          tensor const Grad_d_lin = get_displacement_gradient(*integrator_lin, q);
           tensor const Grad_delta = integrator.get_gradient(q);
           tensor const F_lin =
             compute_modified_F<dim, Number, check_type, true /* stable_formulation */>(Grad_d_lin);
@@ -1091,7 +1287,7 @@ NonLinearOperator<dim, Number>::do_cell_integral(IntegratorCell & integrator) co
       {
         for(unsigned int q = 0; q < integrator.n_q_points; ++q)
         {
-          tensor const Grad_d_lin = integrator_lin->get_gradient(q);
+          tensor const Grad_d_lin = get_displacement_gradient(*integrator_lin, q);
           tensor const Grad_delta = integrator.get_gradient(q);
           tensor const F_lin =
             compute_modified_F<dim, Number, check_type, false /* stable_formulation */>(Grad_d_lin);

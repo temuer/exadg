@@ -340,12 +340,53 @@ public:
   unsigned int
   get_dof_index() const;
 
+  /*
+   * Periodic problems with a prescribed macroscopic deformation, see
+   * BoundaryDescriptor::macroscopic_displacement_gradient: returns H(time), or zero if no
+   * macroscopic displacement gradient is prescribed.
+   */
+  dealii::Tensor<2, dim>
+  get_macroscopic_displacement_gradient(double const time) const;
+
+  /*
+   * Computes the total displacement u = H(time) * X + w from the displacement vector src holding
+   * the periodic fluctuation w. The periodicity and hanging-node constraints are distributed, so
+   * that dst can be used for output. Without a macroscopic displacement gradient, dst equals src.
+   */
+  void
+  compute_total_displacement(VectorType & dst, VectorType const & src, double const time) const;
+
+  /*
+   * Computes the integrals required for the macroscopic stress of a periodic representative volume
+   * element with the macroscopic displacement gradient H(time). The surface tension, if any, is
+   * evaluated with the time and time step size of the last nonlinear solve. The boundary area is
+   * integrated over the boundaries with the given ids. Large deformations only.
+   */
+  HomogenizationIntegrals<dim>
+  compute_homogenization_integrals(
+    VectorType const &                           displacement,
+    double const                                 time,
+    std::set<dealii::types::boundary_id> const & area_boundary_ids = {}) const;
+
 private:
   /*
    * Initializes dealii::DoFHandler.
    */
   void
   initialize_dof_handler_and_constraints();
+
+  /*
+   * Constrains all displacement components to zero at the mesh vertex closest to the given point,
+   * see BoundaryDescriptor::pinned_vertices.
+   */
+  void
+  add_pinned_vertex_constraints(dealii::Point<dim> const & point);
+
+  /*
+   * Sets the macroscopic displacement gradient H(time) in the nonlinear operator.
+   */
+  void
+  set_macroscopic_displacement_gradient(double const time) const;
 
   std::string
   get_dof_name() const;
@@ -481,6 +522,11 @@ private:
   LinearOperator<dim, Number>    elasticity_operator_linear;
   NonLinearOperator<dim, Number> elasticity_operator_nonlinear;
   OperatorData<dim>              operator_data;
+
+  // Macroscopic displacement gradient of the last converged nonlinear solution. The history
+  // variables of the materials are updated with the last converged solution, so they have to be
+  // evaluated with this macroscopic displacement gradient rather than with the one of the new time.
+  mutable dealii::Tensor<2, dim> macroscopic_displacement_gradient_converged;
 
   // The mass operator is only relevant for unsteady problems:
   // it is used to compute the initial acceleration and to evaluate

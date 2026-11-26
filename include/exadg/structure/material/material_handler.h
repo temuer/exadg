@@ -32,6 +32,7 @@
 #include <exadg/structure/material/library/incompressible_fibrous_tissue.h>
 #include <exadg/structure/material/library/incompressible_neo_hookean.h>
 #include <exadg/structure/material/library/st_venant_kirchhoff.h>
+#include <exadg/structure/material/library/st_venant_kirchhoff_alveolar_tissue.h>
 #include <exadg/structure/material/material.h>
 #include <exadg/structure/user_interface/material_descriptor.h>
 
@@ -535,6 +536,20 @@ public:
           {
             AssertThrow(cache_level < 2, dealii::ExcMessage("Cache levels 0 and 1 implemented."));
           }
+          break;
+        }
+        case MaterialType::StVenantKirchhoffAlveolarTissue:
+        {
+          AssertThrow(large_deformation == true,
+                      dealii::ExcMessage("This material is defined for finite strain theory."));
+
+          auto data_StVenantKirchhoffAlveolarTissue =
+            std::static_pointer_cast<StVenantKirchhoffAlveolarTissueData<dim>>(data);
+
+          material_map.insert(
+            Pair(id,
+                 std::make_shared<StVenantKirchhoffAlveolarTissue<dim, Number>>(
+                   matrix_free, dof_index, quad_index, *data_StVenantKirchhoffAlveolarTissue)));
           break;
         }
         default:

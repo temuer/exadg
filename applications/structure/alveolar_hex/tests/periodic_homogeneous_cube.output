@@ -1,0 +1,108 @@
+
+
+
+________________________________________________________________________________
+                                                                                
+                ////////                      ///////   ////////                
+                ///                           ///  ///  ///                     
+                //////    ///  ///  ///////   ///  ///  /// ////                
+                ///         ////    //   //   ///  ///  ///  ///                
+                ////////  ///  ///  ///////// ///////   ////////                
+                                                                                
+               High-Order Discontinuous Galerkin for the Exa-Scale              
+________________________________________________________________________________
+
+
+MPI info:
+
+  Number of processes:                       1
+
+Setting up elasticity solver:
+
+List of parameters:
+
+Mathematical model:
+  Problem type:                              QuasiStatic
+  Body force:                                false
+  Large deformation:                         true
+  Pull back body force:                      false
+  Pull back traction:                        false
+  Perform cell integral in spatial configuration:false
+
+Physical quantities:
+
+Temporal discretization:
+  load_increment:                            5.0000e-01
+
+Spatial Discretization:
+  Triangulation type:                        Distributed
+  Element type:                              Hypercube
+  Number of global refinements:              0
+  Create coarse triangulations:              false
+  Mapping degree:                            1
+  Polynomial degree:                         2
+  Use matrix-based implementation:           false
+
+Solver:
+
+Newton:
+  Maximum number of iterations:              100
+  Absolute solver tolerance:                 1.0000e-06
+  Relative solver tolerance:                 1.0000e-06
+
+Linear solver:
+  Solver:                                    CG
+  Maximum number of iterations:              250
+  Absolute solver tolerance:                 1.0000e-06
+  Relative solver tolerance:                 1.0000e-06
+  Maximum size of Krylov space:              30
+  Preconditioner:                            AMG
+
+Generating grid for 3-dimensional problem:
+
+  Max. number of refinements:                0
+  Number of cells:                           8
+
+Construct elasticity operator ...
+  pinned vertex:                             0.5 0.5 0.5
+
+Continuous Galerkin finite element discretization:
+
+  degree of 1D polynomials:                  2
+  number of dofs per cell:                   81
+  number of dofs (total):                    375
+
+... done!
+
+Setup elasticity operator ...
+
+... done!
+
+Macroscopic quantities of the REV (t = 0.0000e+00):
+  Air volume fraction (reference): 0.0000e+00
+  Deformation gradient F:          [[ 1.000000e+00,  0.000000e+00,  0.000000e+00] [ 0.000000e+00,  1.000000e+00,  0.000000e+00] [ 0.000000e+00,  0.000000e+00,  1.000000e+00]]
+  First Piola-Kirchhoff stress P:  [[ 0.000000e+00,  0.000000e+00,  0.000000e+00] [ 0.000000e+00,  0.000000e+00,  0.000000e+00] [ 0.000000e+00,  0.000000e+00,  0.000000e+00]]
+
+Solving quasi-static problem ...
+
+________________________________________________________________________________
+
+ Solve non-linear problem for load factor = 5.0000e-03
+________________________________________________________________________________
+
+________________________________________________________________________________
+
+ Solve non-linear problem for load factor = 5.0000e-01
+________________________________________________________________________________
+
+________________________________________________________________________________
+
+ Solve non-linear problem for load factor = 1.0000e+00
+________________________________________________________________________________
+
+... done!
+
+Macroscopic quantities of the REV (t = 1.0000e+00):
+  Air volume fraction (reference): 0.0000e+00
+  Deformation gradient F:          [[ 1.100000e+00,  2.000000e-01,  0.000000e+00] [ 5.000000e-02,  9.500000e-01,  1.000000e-01] [ 0.000000e+00,  0.000000e+00,  1.050000e+00]]
+  First Piola-Kirchhoff stress P:  [[ 1.883744e+03,  4.515453e+02,  0.000000e+00] [ 2.046856e+02,  1.490006e+03,  2.135328e+02] [-9.325637e+00,  5.129100e+01,  1.759492e+03]]

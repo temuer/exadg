@@ -36,6 +36,42 @@ namespace ExaDG
 {
 namespace Structure
 {
+/*
+ * Integrals over the reference configuration (sums over all MPI processes), from which the
+ * macroscopic first Piola-Kirchhoff stress of a periodic representative volume element can be
+ * computed. The displacement gradient includes the macroscopic displacement gradient.
+ */
+template<int dim>
+struct HomogenizationIntegrals
+{
+  // int_{Omega_0} P dV
+  dealii::Tensor<2, dim> first_piola_kirchhoff_stress;
+
+  // int_{Omega_0} J F^{-T} dV
+  dealii::Tensor<2, dim> cofactor_deformation_gradient;
+
+  // int_{Gamma_0} P_gamma dA, with the first Piola-Kirchhoff surface stress P_gamma of the
+  // surface tension on the surfactant boundaries (zero without surfactant)
+  dealii::Tensor<2, dim> surface_tension_stress;
+
+  // int_{Omega_0} dV and int_{Omega_0} J dV
+  double volume_reference = 0.0;
+  double volume_current   = 0.0;
+
+  // int_{Gamma_0} dA and int_{Gamma_0} da/dA dA over the surfactant boundaries
+  double surfactant_area_reference = 0.0;
+  double surfactant_area_current   = 0.0;
+
+  // int_{Gamma_0} gamma da/dA dA = int_{Gamma} gamma da over the surfactant boundaries, i.e., the
+  // mean surface tension is surface_tension_area / surfactant_area_current
+  double surface_tension_area = 0.0;
+
+  // int_{Gamma_0} dA and int_{Gamma_0} da/dA dA over the boundaries passed to
+  // compute_homogenization_integrals(), independent of the material
+  double area_reference = 0.0;
+  double area_current   = 0.0;
+};
+
 template<int dim, typename Number>
 class NonLinearOperator : public ElasticityOperatorBase<dim, Number>
 {
@@ -99,6 +135,29 @@ public:
 
   void
   update_materials(VectorType const & solution) const;
+
+  /**
+   * Set the macroscopic displacement gradient H = F_macro - I of periodic problems, which is added
+   * to the gradient of the (periodic) displacement vector wherever the displacement gradient enters
+   * the operator, i.e., the residual, the linearization point, the cached material data, and the
+   * boundary terms. The gradients of displacement increments are not affected. H = 0 by default.
+   */
+  void
+  set_macroscopic_displacement_gradient(dealii::Tensor<2, dim> const & gradient) const;
+
+  dealii::Tensor<2, dim> const &
+  get_macroscopic_displacement_gradient() const;
+
+  /**
+   * Computes the integrals required for the macroscopic stress of a periodic representative volume
+   * element for the given displacement vector, using the current macroscopic displacement
+   * gradient, time, and time step size. The boundary area is integrated over the boundaries with
+   * the given ids.
+   */
+  HomogenizationIntegrals<dim>
+  compute_homogenization_integrals(
+    VectorType const &                           displacement,
+    std::set<dealii::types::boundary_id> const & area_boundary_ids) const;
 
   /**
    * Set the mapping pointer for the undeformed mapping.
@@ -245,11 +304,12 @@ private:
    *
    * material deformation gradient F_h
    *
-   *  F_h = 1 + Grad(d_h) ,
+   *  F_h = 1 + H + Grad(d_h) ,
    *
    * where
    *
-   *  d_h denotes the displacement vector.
+   *  d_h denotes the displacement vector and H the macroscopic displacement gradient (zero
+   *  except for periodic problems with a prescribed macroscopic deformation).
    */
   void
   do_cell_integral_nonlinear(IntegratorCell & integrator) const;
@@ -339,12 +399,29 @@ private:
             Range const &                           range) const override;
 
 
-  static scalar
-  calculate_surface_area(IntegratorFace const & integrator);
+  /*
+   * Gradient of the total displacement, i.e., the gradient of the displacement vector evaluated by
+   * the integrator plus the macroscopic displacement gradient. Do not use this function for
+   * displacement increments.
+   */
+  template<typename Integrator>
+  tensor
+  get_displacement_gradient(Integrator const & integrator, unsigned int const q) const
+  {
+    tensor gradient = integrator.get_gradient(q);
+    gradient += macroscopic_displacement_gradient_vectorized;
+    return gradient;
+  }
 
-  static scalar
+  scalar
+  calculate_surface_area(IntegratorFace const & integrator) const;
+
+  scalar
   calculate_surface_area_increment(IntegratorFace const & integrator_lin,
-                                   IntegratorFace const & integrator);
+                                   IntegratorFace const & integrator) const;
+
+  mutable dealii::Tensor<2, dim> macroscopic_displacement_gradient;
+  mutable tensor                 macroscopic_displacement_gradient_vectorized;
 
   mutable std::shared_ptr<IntegratorCell> integrator_lin;
   mutable std::shared_ptr<IntegratorFace> face_integrator_lin;

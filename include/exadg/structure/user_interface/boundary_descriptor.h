@@ -24,6 +24,8 @@
 
 // deal.II
 #include <deal.II/base/function.h>
+#include <deal.II/base/point.h>
+#include <deal.II/base/tensor_function.h>
 #include <deal.II/base/types.h>
 #include <deal.II/fe/component_mask.h>
 
@@ -75,6 +77,21 @@ struct BoundaryDescriptor
   // of interest at the given boundary (this type of Neumann boundary condition
   // is required for fluid-structure interaction problems)
   std::set<dealii::types::boundary_id> neumann_cached_bc;
+
+  // Periodic problems with a prescribed macroscopic deformation (computational homogenization):
+  // the displacement is decomposed as u = H(t) * X + w, where H = F_macro - I is the macroscopic
+  // displacement gradient and the fluctuation w is periodic. The solution vector holds w, and H is
+  // added to the gradient of w wherever the displacement gradient enters the nonlinear operator.
+  // The function is evaluated at the origin, i.e., H only depends on time. For
+  // ProblemType::QuasiStatic, the time is the load factor in [0, 1]. Only supported for
+  // large_deformation = true with spatial_integration = false. Inertia and damping act on the
+  // fluctuation w only (separation of scales). Leave empty for H = 0.
+  std::shared_ptr<dealii::TensorFunction<2, dim>> macroscopic_displacement_gradient;
+
+  // All displacement components are fixed to zero at the mesh vertex closest to each of these
+  // points, e.g., to remove the rigid body translations of a periodic problem. A pinned vertex
+  // must not lie on a periodic or Dirichlet boundary. Not supported with multigrid preconditioners.
+  std::vector<dealii::Point<dim>> pinned_vertices;
 
   inline DEAL_II_ALWAYS_INLINE //
     BoundaryType
