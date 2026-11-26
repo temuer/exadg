@@ -80,7 +80,9 @@ DriverQuasiStatic<dim, Number>::solve()
 
   do_solve();
 
-  postprocessing(1.0 /* load factor */);
+  // With postprocess_every_load_step, the final state has already been postprocessed in do_solve().
+  if(not param.postprocess_every_load_step)
+    postprocessing(1.0 /* load factor */);
 
   timer_tree->insert({"DriverQuasiStatic"}, timer.wall_time());
 }
@@ -239,6 +241,9 @@ DriverQuasiStatic<dim, Number>::do_solve()
 
     // finally, increment step number
     ++step_number;
+
+    if(param.postprocess_every_load_step)
+      postprocessing(load_factor);
   }
 
   pcout << std::endl << "... done!" << std::endl;

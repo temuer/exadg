@@ -632,6 +632,10 @@ public:
       prm.add_parameter("LoadIncrement",
                         load_increment,
                         "QuasiStatic: load factor increment per load step, in (0, 1].");
+      prm.add_parameter("PostprocessEveryLoadStep",
+                        postprocess_every_load_step,
+                        "QuasiStatic: postprocess (output, macroscopic quantities) after every "
+                        "load step instead of only for the initial and final state.");
     }
     prm.leave_subsection();
   }
@@ -688,6 +692,7 @@ private:
   double       equilibrium_time = 1.0;   // load ramp duration (matches surfactant_data)
   unsigned int steps_per_cycle  = 400;   // time steps per breathing cycle (dt = period/steps)
   double       load_increment   = 0.1;   // QuasiStatic: load factor increment per load step
+  bool postprocess_every_load_step = false; // QuasiStatic: postprocess after every load step
 
   static dealii::Tensor<2, dim>
   to_tensor(std::vector<double> const & entries)
@@ -770,7 +775,8 @@ private:
     this->param.max_time_step_reductions           = max_time_step_reductions;
 
     // QuasiStatic: the load factor (= time) runs from 0 to 1 in steps of load_increment
-    this->param.load_increment = load_increment;
+    this->param.load_increment              = load_increment;
+    this->param.postprocess_every_load_step = postprocess_every_load_step;
 
     // SPATIAL DISCRETIZATION
     this->param.grid.file_name                    = this->grid_parameters.file_name;

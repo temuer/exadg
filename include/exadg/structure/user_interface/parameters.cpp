@@ -67,6 +67,7 @@ Parameters::Parameters()
 
     // quasi-static solver
     load_increment(1.0),
+    postprocess_every_load_step(false),
 
     // SPATIAL DISCRETIZATION
     grid(GridData()),
@@ -216,6 +217,8 @@ Parameters::print_parameters_temporal_discretization(dealii::ConditionalOStream 
   if(problem_type == ProblemType::QuasiStatic)
   {
     print_parameter(pcout, "load_increment", load_increment);
+    if(postprocess_every_load_step)
+      print_parameter(pcout, "Postprocess every load step", postprocess_every_load_step);
   }
 
   if(problem_type == ProblemType::Unsteady)

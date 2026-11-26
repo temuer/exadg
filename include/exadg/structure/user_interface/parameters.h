@@ -193,6 +193,10 @@ public:
   // choose a value in [0,1] where 1 = maximum load (Neumann or Dirichlet)
   double load_increment;
 
+  // If true, the postprocessor is called after every converged load step (with the load factor as
+  // time). Otherwise, it is only called for the initial and the final state.
+  bool postprocess_every_load_step;
+
   /**************************************************************************************/
   /*                                                                                    */
   /*                              SPATIAL DISCRETIZATION                                */
