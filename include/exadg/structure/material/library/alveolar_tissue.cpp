@@ -668,7 +668,7 @@ OgdenAlveolarTissue<dim, Number, cache_level>::second_piola_kirchhoff_stress_eva
   symmetric_tensor const S_iso = std::invoke(
     [&]()
     {
-      auto const [lambda_sq, N] = compute_eigenbasis(C);
+      auto const [lambda_sq, N] = compute_eigenbasis(C, data.eigen_solver);
 
       scalar const J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
 
@@ -750,7 +750,8 @@ OgdenAlveolarTissue<dim, Number, cache_level>::
                                         static_cast<Number>(data.mu1),
                                         static_cast<Number>(data.mu2),
                                         static_cast<Number>(data.alpha1),
-                                        static_cast<Number>(data.alpha2));
+                                        static_cast<Number>(data.alpha2),
+                                        data.eigen_solver);
       }
     },
     C,
@@ -903,7 +904,8 @@ OgdenAlveolarTissue<dim, Number, cache_level>::do_set_cell_linearization_data(
                                static_cast<Number>(data.mu1),
                                static_cast<Number>(data.mu2),
                                static_cast<Number>(data.alpha1),
-                               static_cast<Number>(data.alpha2)));
+                               static_cast<Number>(data.alpha2),
+                               data.eigen_solver));
   }
 
   return;

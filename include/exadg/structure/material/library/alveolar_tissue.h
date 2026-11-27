@@ -37,6 +37,7 @@
 #include <exadg/matrix_free/integrators.h>
 #include <exadg/operators/variable_coefficients.h>
 #include <exadg/structure/material/library/surfactant.h>
+#include <exadg/structure/material/library/symmetric_eigenbasis.h>
 #include <exadg/structure/material/material.h>
 #include <exadg/structure/user_interface/enum_types.h>
 #include "exadg/structure/spatial_discretization/operators/continuum_mechanics.h"
@@ -382,15 +383,20 @@ struct OgdenAlveolarTissueData : public MaterialData
   Type2D type_two_dim{Type2D::Undefined};
 
   WiechertSurfactantData surfactant_data;
+
+  // eigenbasis of C
+  EigenSolver eigen_solver{EigenSolver::DealII};
 };
 
 // Serialize the vectorized right Cauchy-Green tensor C into per-lane scalar
 // tensors, call dealii::eigenvectors (which does not support VectorizedArray),
 // and repack the squared principal stretches (eigenvalues) and the principal
-// directions (eigenvectors) into vectorized arrays.
+// directions (eigenvectors) into vectorized arrays. EigenSolver::ClosedForm
+// calls symmetric_eigenbasis_closed_form() instead of dealii::eigenvectors.
 template<int dim, typename Number>
 auto
-compute_eigenbasis(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> const & C)
+compute_eigenbasis(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> const & C,
+                   EigenSolver const eigen_solver = EigenSolver::DealII)
   -> std::pair<
     std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)>,
     std::array<dealii::Tensor<1, dim, dealii::VectorizedArray<Number>>, static_cast<size_t>(dim)>>
@@ -410,7 +416,9 @@ compute_eigenbasis(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Numbe
       }
     }
 
-    auto const eigen = dealii::eigenvectors(C_lane);
+    auto const eigen = (eigen_solver == EigenSolver::ClosedForm) ?
+                         symmetric_eigenbasis_closed_form(C_lane) :
+                         dealii::eigenvectors(C_lane);
 
     for(int a = 0; a < dim; ++a)
     {
@@ -497,16 +505,18 @@ template<int dim, typename Number>
 auto
 ogden_eigendecomposition(dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<Number>> const & C,
                          dealii::VectorizedArray<Number> const &                                  J,
-                         Number const & mu1,
-                         Number const & mu2,
-                         Number const & alpha1,
-                         Number const & alpha2) -> OgdenEigendecomposition<dim, Number>
+                         Number const &    mu1,
+                         Number const &    mu2,
+                         Number const &    alpha1,
+                         Number const &    alpha2,
+                         EigenSolver const eigen_solver = EigenSolver::DealII)
+  -> OgdenEigendecomposition<dim, Number>
 {
   OgdenEigendecomposition<dim, Number> res;
 
   dealii::VectorizedArray<Number> const J_pow = std::pow(J, static_cast<Number>(-ONE_THIRD));
 
-  std::tie(res.lambda_sq, res.eigenvectors) = compute_eigenbasis(C);
+  std::tie(res.lambda_sq, res.eigenvectors) = compute_eigenbasis(C, eigen_solver);
 
   std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow1;
   std::array<dealii::VectorizedArray<Number>, static_cast<size_t>(dim)> pow2;
