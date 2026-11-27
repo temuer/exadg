@@ -576,6 +576,10 @@ public:
                         material_type,
                         "Wall material: StVenantKirchhoff, CompressibleNeoHookean, or "
                         "OgdenAlveolarTissue (Singh et al. 2024).");
+      prm.add_parameter("EigenSolver",
+                        eigen_solver,
+                        "OgdenAlveolarTissue: eigenbasis of C by DealII (dealii::eigenvectors(), "
+                        "QL with implicit shifts) or ClosedForm (non-iterative).");
       prm.add_parameter(
         "SurfaceTension",
         surface_tension,
@@ -670,6 +674,7 @@ private:
   unsigned int solid_cube_subdivisions = 4;
 
   MaterialType material_type = MaterialType::StVenantKirchhoff;
+  EigenSolver  eigen_solver  = EigenSolver::DealII;
 
   SurfaceTensionType surface_tension                    = SurfaceTensionType::None;
   double             surface_tension_value              = 70.0; // mN/m (water)
@@ -1105,6 +1110,7 @@ private:
       ogden->kappa  = 2.1e4; // moderate near-incompressibility (~10x shear modulus, nu ~ 0.45)
       ogden->type_two_dim    = Type2D::Undefined;
       ogden->surfactant_data = get_surfactant_data();
+      ogden->eigen_solver    = eigen_solver;
 
       material = ogden;
     }
